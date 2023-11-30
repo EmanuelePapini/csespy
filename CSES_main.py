@@ -54,6 +54,7 @@ class CSES():
 
         self.path = path
         self.files = AttrDict()
+        self.files['input'] = None
         self.search_string = search_string
         self.orbitn = orbitn
         self._ancillary_={}
@@ -377,16 +378,16 @@ class CSES():
                    df = df[Cond[1](df[Cond[0]],Cond[2])] 
 
             if get_PSD:
-                if 'efd_psd' not in self.data.keys():
-                    self.data.EFD_PSD = df.copy()
-                    self.data.EFD_PSD_freq = aux['FREQ']
+                if 'EFD_ELF_PSD' not in self.data.keys():
+                    self.data.EFD_ELF_PSD = df.copy()
+                    self.data.EFD_ELF_PSD_freq = aux['FREQ']
                     del df
                 else:
                     self.data.EFD_PSD.append(df)
                 self.aux.efd_psd[infos['orbitn']]= aux
             else:
-                if 'efd' not in self.data.keys():
-                    self.data.EFD = df.copy()
+                if 'EFD_ELF' not in self.data.keys():
+                    self.data['EFD_ELF'] = df.copy()
                     del df
                 else:
                     self.data.EFD = pd.concat([self.data.EFD,df])
@@ -416,7 +417,7 @@ class CSES():
             
         print('selected instrument-frequency: ' + msg.INFO(instrument+'-'+frequency))
 
-        dsetname=instrument.lower()+'_'+frequency.lower()
+        dsetname=instrument.upper()+'_'+frequency.upper()
         if not hasattr(self,'data'): 
             self.data=AttrDict()
         if not hasattr(self,'aux'): 
@@ -494,14 +495,13 @@ class CSES():
 
 
 
-    def plot_EFD(self,xaxis = 'lat', xlabel=None,modulus = False, keys = ['Ex','Ey','Ez'],ax = None,fig = None,twiny = True, frequency='ELF'):
+    def plot_EFD(self,xaxis = 'lat', xlabel=None,modulus = False, keys = ['Ex','Ey','Ez'],ax = None,fig = None,twiny = True, frequency='ELF',ion=False):
         from .blombly import pylab as plt
-        plt.ion()
-
-        if frequency == 'ELF':
-            tag = 'efd'
-        elif frequency == 'ULF':
-            tag = 'efd_ulf'
+        tag = 'EFD_'+frequency.upper()
+        #if frequency == 'ELF':
+        #    tag = 'EFD'
+        #elif frequency == 'ULF':
+        #    tag = 'efd_ulf'
         fig,ax = plt.get_figure(fig,ax) 
         if modulus:
             ax.plot(self.data[tag][xaxis],np.sqrt(self.data[tag]['Ex']**2+\
@@ -521,6 +521,8 @@ class CSES():
             ax2.set_xlabel('time (UT)')
         else:
             ax2 = None
+        ax.legend()
+        if ion : plt.ion()
         plt.show()
         return fig,ax,ax2 
 

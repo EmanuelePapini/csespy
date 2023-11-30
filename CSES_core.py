@@ -23,7 +23,7 @@
 #
 from .CSES_aux import *
 
-def CSES_load(filename,path='./', return_pandas = True,
+def CSES_load(filename,path='./', return_pandas = False,
             with_mag_coords = False,keep_verse_time = True, fill_missing=None):
     """
     Generic method to read any CSES data product, info to read properly the hdf5 file are 
@@ -638,7 +638,7 @@ def EFD_load_ELF(filename, path='./', cut_last_interval = True,\
              'verse_time': VERSE time of first datapoint,
              'verse_zero_utc': utc time of the zero VERSE time (i.e, 2009/1/1) }
     """
-    dtrate = CSES_SAMPLINGFREQS['EFD_ELF'] #samplerate is 5kHz
+    dtrate = 1/CSES_SAMPLINGFREQS['EFD_ELF'] #samplerate is 5kHz
     #cut_last_interval = True
     import h5py
     from numpy import interp as interp1
