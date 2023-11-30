@@ -45,7 +45,9 @@ css.load_CSES(instrument='EFD',frequency='ELF') #equivalent to css.load_EFD() bu
 #plot the data
 css.plot_EFD(frequency='ELF')
 ```
+This plot should appear
 
+![EFD ELF orbit 10431(1)](./docs/Figure_EFD_104311.png "EFD ELF orbit 10431(1)")
 
 
 ### Contacts ###
