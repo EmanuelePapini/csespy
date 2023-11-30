@@ -8,7 +8,7 @@ Dependencies: matplotlib, skimage, mpl_toolkits, collections, scipy, copy, warni
 ### Install ###
 
 Simply download the repository in the desired folder to start using it.
-If you have a PYTHONPATH already set, you can put the FIF folder directly there so that you can import the package from everywhere.
+If you have a PYTHONPATH already set, you can put the csespy folder directly there so that you can import the package from everywhere.
 
 Authors: Emanuele Papini (EP) and Francesco Maria Follega (FMF)
 
