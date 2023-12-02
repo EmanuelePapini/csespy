@@ -140,16 +140,64 @@ class CSES():
     def search_file(self,search_string ='',orbitn=None, instrument='EFD', instrument_no=None, frequency = 'ELF',return_path = False, timespan = None):
         """
         Search for a file matching the desired string for the desired instrument and frequency
+        
+        WARNING: Instrument_no and frequency are redundant, since they give the same information
+        if instrument_no is not None, then this key overrides the frequency key.
         """
         from glob import glob
        
         if instrument_no is not None: frequency = ''
         files = None
         unstruct_path = self._unstructured_path_
+        
+        if instrument_no is not None : 
+            frequency = CSES_DATA_TABLE[instrument][instrument_no]
+        
+        if instrument == 'EFD':
+            
+            if unstruct_path:
+                months=[self.path]
+            
+            else:
+                years = glob(self.path+instrument+'/*')
+                months = [i+'/' for year in years for i in glob(year+'/'+frequency+'/*')]
+            
+            if orbitn is None:
+                files = [i for month in months for i in find_file(month,search_string)]
+            
+            else:
+                files = [i for month in months for i in find_file(month,orbitn)]
+        
+        else: 
+            if unstruct_path:
+                months=[self.path]
+            
+            else:
+                years = glob(self.path+instrument+'/*')
+                months = [i+'/' for year in years for i in glob(year+'/'+frequency+'/*')]
+            
+            if orbitn is None:
+                files = [i for month in months for i in find_file(month,search_string)]
+            
+            else:
+                files = [i for month in months for i in find_file(month,orbitn)]
+        
+        if instrument_no is not None:
+            files = [i for i in files if \
+                parse_CSES_filename(i)['Instrument'] == instrument and\
+                parse_CSES_filename(i)['Instrument No.'] == instrument_no]
+        
+        else:         
+            files = [i for i in files if \
+                parse_CSES_filename(i)['Instrument'] == instrument and\
+                parse_CSES_filename(i)['Data Product'] == frequency]
+
+            #return files
+        
         if timespan is not None:
             #Lazy way to find orbit in timespan
             #1-get all files available in storage and parse datetimes
-            fls = self.search_file()
+            fls = files
             b = [parse_CSES_filename(i) for i in fls]
             t0,t1 = timespan
             #2-cycle through all of them and for each file do:
@@ -162,41 +210,6 @@ class CSES():
             for ii,i in enumerate(b):
                 c = np.array([0,0,1,1])[np.argsort([t0,t1,i['t_start'],i['t_end']])][0:2].sum()
                 if c == 1: files.append(fls[ii])
-            return files
-        if instrument == 'EFD':
-            if unstruct_path:
-                months=[self.path]
-            else:
-                years = glob(self.path+instrument+'/*')
-                months = [i+'/' for year in years for i in glob(year+'/'+frequency+'/*')]
-            #for i in years
-            if orbitn is None:
-                files = [i for month in months for i in find_file(month,search_string)]
-                #return files
-            else:
-                files = [i for month in months for i in find_file(month,orbitn)]
-                files = [i for i in files if parse_CSES_filename(i)['orbitn'] == orbitn and \
-                    parse_CSES_filename(i)['Instrument']=='EFD' and \
-                    parse_CSES_filename(i)['Data Product']==frequency]
-        else: 
-            if unstruct_path:
-                months=[self.path]
-            else:
-                years = glob(self.path+instrument+'/*')
-                months = [i+'/' for year in years for i in glob(year+'/'+frequency+'/*')]
-            if orbitn is None:
-                files = [i for month in months for i in find_file(month,search_string)]
-            else:
-                files = [i for month in months for i in find_file(month,orbitn)]
-                files = [i for i in files if (parse_CSES_filename(i)['orbitn'] == orbitn or\
-                    parse_CSES_filename(i)['orbitn'] == '0'+orbitn) and\
-                    parse_CSES_filename(i)['Instrument'] == instrument and\
-                    (parse_CSES_filename(i)['Data Product'] == frequency or\
-                    parse_CSES_filename(i)['Instrument No.'] == instrument_no)]
-            if instrument_no is not None:
-                files = [i for i in files if parse_CSES_filename(i)['Instrument No.'] == instrument_no]
-
-            #return files
         
         if files is not None:
             if return_path:
@@ -550,6 +563,21 @@ class CSES():
             [plt.plot(hd[hd.orbitn==i][xaxis],hd[hd.orbitn==i].Bz,color='blue') for i in set(hd.orbitn)]
 
 
+################################################################################
+###############################MANIPULATION TOOLS###############################
+################################################################################
+    
+    def interpolate_inst1_to_inst2(self,inst1 = 'HPM',inst2 = 'EFD',tags = ['Bx','By','Bz']):
+        t_1 = self.data[inst1].index.values.astype(np.int64)
+        t_2 = self.data[inst2].index.values.astype(np.int64)
+        t0 = t_1[0]
+        t_1 -=t0
+        t_2 -=t0
+        t_1 = t_1.astype(np.float64)
+        t_2 = t_2.astype(np.float64)
+        
+        for i in tags:
+            self.data[inst2][i] = np.interp(t_2,t_1,self.data[inst1][i].values)
 
 ######WRITING TO DATABASES MACHINERY######
     def save_data_to_h5(self,filename,dataset_name,mode='a',**kwargs):
