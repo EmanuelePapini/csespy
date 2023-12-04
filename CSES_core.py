@@ -22,6 +22,7 @@
 #   everything :)       
 #
 from .CSES_aux import *
+from .CSES_raw import *
 
 def CSES_load(filename,path='./', return_pandas = False,
             with_mag_coords = False,keep_verse_time = True, fill_missing=None):
@@ -446,6 +447,46 @@ def EFD_load_ELF_PSD(filename, path='./', with_mag_coords = False):
 
     return res, {'ORBITNUM':orbitnum,'units':s2,'UTC':utc, 'verse_zero_utc':vt0_utc, 'verse_time':utc-vt0_utc,'FREQ':freqs}
 
+
+def HEP_load(filename,path='./', with_mag_coords=False, time_from_samplerate = True, fill_missing = None):
+    import h5py
+    from numpy import interp as interp1
+    fil = h5py.File(path+filename,'r')
+    orbitnum = int(fil.attrs['ORBITNUM'])
+    B1 = b'counts/s'
+    lat1 = fil['GEO_LAT'][...].flatten()
+    lon1 = fil['GEO_LON'][...].flatten()
+    mlat1 = fil['MAG_LAT'][...].flatten()
+    mlon1 = fil['MAG_LON'][...].flatten()
+    Count_Electron = np.sum(fil['Count_Electron'][...], axis = 1).flatten()
+    Count_Proton = np.sum(fil['Count_Proton'][...], axis = 1).flatten()
+    ALT1 = fil['ALTITUDE'][...].flatten()
+    Vtime = fil['VERSE_TIME'][...]
+    Utime = fil['UTC_TIME'][...]
+    fil.close()
+
+    #convert from CSES date (VERSE_TIME) to standard date
+    vt0_utc, utc = datenum(2009,1,1,utc = str(Utime[0][0]))    #CSES initial time
+
+    tx=Vtime
+    tx = tx/1000
+    time=tx.flatten()     #verse_time in seconds
+
+    ALT = ALT1.flatten()
+    lat = lat1.flatten()
+    lon = lon1.flatten()
+
+    res = {}
+    res['time'] = time
+    res['alt'] = ALT
+    res['lat'] = lat
+    res['lon'] = lon
+    if with_mag_coords:
+        mlat = mlat1.flatten()
+        mlon = mlon1.flatten()
+    res['Count_Electron'] = list(Count_Electron)
+    res['Count_Proton'] = list(Count_Proton)
+    return res, {'ORBITNUM':orbitnum,'units':B1,'UTC':utc, 'verse_zero_utc':vt0_utc, 'verse_time':utc-vt0_utc}
 
 def HPM_load(filename,path='./', time_from_samplerate = True, fill_missing = None):
     """

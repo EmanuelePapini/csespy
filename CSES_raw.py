@@ -20,6 +20,7 @@
 #
 import numpy as np
 from .CSES_aux import *
+
 def load_CSES_raw(filename, convert_names = False):
     import h5py
 

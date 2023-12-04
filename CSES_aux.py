@@ -35,7 +35,8 @@ CSES_DATA_TABLE = {'EFD':{'1':'ULF','2':'ELF','3':'VLF','4':'HF'},\
                    'HPM':{'1':'FGM1','2':'FGM2','3':'CDSM','5':'FGM1Hz'},\
                    'SCM':{'1':'ULF','2':'ELF','3':'VLF'},\
                    'LAP':{'1':'50mm', '2':'10mm'},\
-                   'PAP':{'0':''}}
+                   'PAP':{'0':''}, \
+                   'HEP':{'1':'HEPP_L','2':'HEPP_H','3':'HEPD','4':'HEPP_X'}}
 
 #Dictionary of the name translations for the fields contained in the 
 #HDF5 output files of CSES-01. 
@@ -88,7 +89,14 @@ CSES_FILE_TABLE = {'EFD':{\
                     'LAP':{\
                        '1':{'A311':'ne',\
                             'A321':'Te'}\
-                         }\
+                         },\
+                    'HEP':{\
+                        '1':{'Count_Electron':'Count_Electron',\
+                             'Count_Proton':'Count_Proton'},\
+                        '2':{'Count_Electron':'Count_Electron',\
+                             'Count_Proton':'Count_Proton'},\
+                        '4':{'XrayRate':'XrayRate'}\
+                        }
                    }
 
 CSES_POSITION = {'ALTITUDE':'alt',\
@@ -129,7 +137,7 @@ CSES_DATASETS = {'A111_P':'Ex_P','A111_W':'Ex',\
 #SAMPLING FREQUENCIES OF VARIOUS INSTRUMENTS, TO BE USED WHEN READING DATA
 CSES_SAMPLINGFREQS = {'EFD_ULF':125.,'EFD_ELF':5000.,'EFD_VLF':50000.,\
                       'SCM_ULF':200.,'SCM_ELF':10240.,'SCM_VLF':51200.,'LAP_50mm':1/1.5,'PAP_':1.,\
-                      'HPM_FGM1Hz':1.}
+                      'HPM_FGM1Hz':1.,'HEP':1.}
 
 
 def versetime_to_utc(versetime,t0=(2009,1,1)):

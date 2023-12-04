@@ -203,6 +203,60 @@ class CSES():
                 files = [self.get_file_path(i)+i for i in files]
 
         return files
+    
+
+    def load_HEP(self,instrument_no = '1',unique = True, subset = None,**kwargs):
+        import pandas as pd
+        from glob import glob
+        from .blombly.tools.objects import AttrDict
+
+        if not hasattr(self,'data'): 
+            self.data=AttrDict()
+        if not hasattr(self,'aux'): 
+            self.aux=AttrDict()
+        if not hasattr(self.aux,'hep'): 
+            self.aux.hpm={}
+
+        if self.files.input is None:
+            if type(self.orbitn) is str:
+                files = self.search_file(orbitn=self.orbitn,instrument='HEP',\
+                    instrument_no=instrument_no, frequency = '')
+            elif type(self.search_string) is str:
+                files = self.search_file(self.search_string,instrument='HEP',\
+                    instrument_no=instrument_no, frequency = '')
+            else:
+                raise ValueError('not enough input for file search!')
+            self.files['HEP'] = files
+
+        else:
+            filess = self.files.input.copy()
+            #checking if files are HPM files
+            infos = [parse_CSES_filename(ifiles) for ifiles in filess]
+            for i,info in enumerate(infos):
+                #if the file in the list is not HPM, then it searches for an HPM
+                #file in the folders with the same orbit
+                if info['Instrument'] != 'HEP':
+                    files[i] = self.search_file(orbitn=info['orbitn'],instrument='HEP',\
+                    instrument_no=instrument_no, frequency = '')[0]
+            self.files['HEP'] = files
+
+        if unique : files = uniquefy(files) 
+
+        #for ifile,ipath in zip(files,fpaths):
+        for ifiles in files:
+            
+            infos = parse_CSES_filename(ifiles)
+            
+            if infos['Instrument'] == 'HEP':
+                ifile = ifiles
+            else:
+                ifile = self.search_file(orbitn=infos['orbitn'],instrument='HEP',instrument_no=instrument_no)[0]
+            
+            ipath = self.get_file_path(ifile)
+            
+            print('loading HEP file: '+msg.INFO(ipath+ifile))
+            HEP_load(ifile,ipath,**kwargs)
+            #res, aux = 
 
 
     def load_HPM(self, subset = None,instrument_no='5',unique = True, keep_verse_time = True,**kwargs):
