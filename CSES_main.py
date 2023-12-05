@@ -268,7 +268,7 @@ class CSES():
             ipath = self.get_file_path(ifile)
             
             print('loading HEP file: '+msg.INFO(ipath+ifile))
-            HEP_load(ifile,ipath,**kwargs)
+            HEP_load(ifile,ipath,instrument_no,**kwargs)
             #res, aux = 
 
 

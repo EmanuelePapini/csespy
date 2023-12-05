@@ -448,7 +448,7 @@ def EFD_load_ELF_PSD(filename, path='./', with_mag_coords = False):
     return res, {'ORBITNUM':orbitnum,'units':s2,'UTC':utc, 'verse_zero_utc':vt0_utc, 'verse_time':utc-vt0_utc,'FREQ':freqs}
 
 
-def HEP_load(filename,path='./', with_mag_coords=False, time_from_samplerate = True, fill_missing = None):
+def HEP_load(filename,path='./', instrument_no = '1', with_mag_coords=False, time_from_samplerate = True, fill_missing = None):
     import h5py
     from numpy import interp as interp1
     fil = h5py.File(path+filename,'r')
@@ -458,8 +458,11 @@ def HEP_load(filename,path='./', with_mag_coords=False, time_from_samplerate = T
     lon1 = fil['GEO_LON'][...].flatten()
     mlat1 = fil['MAG_LAT'][...].flatten()
     mlon1 = fil['MAG_LON'][...].flatten()
-    Count_Electron = np.sum(fil['Count_Electron'][...], axis = 1).flatten()
-    Count_Proton = np.sum(fil['Count_Proton'][...], axis = 1).flatten()
+    if instrument_no != '4':
+        Count_Electron = np.sum(fil['Count_Electron'][...], axis = 1).flatten()
+        Count_Proton = np.sum(fil['Count_Proton'][...], axis = 1).flatten()
+    else:
+        XrayRate = np.sum(fil['XrayRate'][...], axis = 1).flatten()
     ALT1 = fil['ALTITUDE'][...].flatten()
     Vtime = fil['VERSE_TIME'][...]
     Utime = fil['UTC_TIME'][...]
@@ -484,8 +487,11 @@ def HEP_load(filename,path='./', with_mag_coords=False, time_from_samplerate = T
     if with_mag_coords:
         mlat = mlat1.flatten()
         mlon = mlon1.flatten()
-    res['Count_Electron'] = list(Count_Electron)
-    res['Count_Proton'] = list(Count_Proton)
+    if instrument_no != '4':
+        res['Count_Electron'] = list(Count_Electron)
+        res['Count_Proton'] = list(Count_Proton)
+    else:
+        res['XrayRate'] = list(XrayRate)
     return res, {'ORBITNUM':orbitnum,'units':B1,'UTC':utc, 'verse_zero_utc':vt0_utc, 'verse_time':utc-vt0_utc}
 
 def HPM_load(filename,path='./', time_from_samplerate = True, fill_missing = None):
