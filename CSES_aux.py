@@ -36,7 +36,7 @@ CSES_DATA_TABLE = {'EFD':{'1':'ULF','2':'ELF','3':'VLF','4':'HF'},\
                    'SCM':{'1':'ULF','2':'ELF','3':'VLF'},\
                    'LAP':{'1':'50mm', '2':'10mm'},\
                    'PAP':{'0':''}, \
-                   'HEP':{'1':'HEPP_L','2':'HEPP_H','3':'HEPD','4':'HEPP_X'}}
+                   'HEP':{'1':'P_L','2':'P_H','3':'D','4':'P_X'}}
 
 #Dictionary of the name translations for the fields contained in the 
 #HDF5 output files of CSES-01. 

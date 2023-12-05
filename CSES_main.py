@@ -218,17 +218,19 @@ class CSES():
         return files
     
 
-    def load_HEP(self,instrument_no = '1',unique = True, subset = None,**kwargs):
+    def load_HEP(self,instrument_no = '1',unique = True, subset = None, keep_verse_time = True, **kwargs):
         import pandas as pd
         from glob import glob
         from .blombly.tools.objects import AttrDict
+
+        datakey = 'HEP'+CSES_DATA_TABLE['HEP'][instrument_no]
 
         if not hasattr(self,'data'): 
             self.data=AttrDict()
         if not hasattr(self,'aux'): 
             self.aux=AttrDict()
-        if not hasattr(self.aux,'hep'): 
-            self.aux.hpm={}
+        if not hasattr(self.aux,datakey): 
+            self.aux[datakey]={}
 
         if self.files.input is None:
             if type(self.orbitn) is str:
@@ -268,8 +270,24 @@ class CSES():
             ipath = self.get_file_path(ifile)
             
             print('loading HEP file: '+msg.INFO(ipath+ifile))
-            HEP_load(ifile,ipath,instrument_no,**kwargs)
-            #res, aux = 
+            res, aux = HEP_load(ifile,ipath,instrument_no,**kwargs)
+
+            index = pd.to_timedelta( res['time'] - res['time'][0],unit='sec') + aux['UTC']
+            df = pd.DataFrame(res,index=index)
+            if not keep_verse_time : df.drop('time',axis='columns',inplace=True)
+            df['orbitn'] = int(infos['orbitn'])
+            
+            if subset is not None:
+                for Cond in subset:
+                   df = df[Cond[1](df[Cond[0]],Cond[2])] 
+
+            if datakey not in self.data.keys():
+                self.data[datakey] = df.copy()
+                del df
+            else:
+                self.data[datakey] = self.data[datakey].append(df)
+
+            self.aux[datakey][infos['orbitn']]= aux
 
 
     def load_HPM(self, subset = None,instrument_no='5',unique = True, keep_verse_time = True,**kwargs):

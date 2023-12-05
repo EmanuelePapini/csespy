@@ -472,7 +472,7 @@ def HEP_load(filename,path='./', instrument_no = '1', with_mag_coords=False, tim
     vt0_utc, utc = datenum(2009,1,1,utc = str(Utime[0][0]))    #CSES initial time
 
     tx=Vtime
-    tx = tx/1000
+    tx = tx/60
     time=tx.flatten()     #verse_time in seconds
 
     ALT = ALT1.flatten()
