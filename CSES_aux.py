@@ -139,6 +139,11 @@ CSES_SAMPLINGFREQS = {'EFD_ULF':125.,'EFD_ELF':5000.,'EFD_VLF':50000.,\
                       'SCM_ULF':200.,'SCM_ELF':10240.,'SCM_VLF':51200.,'LAP_50mm':1/1.5,'PAP_':1.,\
                       'HPM_FGM1Hz':1.,'HEP':1.}
 
+CSES_FILESYSTEM = {'EFD':'year/FREQUENCY/month',\
+                   'HPM':'year/month',\
+                   'LAP':'year/month',\
+                   'SCM':'year/FREQUENCY/month'}
+
 
 def versetime_to_utc(versetime,t0=(2009,1,1)):
     """
@@ -253,7 +258,9 @@ def uniquefy(fnames,sort_by='orbitn',keep='longer',check = True):
     return fout
  
     
+def get_dictkey_from_value(dic,value):
 
+    return [k for k,v in dic.items() if v ==value]
 ################################################################################
 #############PLOTTING TOOLS TBD#################################################
 ################################################################################

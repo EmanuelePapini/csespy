@@ -146,53 +146,40 @@ class CSES():
         """
         from glob import glob
        
-        if instrument_no is not None: frequency = ''
         files = None
         unstruct_path = self._unstructured_path_
         
         if instrument_no is not None : 
             frequency = CSES_DATA_TABLE[instrument][instrument_no]
-        
-        if instrument == 'EFD':
-            
-            if unstruct_path:
-                months=[self.path]
-            
-            else:
-                years = glob(self.path+instrument+'/*')
-                months = [i+'/' for year in years for i in glob(year+'/'+frequency+'/*')]
-            
-            if orbitn is None:
-                files = [i for month in months for i in find_file(month,search_string)]
-            
-            else:
-                files = [i for month in months for i in find_file(month,orbitn)]
-        
-        else: 
-            if unstruct_path:
-                months=[self.path]
-            
-            else:
-                years = glob(self.path+instrument+'/*')
-                months = [i+'/' for year in years for i in glob(year+'/'+frequency+'/*')]
-            
-            if orbitn is None:
-                files = [i for month in months for i in find_file(month,search_string)]
-            
-            else:
-                files = [i for month in months for i in find_file(month,orbitn)]
-        
-        if instrument_no is not None:
-            files = [i for i in files if \
-                parse_CSES_filename(i)['Instrument'] == instrument and\
-                parse_CSES_filename(i)['Instrument No.'] == instrument_no]
-        
-        else:         
-            files = [i for i in files if \
-                parse_CSES_filename(i)['Instrument'] == instrument and\
-                parse_CSES_filename(i)['Data Product'] == frequency]
+        else:
+           instrument_no = get_dictkey_from_value(CSES_DATA_TABLE[instrument],frequency)[0]
+       
+        if unstruct_path:
+            ppath = self.path
+        else:
+            fs_struct = CSES_FILESYSTEM[instrument]
 
-            #return files
+            ppath = self.path+instrument+'/'
+
+            for ipath in fs_struct.split('/'):
+                if ipath == 'frequency':
+                    ppath += frequency.lower()+'/'
+                elif ipath == 'FREQUENCY':
+                    ppath += frequency.upper()+'/'
+                else:
+                    ppath += '*/'
+        
+        filespaths = glob(ppath)
+
+        if orbitn is None:
+            files = [i for ipath in filespaths for i in find_file(ipath,search_string)]
+        else:
+            files = [i for ipath in filespaths for i in find_file(ipath,orbitn)]
+
+        
+        files = [i for i in files if \
+            parse_CSES_filename(i)['Instrument'] == instrument and\
+            parse_CSES_filename(i)['Instrument No.'] == instrument_no]
         
         if timespan is not None:
             #Lazy way to find orbit in timespan
@@ -214,6 +201,7 @@ class CSES():
         if files is not None:
             if return_path:
                 files = [self.get_file_path(i)+i for i in files]
+        
 
         return files
     
@@ -646,4 +634,5 @@ class CSES():
 ################################################################################
 #########################some fast diagnostic tool  tbd#########################
 ################################################################################
+    
 
