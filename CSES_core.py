@@ -448,7 +448,7 @@ def EFD_load_ELF_PSD(filename, path='./', with_mag_coords = False):
     return res, {'ORBITNUM':orbitnum,'units':s2,'UTC':utc, 'verse_zero_utc':vt0_utc, 'verse_time':utc-vt0_utc,'FREQ':freqs}
 
 
-def HEP_load(filename,path='./', instrument_no = '1', with_mag_coords=False, time_from_samplerate = True, fill_missing = None):
+def HEP_load(filename,path='./', instrument_no = '1', channel = 'all', energy_selection_list = None, with_mag_coords=False, time_from_samplerate = True, fill_missing = None):
     import h5py
     from numpy import interp as interp1
     fil = h5py.File(path+filename,'r')
@@ -459,10 +459,60 @@ def HEP_load(filename,path='./', instrument_no = '1', with_mag_coords=False, tim
     mlat1 = fil['MAG_LAT'][...].flatten()
     mlon1 = fil['MAG_LON'][...].flatten()
     if instrument_no != '4':
-        Count_Electron = np.sum(fil['Count_Electron'][...], axis = 1).flatten()
-        Count_Proton = np.sum(fil['Count_Proton'][...], axis = 1).flatten()
+        A411 = fil['A411'][...]
+        A412 = fil['A412'][...]
     else:
-        XrayRate = np.sum(fil['XrayRate'][...], axis = 1).flatten()
+        A413 = fil['A413'][...]
+        A433 = fil['A433'][...]
+        
+
+    if instrument_no != '4':
+        electron_energy_table = fil['Energy_Table_Electron'][...][0]
+        proton_energy_table = fil['Energy_Table_Proton'][...][0]
+        
+        if channel == 'all':
+            print('No channel specified, summing over all channels')
+            if energy_selection_list is None:
+                print('No energy selection specified, summing over all energy bins')
+                A411 = np.sum(A411[:,:,:], axis=(1,2))
+                A412 = np.sum(A412[:,:,:], axis=(1,2))
+            else:
+                print('Energy selection specified, summing over selected energy bins', energy_selection_list)
+                # derive boolean vector for energy selection with condition specified in energy_selection_list i.e. [['>10','<=100'],['>10','<=100']]
+                condition_ele = np.ones(electron_energy_table.shape[0],dtype = bool)
+                condition_prot = np.ones(proton_energy_table.shape[0],dtype = bool)
+                for cond in energy_selection_list[0]:
+                    condition_ele = condition_ele & eval('electron_energy_table'+cond)
+                for cond in energy_selection_list[1]:
+                    condition_prot = condition_prot & eval('proton_energy_table'+cond)
+                
+                # select only the energy bins that satisfy the condition 
+                A411 = np.sum(A411[:,condition_ele,:], axis=(1,2))
+                A412 = np.sum(A412[:,condition_prot,:], axis=(1,2))
+            Count_Electron = np.sum(fil['Count_Electron'][...], axis = 1).flatten()
+            Count_Proton = np.sum(fil['Count_Proton'][...], axis = 1).flatten()
+        else:
+            print('Channel specified, summing over channel '+channel)
+            if energy_selection_list is None:
+                print('No energy selection specified, summing over all energy bins')
+                A411 = np.sum(A411[:,:,int(channel)], axis = 1)
+                A412 = np.sum(A412[:,:,int(channel)], axis = 1)
+            else:
+                print('Energy selection specified, summing over selected energy bins', energy_selection_list)
+                # derive boolean vector for energy selection with condition specified in energy_selection_list i.e. [['>10','<=100'],['>10','<=100']]
+                condition_ele = np.ones(electron_energy_table.shape[0],dtype = bool)
+                condition_prot = np.ones(proton_energy_table.shape[0],dtype = bool)
+                for cond in energy_selection_list[0]:
+                    condition_ele = condition_ele & eval('electron_energy_table'+cond)
+                for cond in energy_selection_list[1]:
+                    condition_prot = condition_prot & eval('proton_energy_table'+cond)
+                # select only the energy bins that satisfy the condition 
+                A411 = np.sum(A411[:,condition_ele,int(channel)], axis = 1)
+                A412 = np.sum(A412[:,condition_prot,int(channel)], axis = 1)
+            Count_Electron = fil['Count_Electron'][:,int(channel)].flatten()
+            Count_Proton = fil['Count_Proton'][:,int(channel)].flatten()
+    else:
+        XrayRate = fil['XrayRate'][...]
     ALT1 = fil['ALTITUDE'][...].flatten()
     Vtime = fil['VERSE_TIME'][...]
     Utime = fil['UTC_TIME'][...]
@@ -472,7 +522,7 @@ def HEP_load(filename,path='./', instrument_no = '1', with_mag_coords=False, tim
     vt0_utc, utc = datenum(2009,1,1,utc = str(Utime[0][0]))    #CSES initial time
 
     tx=Vtime
-    tx = tx/60
+    tx = tx
     time=tx.flatten()     #verse_time in seconds
 
     ALT = ALT1.flatten()
@@ -490,6 +540,8 @@ def HEP_load(filename,path='./', instrument_no = '1', with_mag_coords=False, tim
     if instrument_no != '4':
         res['Count_Electron'] = list(Count_Electron)
         res['Count_Proton'] = list(Count_Proton)
+        res['Flux_Electrons'] = list(A411)
+        res['Flux_Protons'] = list(A412)
     else:
         res['XrayRate'] = list(XrayRate)
     return res, {'ORBITNUM':orbitnum,'units':B1,'UTC':utc, 'verse_zero_utc':vt0_utc, 'verse_time':utc-vt0_utc}
