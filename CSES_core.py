@@ -530,9 +530,6 @@ def HEP_load(filename,path='./', instrument_no = '1', channel = 'all', energy_se
                 print('Energy and pitch bin specified')
                 A411_new = A411[:,energy_bin,pitch_bin]
                 A412_new = A412[:,energy_bin,pitch_bin]
-            
-            
-            
 
     else:
         XrayRate = fil['XrayRate'][...]
