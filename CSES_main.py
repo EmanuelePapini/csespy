@@ -173,13 +173,17 @@ class CSES():
 
         if orbitn is None:
             files = [i for ipath in filespaths for i in find_file(ipath,search_string)]
+            files = [i for i in files if \
+                parse_CSES_filename(i)['Instrument'] == instrument and\
+                parse_CSES_filename(i)['Instrument No.'] == instrument_no]
         else:
             files = [i for ipath in filespaths for i in find_file(ipath,orbitn)]
+            files = [i for i in files if \
+                parse_CSES_filename(i)['orbitn'] == orbitn and\
+                parse_CSES_filename(i)['Instrument'] == instrument and\
+                parse_CSES_filename(i)['Instrument No.'] == instrument_no]
 
         
-        files = [i for i in files if \
-            parse_CSES_filename(i)['Instrument'] == instrument and\
-            parse_CSES_filename(i)['Instrument No.'] == instrument_no]
         
         if timespan is not None:
             #Lazy way to find orbit in timespan
