@@ -61,6 +61,10 @@ class CSES():
         self._unstructured_path_ = unstructured_path
         if not unstructured_path: self.check_path()
 
+################################################################################
+############################# FILESYSTEM TOOLS #################################
+################################################################################
+
     def check_path(self):
         """
         Check whether the given path is a path to CSES data, i.e. it is structured in subfolders with the
@@ -628,7 +632,7 @@ class CSES():
 
 
 ################################################################################
-###############################MANIPULATION TOOLS###############################
+#################### MANIPULATION AND DATA ANALYSIS TOOLS ######################
 ################################################################################
     
     def interpolate_inst1_to_inst2(self,inst1 = 'HPM',inst2 = 'EFD',tags = ['Bx','By','Bz']):
@@ -642,6 +646,54 @@ class CSES():
         
         for i in tags:
             self.data[inst2][i] = np.interp(t_2,t_1,self.data[inst1][i].values)
+
+
+    def get_spectrogram(self,datakey,fieldkeys,packetsize = None,window='hann'):
+        """
+        Calculate Spectrograms (STFT PSD) from the desired instrument_frequency
+        previouly loaded in self.data on the selected keys/fields,
+        based on csespy.CSES_PACKETSIZE (if packetsize is None).
+
+        Parameters
+        ----------
+        datakey : str
+            key of self.data containing the pandas.Dataframe with the field keys
+            of which one want to compute the STFT PSD
+        fieldkeys: list of str
+            keys of which one wants to compute the spectrogram
+        packetsize : None or int
+            size of the STFT chunk. Default is None, which is equivalent to
+            the packet size of EFD-02, stored in csespy.CSES_PACKETSIZE
+        """
+
+        from scipy.signal import stft
+        if datakey not in self.data:
+            msg.error('datakey '+datakey+' not found in self.data! Please load the desired data first.')
+            return
+
+        df = self.data[datakey]
+        nx = df.shape[0]
+        fs = CSES_SAMPLINGFREQS[datakey]
+        if not all([i in df.keys() for i in fieldkeys]):
+            msg.error('Some of the fieldkeys '+str(fieldkeys) +'not found in self.data.'+datakey+'. Returning')
+            return
+
+        if packetsize is None:
+            packetsize = CSES_PACKETSIZE[datakey]
+        if nx// packetsize != nx/ packetsize:
+            msg.error('wrong input packetsize! Returning')
+            return
+
+        #extracting and manipulating the desired fields
+        #ff = {i:df[i].values.reshape([nx//packetsize,packetsize]) for i in fieldkeys}
+        ff = {i:stft(df[i].values, fs = fs, window = window, \
+                        nperseg = packetsize, noverlap=0, boundary = None,padded = False) for i in fieldkeys}
+        psd = {i:np.abs(ff[i][-1])**2 for i in ff}
+        nu = ff[fieldkeys[0]][0]
+        tt = df.index.values[::packetsize]
+        self.data[datakey+'_P'] = {'psd':psd,'freq':nu,'time':tt}
+
+        
 
 ######WRITING TO DATABASES MACHINERY######
     def save_data_to_h5(self,filename,dataset_name,mode='a',**kwargs):

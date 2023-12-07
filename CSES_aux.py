@@ -136,8 +136,12 @@ CSES_DATASETS = {'A111_P':'Ex_P','A111_W':'Ex',\
 
 #SAMPLING FREQUENCIES OF VARIOUS INSTRUMENTS, TO BE USED WHEN READING DATA
 CSES_SAMPLINGFREQS = {'EFD_ULF':125.,'EFD_ELF':5000.,'EFD_VLF':50000.,\
-                      'SCM_ULF':200.,'SCM_ELF':10240.,'SCM_VLF':51200.,'LAP_50mm':1/1.5,'PAP_':1.,\
+                      'SCM_ULF':1024.,'SCM_ELF':10240.,'SCM_VLF':51200.,'LAP_50mm':1/3,'PAP_':1.,\
                       'HPM_FGM1Hz':1.,'HEP':1.}
+
+CSES_PACKETSIZE = {'EFD_ULF':256,'EFD_ELF':2048,'EFD_VLF':2048,'EFD_HF':2048,\
+                   'SCM_ULF':4096,'SCM_ELF':4096,'SCM_VLF':4096,'LAP_50mm':1,'PAP_':1,\
+                   'HPM_FGM1Hz':1,'HEP':1}
 
 CSES_FILESYSTEM = {'EFD':'year/FREQUENCY/month',\
                    'HPM':'year/month',\
