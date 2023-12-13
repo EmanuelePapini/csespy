@@ -498,7 +498,7 @@ class CSES():
             
         print('selected instrument-frequency: ' + msg.INFO(instrument+'-'+frequency))
 
-        dsetname=instrument.upper()+'_'+frequency.upper()
+        dsetname=instrument+'_'+frequency
         if not hasattr(self,'data'): 
             self.data=AttrDict()
         if not hasattr(self,'aux'): 

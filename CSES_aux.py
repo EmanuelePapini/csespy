@@ -269,5 +269,128 @@ def get_dictkey_from_value(dic,value):
 #############PLOTTING TOOLS TBD#################################################
 ################################################################################
     
+def plot_orbit(lat,lon, basemap = None, fig = None, ax = None,\
+             axes = [[0.1,0.1,0.4,0.8],[0.55,0.1,0.4,0.8]],\
+             projection = ['spstere','npstere'],\
+             latrange = [[-90,0,15],[0,90,15]],\
+             lonrange = [[-180,180,30],[-180,180,30]],\
+             basemap_kwargs = None,**pltkwargs):
+   
+    """
+    PURPOSE:
+        plot desired orbit defined by lat and lon on the worldmap, using Basemap
+
+    parameters
+    ----------
+
+    lat : 1D array-like of size N (float)
+        array of latitudes of the orbit.
+    
+    lon : 1D array-like of size N (float)
+        array of longitudes of the orbit.
+
+    basemap : None or Basemap object (optional)
+        if not None, then the input basemap is used.
+
+    fig : None or figure object (optional)
+        if not None, then input figure is used
+        (used if basemap and ax are None).
+
+    ax : None or list of axis objects (optional)
+        if not None, then input axes are used
+        (used if basemap is None).
+
+    axes : list of length== 4 lists 
+        list of coordinates location of the desired axes in  the figure 
+        (used if ax and basemap are None).
+
+    projection : list of str
+        list of desired projections to be used on the desired basemap
+        (used if basemap is None).
+
+    latrange : list of length == 3 lists
+        desired latitudinal range and interval over which to draw parallels.
+
+    lonrange : list of length == 3 lists
+        desired longitudinal range and interval over which to draw meridians.
+    
+    Personal notes for  plotting/contouring continents and/or oceans
+    using the output basemap object
+   
+    source : https://jakevdp.github.io/PythonDataScienceHandbook/04.13-geographic-data-with-basemap.html
+
+    drawlsmask() : draw continents in gray and leave oceans
+    
+    bluemarble(): Project NASA's blue marble image onto the map
+    shadedrelief(): Project a shaded relief image onto the map
+    etopo(): Draw an etopo relief image onto the map
+    warpimage(): Project a user-provided image onto the map
+
+    Other features
+      Physical boundaries and bodies of water
+
+        drawcoastlines(): Draw continental coast lines
+        drawlsmask(): Draw a mask between the land and sea, for use with projecting images on one or the other
+        drawmapboundary(): Draw the map boundary, including the fill color for oceans.
+        drawrivers(): Draw rivers on the map
+        fillcontinents(): Fill the continents with a given color; optionally fill lakes with another color
+        
+      Political boundaries
+        
+        drawcountries(): Draw country boundaries
+        drawstates(): Draw US state boundaries
+        drawcounties(): Draw US county boundaries
+        
+      Map features
+        
+        drawgreatcircle(): Draw a great circle between two points
+        drawparallels(): Draw lines of constant latitude
+        drawmeridians(): Draw lines of constant longitude
+        drawmapscale(): Draw a linear scale on the map
+
+    """
+    from mpl_toolkits.basemap import Basemap
+    from .blombly import pylab as plt
+    
+    #axtitle = ('GEO. SOUTHERN HEMISPHERE','GEO. NORTHERN HEMISPHERE') if not aacgm else \
+    #          ('MAG. SOUTHERN HEMISPHERE','MAG. NORTHERN HEMISPHERE')
+    
+    def Basemap_kwargs(proj,kwargs,i):
+        if kwargs is None:
+            bkwargs={'lon_0':0,'resolution':'l','round':False}
+
+        #if any([proj == ii for ii in ['npstere','spstere','nplaea','splaea','npaeqd','spaeqd'])]):
+        #    bkwargs['boundinglat'] = 
+        else:
+            bkwargs = kwargs
+        return bkwargs
+    if basemap is None:
+        if ax is None:
+            if fig is None:
+                fig = plt.figure(figsize=(10,5))
+            ax = [fig.add_axes(iax) for iax in axes]   
+        
+        mm=[]
+        for i,axi in enumerate(ax):
+            latra = latrange[i]
+            lonra = lonrange[i]
+            bkwargs = Basemap_kwargs(projection[i],basemap_kwargs,i)
+            mm.append(Basemap(ax = axi, projection =projection[i],**bkwargs))
+            mm[-1].drawparallels(np.arange(latra[0],latra[1],latra[2]))#,labels=[1,0,0,0])
+            mm[-1].drawmeridians(np.arange(lonra[0],lonra[1],lonra[2]))#,labels=[0,0,0,1])
+
+        #ms.shadedrelief() 
+            for i,ipar in enumerate(np.arange(latra[0],latra[1],latra[2])):
+                plt.annotate(str(ipar),xy=mm[-1](lonra[0],ipar),xycoords='data')
+            for i,ipar in enumerate(np.arange(lonra[0],lonra[1],lonra[2])):
+                plt.annotate(str(ipar),xy=mm[-1](ipar,latra[0]),xycoords='data')
+    else: mm = basemap
+
+    #PLOTTING
+    plt.ion() 
+    
+    [imm.plot(lon,lat,latlon=True,**pltkwargs) for imm in mm]
+    plt.show()
+    return fig,ax,tuple(mm)
    
 
