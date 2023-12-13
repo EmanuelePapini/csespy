@@ -579,10 +579,6 @@ class CSES():
     def plot_EFD(self,xaxis = 'lat', xlabel=None,modulus = False, keys = ['Ex','Ey','Ez'],ax = None,fig = None,twiny = True, frequency='ELF',ion=False):
         from .blombly import pylab as plt
         tag = 'EFD_'+frequency.upper()
-        #if frequency == 'ELF':
-        #    tag = 'EFD'
-        #elif frequency == 'ULF':
-        #    tag = 'efd_ulf'
         fig,ax = plt.get_figure(fig,ax) 
         if modulus:
             ax.plot(self.data[tag][xaxis],np.sqrt(self.data[tag]['Ex']**2+\
@@ -590,9 +586,6 @@ class CSES():
                                              self.data[tag]['Ez']**2),label='|E|',linewidth=1)
         else:
             [ax.plot(self.data[tag][xaxis],self.data[tag][i],label=i,linewidth=1) for i in keys if i in self.data[tag]]
-            #plt.plot(self.data['efd'][xaxis],self.data['efd']['Ex'],label='Ex',linewidth=1)
-            #plt.plot(self.data['efd'][xaxis],self.data['efd']['Ey'],label='Ey',linewidth=1)
-            #plt.plot(self.data['efd'][xaxis],self.data['efd']['Ez'],label='Ez',linewidth=1)
         ax.set_xlabel(xaxis) if xlabel is None else ax.set_xlabel(xlabel)
         ax.set_ylabel('E [V/m]')
         ylims = ax.set_ylim()
@@ -630,6 +623,46 @@ class CSES():
             [plt.plot(hd[hd.orbitn==i][xaxis],hd[hd.orbitn==i].By,color='green') for i in set(hd.orbitn)]
             [plt.plot(hd[hd.orbitn==i][xaxis],hd[hd.orbitn==i].Bz,color='blue') for i in set(hd.orbitn)]
 
+
+    def plot_orbit(self,instrument,frequency,x='lat',y='lon',basemap = None, fig = None, ax = None,profile = 'default'):
+        """
+        Plot the orbit of the loaded instrument_frequency on the worldmap, using CSES_aux.plot_orbit
+
+        Parameters
+        ----------
+
+        instrument : str
+            id. string of the desired (data already loaded) instrument
+        frequency : str
+            id. string of the desired (data already loaded) frequency
+
+        basemap : None or Basemap object (optional)
+            if not None, then the input basemap is used.
+
+        fig : None or figure object (optional)
+            if not None, then input figure is used
+            (used if basemap and ax are None).
+
+        ax : None or list of axis objects (optional)
+            if not None, then input axes are used
+            (used if basemap is None).
+
+        profile : str or dict
+            if str, then the key with the desired CSES_aux.plot_orbit kwargs is used.
+            available kwargs are stored in CSES_aux.ORBIT_PLOT_TEMPLATES
+            if dict, then use the input dictionary as kwargs (see CSES_aux.ORBIT_PLOT_TEMPLATES 
+            and CSES_aux.plot_orbit to get an idea of what must go in the dictionary).
+
+        returns:
+
+        fig,ax,mm : figure, axis, and basemap mm objects
+        """
+
+        df = self.data[instrument+'_'+frequency]
+
+        pltkwargs = ORBIT_PLOT_TEMPLATES[profile] if type(profile) is str else profile
+        
+        return plot_orbit(df[x].values,df[y]values, basemap = basemap, fig = fig, ax = ax,**pltkwargs)
 
 ################################################################################
 #################### MANIPULATION AND DATA ANALYSIS TOOLS ######################

@@ -268,7 +268,21 @@ def get_dictkey_from_value(dic,value):
 ################################################################################
 #############PLOTTING TOOLS TBD#################################################
 ################################################################################
-    
+
+#dictionary of several default orbital plot templates to be used
+ORBIT_PLOT_TEMPLATES = {'ns':{'axes': [[0.1,0.1,0.4,0.8],[0.55,0.1,0.4,0.8]],\
+                             'projection': ['spstere','npstere'],\
+                             'latrange': [[-90,0,15],[0,90,15]],\
+                             'lonrange': [[-180,180,30],[-180,180,30]],\
+                             'basemap_kwargs': {'lon_0':0,'resolution':'l','round':True,'boundinglat':0},\
+                             },\
+                   'default':{'axes': [[0.1,0.1,0.8,0.8]],\
+                             'projection': ['cyl'],\
+                             'latrange': [[-90,90,30]],\
+                             'lonrange': [[-180,180,30]],\
+                             'basemap_kwargs': {'lon_0':0,'resolution':'l','round':False},\
+                             },\
+                       }
 def plot_orbit(lat,lon, basemap = None, fig = None, ax = None,\
              axes = [[0.1,0.1,0.4,0.8],[0.55,0.1,0.4,0.8]],\
              projection = ['spstere','npstere'],\
