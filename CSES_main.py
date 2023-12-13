@@ -624,7 +624,7 @@ class CSES():
             [plt.plot(hd[hd.orbitn==i][xaxis],hd[hd.orbitn==i].Bz,color='blue') for i in set(hd.orbitn)]
 
 
-    def plot_orbit(self,instrument,frequency,x='lat',y='lon',basemap = None, fig = None, ax = None,profile = 'default'):
+    def plot_orbit(self,instrument,frequency,x='lat',y='lon',basemap = None, fig = None, ax = None,profile = 'default',overplot_continents = True):
         """
         Plot the orbit of the loaded instrument_frequency on the worldmap, using CSES_aux.plot_orbit
 
@@ -662,8 +662,11 @@ class CSES():
 
         pltkwargs = ORBIT_PLOT_TEMPLATES[profile] if type(profile) is str else profile
         
-        return plot_orbit(df[x].values,df[y]values, basemap = basemap, fig = fig, ax = ax,**pltkwargs)
+        fig,ax,mm = plot_orbit(df[x].values,df[y].values, basemap = basemap, fig = fig, ax = ax,**pltkwargs)
 
+        if overplot_continents:
+            [imm.drawlsmask() for imm in mm]
+        return fig,ax,mm
 ################################################################################
 #################### MANIPULATION AND DATA ANALYSIS TOOLS ######################
 ################################################################################
