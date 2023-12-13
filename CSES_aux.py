@@ -394,10 +394,12 @@ def plot_orbit(lat,lon, basemap = None, fig = None, ax = None,\
             mm[-1].drawmeridians(np.arange(lonra[0],lonra[1],lonra[2]))#,labels=[0,0,0,1])
 
         #ms.shadedrelief() 
-            for i,ipar in enumerate(np.arange(latra[0],latra[1],latra[2])):
-                plt.annotate(str(ipar),xy=mm[-1](lonra[0],ipar),xycoords='data')
-            for i,ipar in enumerate(np.arange(lonra[0],lonra[1],lonra[2])):
-                plt.annotate(str(ipar),xy=mm[-1](ipar,latra[0]),xycoords='data')
+            for i,ipar in enumerate(np.arange(latra[0],latra[1]+latra[2],latra[2])):
+                xx=lonra[0] - (lonra[1]-lonra[0])/0.9*0.04
+                axi.annotate(str(ipar),xy=mm[-1](xx,ipar),xycoords='data',annotation_clip = False,va='center',ha='left')
+            for i,ipar in enumerate(np.arange(lonra[0],lonra[1]+lonra[2],lonra[2])):
+                yy=latra[0] - (latra[1]-latra[0])/0.9*0.02
+                axi.annotate(str(ipar),xy=mm[-1](ipar,yy),xycoords='data',annotation_clip = False,va='top',ha='center')
     else: mm = basemap
 
     #PLOTTING
