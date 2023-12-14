@@ -394,6 +394,9 @@ class CSES():
 
     def load_HPM(self, subset = None,instrument_no='5',unique = True, keep_verse_time = True,**kwargs):
         """
+        This method is kept for legacy reasons. Now is simply a wrapper that calls
+        
+        CSES.load_CSES(instrument='HPM',frequency='FGM1Hz')
         load HPM data from files matching the string and put them into a pandas dataframe
         
         Optional arguments:
@@ -404,78 +407,83 @@ class CSES():
                 a subset of the timeseries that fullfill the condition "latitude > 44".
 
         """
-        import pandas as pd
-        from glob import glob
-        from .blombly.tools.objects import AttrDict
+        
+        self.load_CSES(instrument='HPM',frequency='FGM1Hz',subset=subset,keep_verse_time = keep_verse_time,**kwargs)
+        #import pandas as pd
+        #from glob import glob
+        #from .blombly.tools.objects import AttrDict
 
-        if not hasattr(self,'data'): 
-            self.data=AttrDict()
-        if not hasattr(self,'aux'): 
-            self.aux=AttrDict()
-        if not hasattr(self.aux,'hpm'): 
-            self.aux.hpm={}
+        #if not hasattr(self,'data'): 
+        #    self.data=AttrDict()
+        #if not hasattr(self,'aux'): 
+        #    self.aux=AttrDict()
+        #if not hasattr(self.aux,'hpm'): 
+        #    self.aux.hpm={}
 
 
-        if self.files.input is None:
-            if type(self.orbitn) is str:
-                files = self.search_file(orbitn=self.orbitn,instrument='HPM',\
-                    instrument_no=instrument_no, frequency = '')
-            elif type(self.search_string) is str:
-                files = self.search_file(self.search_string,instrument='HPM',\
-                    instrument_no=instrument_no, frequency = '')
-            else:
-                raise ValueError('not enough input for file search!')
-            self.files['HPM'] = files
-        else:
-            filess = self.files.input.copy()
-            #checking if files are HPM files
-            infos = [parse_CSES_filename(ifiles) for ifiles in filess]
-            for i,info in enumerate(infos):
-                #if the file in the list is not HPM, then it searches for an HPM
-                #file in the folders with the same orbit
-                if info['Instrument'] != 'HPM':
-                    files[i] = self.search_file(orbitn=info['orbitn'],instrument='HPM',\
-                    instrument_no=instrument_no, frequency = '')[0]
-            self.files['HPM'] = files
+        #if self.files.input is None:
+        #    if type(self.orbitn) is str:
+        #        files = self.search_file(orbitn=self.orbitn,instrument='HPM',\
+        #            instrument_no=instrument_no, frequency = '')
+        #    elif type(self.search_string) is str:
+        #        files = self.search_file(self.search_string,instrument='HPM',\
+        #            instrument_no=instrument_no, frequency = '')
+        #    else:
+        #        raise ValueError('not enough input for file search!')
+        #    self.files['HPM'] = files
+        #else:
+        #    filess = self.files.input.copy()
+        #    #checking if files are HPM files
+        #    infos = [parse_CSES_filename(ifiles) for ifiles in filess]
+        #    for i,info in enumerate(infos):
+        #        #if the file in the list is not HPM, then it searches for an HPM
+        #        #file in the folders with the same orbit
+        #        if info['Instrument'] != 'HPM':
+        #            files[i] = self.search_file(orbitn=info['orbitn'],instrument='HPM',\
+        #            instrument_no=instrument_no, frequency = '')[0]
+        #    self.files['HPM'] = files
   
 
-        if unique : files = uniquefy(files) 
+        #if unique : files = uniquefy(files) 
 
-        #for ifile,ipath in zip(files,fpaths):
-        for ifiles in files:
-            
-            infos = parse_CSES_filename(ifiles)
-            
-            if infos['Instrument'] == 'HPM':
-                ifile = ifiles
-            else:
-                ifile = self.search_file(orbitn=infos['orbitn'],instrument='HPM',instrument_no=instrument_no)[0]
-            
-            ipath = self.get_file_path(ifile)
-            
-            print('loading HPM file: '+msg.INFO(ipath+ifile))
-            res, aux = HPM_load(ifile,ipath,**kwargs)
+        ##for ifile,ipath in zip(files,fpaths):
+        #for ifiles in files:
+        #    
+        #    infos = parse_CSES_filename(ifiles)
+        #    
+        #    if infos['Instrument'] == 'HPM':
+        #        ifile = ifiles
+        #    else:
+        #        ifile = self.search_file(orbitn=infos['orbitn'],instrument='HPM',instrument_no=instrument_no)[0]
+        #    
+        #    ipath = self.get_file_path(ifile)
+        #    
+        #    print('loading HPM file: '+msg.INFO(ipath+ifile))
+        #    res, aux = HPM_load(ifile,ipath,**kwargs)
 
-            index = pd.to_timedelta( res['time'] - res['time'][0],unit='sec') + aux['UTC']
-            df = pd.DataFrame(res,index=index)
-            if not keep_verse_time : df.drop('time',axis='columns',inplace=True)
-            df['orbitn'] = int(infos['orbitn'])
-            
-            if subset is not None:
-                for Cond in subset:
-                   df = df[Cond[1](df[Cond[0]],Cond[2])] 
+        #    index = pd.to_timedelta( res['time'] - res['time'][0],unit='sec') + aux['UTC']
+        #    df = pd.DataFrame(res,index=index)
+        #    if not keep_verse_time : df.drop('time',axis='columns',inplace=True)
+        #    df['orbitn'] = int(infos['orbitn'])
+        #    
+        #    if subset is not None:
+        #        for Cond in subset:
+        #           df = df[Cond[1](df[Cond[0]],Cond[2])] 
 
 
-            if 'hpm' not in self.data.keys():
-                self.data.HPM = df.copy()
-                del df
-            else:
-                self.data.HPM = self.data.HPM.append(df)
+        #    if 'hpm' not in self.data.keys():
+        #        self.data.HPM = df.copy()
+        #        del df
+        #    else:
+        #        self.data.HPM = self.data.HPM.append(df)
 
-            self.aux.hpm[infos['orbitn']]= aux
+        #    self.aux.hpm[infos['orbitn']]= aux
 
     def load_EFD_ELF(self, subset = None, get_PSD = False, keep_verse_time = True, versetime_to_datetime = False, **kwargs):
         """
+        This method is kept for legacy reasons. Now is simply a wrapper that calls
+        CSES.load_CSES(instrument='EFD',frequency='ELF')
+        
         load EFD ELF files and put it into a pandas dataframe
         
 
@@ -487,98 +495,104 @@ class CSES():
                 that fullfill the condition "latitude > 44".
 
         """
-
-        import pandas as pd
-        from glob import glob
-        from .blombly.tools.objects import AttrDict
-
-        if not hasattr(self,'data'): 
-            self.data=AttrDict()
-        if not hasattr(self,'aux'): 
-            self.aux=AttrDict()
-        if get_PSD:
-            if not hasattr(self.aux,'efd_psd'): 
-                self.aux.efd_psd={}
-        else:
-            if not hasattr(self.aux,'efd'): 
-                self.aux.efd={}
-
-
-        if self.files.input is None:
-            if type(self.orbitn) is str:
-                files = self.search_file(orbitn=self.orbitn,instrument='EFD', frequency = 'ELF')
-                #DONT KNOW WHY  but sometimes there are two files for the same orbit.
-                #In that case, the file with the larger timespan is selected.
-                files = uniquefy(files) 
-                #if len(files)>1:
-                #    inf = [parse_CSES_filename(ifile) for ifile in files]
-                #    inf = [i['t_end']-i['t_start'] for i in inf]
-                #    files = [files[np.argmax(inf)]]
-            elif type(self.search_string) is str:
-                files = self.search_file(self.search_string,instrument='EFD', frequency = 'ELF')
-            else:
-                raise ValueError('not enough input for file search!')
-            self.files['EFD'] = files
-        else:
-            filess = self.files.input.copy()
-            files=[]
-            #checking if files are EFD files
-            infos = [parse_CSES_filename(ifiles) for ifiles in filess]
-            for i,info in enumerate(infos):
-                if info['Instrument'] == 'EFD' and info['Data Product'] == 'ELF':
-                    files.append(filess[i])
-                    #files[i] = self.search_file(orbitn=info['orbitn'],instrument='EFD',\
-                    #instrument_no=instrument_no, frequency = '')[0]
-            self.files['EFD'] = files
-        
-
-        #fpaths = self.get_file_path(files)
-        #for ifile,ipath in zip(files,fpaths):
-        for ifiles in files:
-            
-            infos = parse_CSES_filename(ifiles)
-            
-            if infos['Instrument'] == 'EFD':
-                ifile = ifiles
-            else:
-                ifile = self.search_file(orbitn=infos['orbitn'],instrument='EFD')[0]
-            
-            ipath = self.get_file_path(ifile)
-
-            print('loading EFD file: '+msg.INFO(ipath+ifile))
-            if get_PSD:
-                res, aux = EFD_load_ELF_PSD(ifile,ipath,**kwargs)
-            else:
-                res, aux = EFD_load_ELF(ifile,ipath,**kwargs)
-
-            index = pd.to_timedelta( res['time'] - res['time'][0],unit='sec') + aux['UTC']
-            df = pd.DataFrame(res,index=index)
-            
-            if not keep_verse_time : 
-                df.drop('time',axis='columns',inplace=True)
-            elif versetime_to_datetime:
+        self.load_CSES(instrument='EFD',frequency='ELF',subset=subset, get_PSD = False\
+            ,keep_verse_time = keep_verse_time,**kwargs)
+        df = self.data['EFD_ELF']
+        if versetime_to_datetime:
                 df.drop('time',axis='columns',inplace=True)
                 df['time'] = df.index.to_pydatetime()
+        
+        #import pandas as pd
+        #from glob import glob
+        #from .blombly.tools.objects import AttrDict
 
-            if subset is not None:
-                for Cond in subset:
-                   df = df[Cond[1](df[Cond[0]],Cond[2])] 
+        #if not hasattr(self,'data'): 
+        #    self.data=AttrDict()
+        #if not hasattr(self,'aux'): 
+        #    self.aux=AttrDict()
+        #if get_PSD:
+        #    if not hasattr(self.aux,'efd_psd'): 
+        #        self.aux.efd_psd={}
+        #else:
+        #    if not hasattr(self.aux,'efd'): 
+        #        self.aux.efd={}
 
-            if get_PSD:
-                if 'EFD_ELF_PSD' not in self.data.keys():
-                    self.data.EFD_ELF_PSD = df.copy()
-                    self.data.EFD_ELF_PSD_freq = aux['FREQ']
-                    del df
-                else:
-                    self.data.EFD_PSD.append(df)
-                self.aux.efd_psd[infos['orbitn']]= aux
-            else:
-                if 'EFD_ELF' not in self.data.keys():
-                    self.data['EFD_ELF'] = df.copy()
-                    del df
-                else:
-                    self.data.EFD = pd.concat([self.data.EFD,df])
-                self.aux.efd[infos['orbitn']]= aux
+
+        #if self.files.input is None:
+        #    if type(self.orbitn) is str:
+        #        files = self.search_file(orbitn=self.orbitn,instrument='EFD', frequency = 'ELF')
+        #        #DONT KNOW WHY  but sometimes there are two files for the same orbit.
+        #        #In that case, the file with the larger timespan is selected.
+        #        files = uniquefy(files) 
+        #        #if len(files)>1:
+        #        #    inf = [parse_CSES_filename(ifile) for ifile in files]
+        #        #    inf = [i['t_end']-i['t_start'] for i in inf]
+        #        #    files = [files[np.argmax(inf)]]
+        #    elif type(self.search_string) is str:
+        #        files = self.search_file(self.search_string,instrument='EFD', frequency = 'ELF')
+        #    else:
+        #        raise ValueError('not enough input for file search!')
+        #    self.files['EFD'] = files
+        #else:
+        #    filess = self.files.input.copy()
+        #    files=[]
+        #    #checking if files are EFD files
+        #    infos = [parse_CSES_filename(ifiles) for ifiles in filess]
+        #    for i,info in enumerate(infos):
+        #        if info['Instrument'] == 'EFD' and info['Data Product'] == 'ELF':
+        #            files.append(filess[i])
+        #            #files[i] = self.search_file(orbitn=info['orbitn'],instrument='EFD',\
+        #            #instrument_no=instrument_no, frequency = '')[0]
+        #    self.files['EFD'] = files
+        #
+
+        ##fpaths = self.get_file_path(files)
+        ##for ifile,ipath in zip(files,fpaths):
+        #for ifiles in files:
+        #    
+        #    infos = parse_CSES_filename(ifiles)
+        #    
+        #    if infos['Instrument'] == 'EFD':
+        #        ifile = ifiles
+        #    else:
+        #        ifile = self.search_file(orbitn=infos['orbitn'],instrument='EFD')[0]
+        #    
+        #    ipath = self.get_file_path(ifile)
+
+        #    print('loading EFD file: '+msg.INFO(ipath+ifile))
+        #    if get_PSD:
+        #        res, aux = EFD_load_ELF_PSD(ifile,ipath,**kwargs)
+        #    else:
+        #        res, aux = EFD_load_ELF(ifile,ipath,**kwargs)
+
+        #    index = pd.to_timedelta( res['time'] - res['time'][0],unit='sec') + aux['UTC']
+        #    df = pd.DataFrame(res,index=index)
+        #    
+        #    if not keep_verse_time : 
+        #        df.drop('time',axis='columns',inplace=True)
+        #    elif versetime_to_datetime:
+        #        df.drop('time',axis='columns',inplace=True)
+        #        df['time'] = df.index.to_pydatetime()
+
+        #    if subset is not None:
+        #        for Cond in subset:
+        #           df = df[Cond[1](df[Cond[0]],Cond[2])] 
+
+        #    if get_PSD:
+        #        if 'EFD_ELF_PSD' not in self.data.keys():
+        #            self.data.EFD_ELF_PSD = df.copy()
+        #            self.data.EFD_ELF_PSD_freq = aux['FREQ']
+        #            del df
+        #        else:
+        #            self.data.EFD_PSD.append(df)
+        #        self.aux.efd_psd[infos['orbitn']]= aux
+        #    else:
+        #        if 'EFD_ELF' not in self.data.keys():
+        #            self.data['EFD_ELF'] = df.copy()
+        #            del df
+        #        else:
+        #            self.data.EFD = pd.concat([self.data.EFD,df])
+        #        self.aux.efd[infos['orbitn']]= aux
     
     def load_EFD(self,**kwargs):
         """
