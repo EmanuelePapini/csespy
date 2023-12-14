@@ -233,6 +233,7 @@ def CSES_load(filename,path='./', return_pandas = False,
             df.drop('time',axis='columns',inplace=True)
         else:
             df['time']+=Vtime0
+        df['orbitn']=int(info['orbitn'])
         res = df 
     return res, {'ORBITNUM':orbitnum,'units':units ,'UTC':utc, 'verse_zero_utc':vt0_utc, 'verse_time':utc-vt0_utc}
 
