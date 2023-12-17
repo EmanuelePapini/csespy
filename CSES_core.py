@@ -452,21 +452,31 @@ def HEP_load(filename,path='./', instrument_no = '1', channel = 'all', energy_se
     import h5py
     from numpy import interp as interp1
     fil = h5py.File(path+filename,'r')
+    print('Loading HEP data from file '+filename)
+    # print file structure
+    print('File structure:')
+    print(fil.keys())
+    print('File attributes:')
+    print(fil.attrs.keys())
     orbitnum = int(fil.attrs['ORBITNUM'])
     B1 = b'counts/s'
     lat1 = fil['GEO_LAT'][...].flatten()
     lon1 = fil['GEO_LON'][...].flatten()
-    mlat1 = fil['MAG_LAT'][...].flatten()
-    mlon1 = fil['MAG_LON'][...].flatten()
-    if instrument_no != '4':
+    if with_mag_coords:
+        mlat1 = fil['MAG_LAT'][...].flatten()
+        mlon1 = fil['MAG_LON'][...].flatten()
+    if instrument_no == '1' or instrument_no == '2':
         A411 = fil['A411'][...]
         A412 = fil['A412'][...]
+    elif instrument_no == '3':
+        Counts_0 = fil['Counts_0'][...]
+        Counts_1 = fil['Counts_1'][...]
     else:
         A413 = fil['A413'][...]
         A433 = fil['A433'][...]
         
 
-    if instrument_no != '4':
+    if instrument_no != '4' and instrument_no != '3':
         electron_energy_table = fil['Energy_Table_Electron'][...][0]
         proton_energy_table = fil['Energy_Table_Proton'][...][0]
         
@@ -531,11 +541,14 @@ def HEP_load(filename,path='./', instrument_no = '1', channel = 'all', energy_se
                 A411_new = A411[:,energy_bin,pitch_bin]
                 A412_new = A412[:,energy_bin,pitch_bin]
 
-    else:
+    elif instrument_no == '4':
         XrayRate = fil['XrayRate'][...]
+
     ALT1 = fil['ALTITUDE'][...].flatten()
+
     Vtime = fil['VERSE_TIME'][...]
     Utime = fil['UTC_TIME'][...]
+    print(Utime)
     fil.close()
 
     #convert from CSES date (VERSE_TIME) to standard date
@@ -557,15 +570,18 @@ def HEP_load(filename,path='./', instrument_no = '1', channel = 'all', energy_se
     if with_mag_coords:
         mlat = mlat1.flatten()
         mlon = mlon1.flatten()
-    if instrument_no != '4':
+    if instrument_no != '4' and instrument_no != '3':
         res['Count_Electron'] = list(Count_Electron)
         res['Count_Proton'] = list(Count_Proton)
         res['Flux_Electrons'] = list(A411_new)
         res['Flux_Protons'] = list(A412_new)
         if instrument_no == '1':
             res['Count_Particles'] = list(Count_Particles)
-    else:
+    elif instrument_no == '4':
         res['XrayRate'] = list(XrayRate)
+    elif instrument_no == '3':
+        res['Counts_0'] = list(Counts_0)
+        res['Counts_1'] = list(Counts_1)
     return res, {'ORBITNUM':orbitnum,'units':B1,'UTC':utc, 'verse_zero_utc':vt0_utc, 'verse_time':utc-vt0_utc}
 
 def HPM_load(filename,path='./', time_from_samplerate = True, fill_missing = None):
