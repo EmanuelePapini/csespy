@@ -281,14 +281,14 @@ ORBIT_PLOT_TEMPLATES = {'ns':{'axes': [[0.1,0.1,0.4,0.8],[0.55,0.1,0.4,0.8]],\
                              'latrange': [[-90,90,30]],\
                              'lonrange': [[-180,180,30]],\
                              'basemap_kwargs': {'lon_0':0,'resolution':'l','round':False},\
-                             },\
+                             'pltkwargs':{'linestyle':'','marker':'.','markersize':0.5}}\
                        }
 def plot_orbit(lat,lon, basemap = None, fig = None, ax = None,\
              axes = [[0.1,0.1,0.4,0.8],[0.55,0.1,0.4,0.8]],\
              projection = ['spstere','npstere'],\
              latrange = [[-90,0,15],[0,90,15]],\
              lonrange = [[-180,180,30],[-180,180,30]],\
-             basemap_kwargs = None,**pltkwargs):
+             basemap_kwargs = None,pltkwargs={}):
    
     """
     PURPOSE:
