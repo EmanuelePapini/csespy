@@ -96,7 +96,14 @@ CSES_FILE_TABLE = {'EFD':{\
                         '2':{'Count_Electron':'Count_Electron',\
                              'Count_Proton':'Count_Proton'},\
                         '3':{'Counts_0':'Counts_0',\
-                             'Counts_1':'Counts_1'},\
+                             'Counts_1':'Counts_1',\
+                             'Counts_2':'Counts_2',\
+                             'Counts_3':'Counts_3',\
+                             'Counts_4':'Counts_4',\
+                             'Counts_5':'Counts_5',\
+                             'Counts_6':'Counts_6',\
+                             'Counts_7':'Counts_7',\
+                             'Counts_8':'Counts_8'},\
                         '4':{'XrayRate':'XrayRate'}\
                         }
                    }

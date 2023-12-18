@@ -472,6 +472,13 @@ def HEP_load(filename,path='./', instrument_no = '1', channel = 'all', energy_se
     elif instrument_no == '3':
         Counts_0 = fil['Counts_0'][...]
         Counts_1 = fil['Counts_1'][...]
+        Counts_2 = fil['Counts_2'][...]
+        Counts_3 = fil['Counts_3'][...]
+        Counts_4 = fil['Counts_4'][...]
+        Counts_5 = fil['Counts_5'][...]
+        Counts_6 = fil['Counts_6'][...]
+        Counts_7 = fil['Counts_7'][...]
+        Counts_8 = fil['Counts_8'][...]
     else:
         A413 = fil['A413'][...]
         A433 = fil['A433'][...]
@@ -583,6 +590,13 @@ def HEP_load(filename,path='./', instrument_no = '1', channel = 'all', energy_se
     elif instrument_no == '3':
         res['Counts_0'] = list(Counts_0)
         res['Counts_1'] = list(Counts_1)
+        res['Counts_2'] = list(Counts_2)
+        res['Counts_3'] = list(Counts_3)
+        res['Counts_4'] = list(Counts_4)
+        res['Counts_5'] = list(Counts_5)
+        res['Counts_6'] = list(Counts_6)
+        res['Counts_7'] = list(Counts_7)
+        res['Counts_8'] = list(Counts_8)
     return res, {'ORBITNUM':orbitnum,'units':B1,'UTC':utc, 'verse_zero_utc':vt0_utc, 'verse_time':utc-vt0_utc}
 
 def HPM_load(filename,path='./', time_from_samplerate = True, fill_missing = None):
