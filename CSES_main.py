@@ -93,7 +93,7 @@ class CSES():
             self.files = AttrDict()
             self.files['input'] = None #THIS IS DEPRECATED AND HAS TO BE REMOVED
             self._ancillary_={}
-            if hasattr(data,'self') : 
+            if hasattr(self,'data') : 
                 del self.data 
                 del self.aux
         
