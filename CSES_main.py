@@ -334,30 +334,36 @@ class CSES():
         if not hasattr(self.aux,datakey): 
             self.aux[datakey]={}
 
-        if self.files.input is None:
-            if type(self.orbitn) is str:
-                files = self.search_file(orbitn=self.orbitn,instrument='HEP',\
-                    instrument_no=instrument_no, frequency = '')
-            elif type(self.search_string) is str:
-                files = self.search_file(self.search_string,instrument='HEP',\
-                    instrument_no=instrument_no, frequency = '')
-            else:
-                raise ValueError('not enough input for file search!')
-            self.files['HEP'] = files
+        # if self.files.input is None:
+        #     if type(self.orbitn) is str:
+        #         files = self.search_file(orbitn=self.orbitn,instrument='HEP',\
+        #             instrument_no=instrument_no, frequency = '')
+        #     elif type(self.search_string) is str:
+        #         files = self.search_file(self.search_string,instrument='HEP',\
+        #             instrument_no=instrument_no, frequency = '')
+        #     else:
+        #         raise ValueError('not enough input for file search!')
+        #     self.files['HEP'] = files
 
-        else:
-            filess = self.files.input.copy()
-            #checking if files are HPM files
-            infos = [parse_CSES_filename(ifiles) for ifiles in filess]
-            for i,info in enumerate(infos):
-                #if the file in the list is not HPM, then it searches for an HPM
-                #file in the folders with the same orbit
-                if info['Instrument'] != 'HEP':
-                    files[i] = self.search_file(orbitn=info['orbitn'],instrument='HEP',\
-                    instrument_no=instrument_no, frequency = '')[0]
-            self.files['HEP'] = files
+        # else:
+        #     filess = self.files.input.copy()
+        #     #checking if files are HPM files
+        #     infos = [parse_CSES_filename(ifiles) for ifiles in filess]
+        #     for i,info in enumerate(infos):
+        #         #if the file in the list is not HPM, then it searches for an HPM
+        #         #file in the folders with the same orbit
+        #         if info['Instrument'] != 'HEP':
+        #             files[i] = self.search_file(orbitn=info['orbitn'],instrument='HEP',\
+        #             instrument_no=instrument_no, frequency = '')[0]
+        #     self.files['HEP'] = files
 
-        if unique : files = uniquefy(files) 
+        # if unique : files = uniquefy(files) 
+        instrument = 'HEP'
+        frequency=''
+        self.find_files_to_load(instrument,frequency,instrument_no,unique=True)
+        
+        files = self.check_if_loaded(instrument,frequency)
+        #files = self.files[dsetname] 
 
         #for ifile,ipath in zip(files,fpaths):
         for ifiles in files:
