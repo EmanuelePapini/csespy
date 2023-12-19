@@ -821,7 +821,7 @@ class CSES():
             ax.plot(xx,df['Ey'],label=r'$E_y$',linewidth=1)
             ax.plot(xx,df['Ez'],label=r'$E_z$',linewidth=1)
             ax.set_ylabel('E [V/m]')
-        elif datakey in ['SCM_ULF','SCM_ELF']:
+        elif datakey in ['SCM_ULF','SCM_ELF','HPM_FGM1Hz']:
             ax.plot(xx,np.sqrt(df['Bx']**2+df['By']**2+df['Bz']**2),label='|B|',linewidth=1,color='black')
             ax.plot(xx,df['Bx'],label=r'$B_x$',linewidth=1)
             ax.plot(xx,df['By'],label=r'$B_y$',linewidth=1)
