@@ -326,6 +326,8 @@ class CSES():
         from .blombly.tools.objects import AttrDict
 
         datakey = 'HEP'+CSES_DATA_TABLE['HEP'][instrument_no]
+        instrument = 'HEP'
+        frequency=CSES_DATA_TABLE['HEP'][instrument_no]
 
         if not hasattr(self,'data'): 
             self.data=AttrDict()
@@ -358,8 +360,6 @@ class CSES():
         #     self.files['HEP'] = files
 
         # if unique : files = uniquefy(files) 
-        instrument = 'HEP'
-        frequency=''
         self.find_files_to_load(instrument,frequency,instrument_no,unique=True)
         
         files = self.check_if_loaded(instrument,frequency)
@@ -397,6 +397,9 @@ class CSES():
 
             self.aux[datakey][infos['orbitn']]= aux
 
+            self.aux[datakey]['instrument'] = instrument
+            self.aux[datakey]['frequency'] = frequency
+            self.aux[datakey]['instrument_no'] = instrument_no
 
     def load_HPM(self, subset = None,instrument_no='5',unique = True, keep_verse_time = True,**kwargs):
         """
@@ -628,6 +631,7 @@ class CSES():
         if frequency is None:
             frequency = CSES_DATA_TABLE[instrument][instrument_no]
 
+        instrument_no = [i[0] for i  in CSES_DATA_TABLE[instrument].items() if i[1] == frequency][0]
         print('selected instrument-frequency: ' + msg.INFO(instrument+'-'+frequency))
 
         dsetname=instrument+'_'+frequency
@@ -641,7 +645,6 @@ class CSES():
         else:
             if not hasattr(self.aux,dsetname): 
                 self.aux[dsetname] = {}
-
 
         self.find_files_to_load(instrument,frequency,instrument_no,unique=True)
         
@@ -688,12 +691,18 @@ class CSES():
                 else:
                     self.data[dsetname] = pd.concat([self.data[dsetname],df])
                 self.aux[dsetname][infos['orbitn']]= aux
-
+            
+            self.aux[dsetname]['instrument'] = instrument
+            self.aux[dsetname]['frequency'] = frequency
+            self.aux[dsetname]['instrument_no'] = instrument_no
+################################################################################
+############################### PLOTTING TOOLS #################################
+################################################################################
 
 
     def plot_EFD(self,xaxis = 'lat', xlabel=None,modulus = False, keys = ['Ex','Ey','Ez'],ax = None,fig = None,twiny = True, frequency='ELF',ion=False):
         from .blombly import pylab as plt
-        tag = 'EFD_'+frequency.upper()
+        tag = 'EFD_'+frequency
         fig,ax = plt.get_figure(fig,ax) 
         if modulus:
             ax.plot(self.data[tag][xaxis],np.sqrt(self.data[tag]['Ex']**2+\
@@ -782,6 +791,55 @@ class CSES():
         if overplot_continents:
             [imm.drawlsmask() for imm in mm]
         return fig,ax,mm
+
+
+    def plot_payloads(self,datakeys,xaxis = 'time', xlabel=None,\
+        twiny = True,ion=False):
+        from .blombly import pylab as plt
+        
+        if ion : plt.ion()
+
+        fig,ax = plt.subplots(len(datakeys),sharex=True) 
+        
+        for i,ikey in enumerate(datakeys):
+            
+            self.plot_payload(ikey,xaxis=xaxis,fig=fig,ax=ax[i])
+
+        return fig,ax
+
+    def plot_payload(self,datakey,xaxis='time',fig=None,ax=None,xlabel=None):
+
+        df = self.data[datakey]
+        xx = df.index.values if xaxis == 'time' else df[xaxis].values
+        if datakey == 'LAP_50mm':
+            ax.semilogy(xx,df['ne'],label=r'$n_e$')
+            ax.set_ylabel(r'$n_e \quad (m^{-3})$')
+
+        elif datakey in ['EFD_ULF','EFD_ELF']:
+            ax.plot(xx,np.sqrt(df['Ex']**2+df['Ey']**2+df['Ez']**2),label='|E|',linewidth=1,color='black')
+            ax.plot(xx,df['Ex'],label=r'$E_x$',linewidth=1)
+            ax.plot(xx,df['Ey'],label=r'$E_y$',linewidth=1)
+            ax.plot(xx,df['Ez'],label=r'$E_z$',linewidth=1)
+            ax.set_ylabel('E [V/m]')
+        elif datakey in ['SCM_ULF','SCM_ELF']:
+            ax.plot(xx,np.sqrt(df['Bx']**2+df['By']**2+df['Bz']**2),label='|B|',linewidth=1,color='black')
+            ax.plot(xx,df['Bx'],label=r'$B_x$',linewidth=1)
+            ax.plot(xx,df['By'],label=r'$B_y$',linewidth=1)
+            ax.plot(xx,df['Bz'],label=r'$B_z$',linewidth=1)
+            ax.set_ylabel('B [nT]')
+        elif datakey == 'HEPD':
+            instrument = self.aux[datakey]['instrument']
+            instr_no = self.aux[datakey]['instrument_no']
+            toplot = [i[1] for i in CSES_FILE_TABLE[instrument][instr_no].items()]
+           
+            for i in toplot:
+                ax.semilogy(xx,df[i].values,label=i,linewidth=1)
+
+            
+        ax.legend(loc='upper right')
+        if xlabel is not None:
+            ax[-1].set_xlabel(xlabel)
+        return fig,ax
 ################################################################################
 #################### MANIPULATION AND DATA ANALYSIS TOOLS ######################
 ################################################################################
@@ -798,6 +856,9 @@ class CSES():
         for i in tags:
             self.data[inst2][i] = np.interp(t_2,t_1,self.data[inst1][i].values)
 
+        self._ancillary_['interpolate'] = {}
+
+        self._ancillary_['interpolate'][inst1+'2'+inst2] = tags
 
     def get_spectrogram(self,datakey,fieldkeys,packetsize = None,window='hann'):
         """

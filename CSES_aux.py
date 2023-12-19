@@ -277,7 +277,8 @@ def get_dictkey_from_value(dic,value):
 ################################################################################
 #############PLOTTING TOOLS TBD#################################################
 ################################################################################
-
+#PAYLOAD_PLOT_TEMPLATES = \
+#    {'LAP_50mm':{'yscale':'log'},\
 #dictionary of several default orbital plot templates to be used
 ORBIT_PLOT_TEMPLATES = {'ns':{'axes': [[0.1,0.1,0.4,0.8],[0.55,0.1,0.4,0.8]],\
                              'projection': ['spstere','npstere'],\
