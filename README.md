@@ -1,7 +1,15 @@
 # csespy
 
-This repository contains a collection of python routines to read and process data from the CSES-01 spacecraft.
-It is intended for the internal use of the CSES-Limadou collaboration
+This repository contains a collection of python routines to read and process data from the CSES-01 spacecraft. This routines are designed to plot payload observations in a given et of semiorbits, and to perform some basic analysis on the data.
+
+It is intended for the internal use of the CSES-Limadou collaboration. Payload supported up to now are:
+* EFD ULF/VLF/ELF (Electric Field Detector)
+* SCM (Search Coil Magnetometer)
+* HPM (High Precision Magnetometer)
+* LAP (Langmuir Probe)
+* PAP (Plasma Analyser Package)
+* HEPD (High Energy Particle Detector) *--> Support recentrly added*
+* HEPP-L, HEPP-H, HEPP-X (High Energy Package) *--> Support recentrly added*
 
 Dependencies: matplotlib, skimage, mpl_toolkits, collections, scipy, copy, warnings, termcolor, numpy, h5py, flammkuchen, datetime
 
