@@ -84,12 +84,18 @@ def CSES_load(filename,path='./', return_pandas = False,
     """
     
     import h5py
-    from numpy import interp as interp1
     from .blombly.tools import arrays
     from .blombly.tools.objects import dict_to_recarray
     import pandas as pd
     from datetime import timedelta
-    
+    #from numpy import interp as interp1
+    from scipy.interpolate import interp1d #as interp1
+   
+
+    def interp1(x,xp,fp):#*args,**kwargs):
+        finterp=interp1d(xp,fp,fill_value='extrapolate')
+        return finterp(x)
+
     info = parse_CSES_filename(filename)
     fldtags = CSES_FILE_TABLE[info['Instrument']][info['Instrument No.']]
  

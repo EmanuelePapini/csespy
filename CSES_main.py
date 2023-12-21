@@ -794,7 +794,7 @@ class CSES():
 
 
     def plot_payloads(self,datakeys,xaxis = 'time', xlabel=None,\
-        twiny = True,ion=False):
+        secondary_xaxis = '',ion=False):
         from .blombly import pylab as plt
         
         if ion : plt.ion()
@@ -802,12 +802,20 @@ class CSES():
         fig,ax = plt.subplots(len(datakeys),sharex=True) 
         
         for i,ikey in enumerate(datakeys):
-            
+            if i == 0:
+                if secondary_xaxis != '':
+                    self.plot_payload(ikey,xaxis=xaxis,secondary_xaxis=secondary_xaxis,\
+                        fig=fig,ax=ax[i])
+                else:
+                    self.plot_payload(ikey,xaxis=xaxis,fig=fig,ax=ax[i])
             self.plot_payload(ikey,xaxis=xaxis,fig=fig,ax=ax[i])
-
+        
+        ax[-1].set_xlabel(xaxis)
+        fig.subplots_adjust(hspace=0)
         return fig,ax
 
-    def plot_payload(self,datakey,xaxis='time',fig=None,ax=None,xlabel=None):
+    def plot_payload(self,datakey,xaxis='time',secondary_xaxis=None,\
+        fig=None,ax=None,xlabel=None,**kwargs):
 
         df = self.data[datakey]
         xx = df.index.values if xaxis == 'time' else df[xaxis].values
@@ -834,8 +842,31 @@ class CSES():
            
             for i in toplot:
                 ax.semilogy(xx,df[i].values,label=i,linewidth=1)
-
             
+
+
+
+        if secondary_xaxis is not None:
+            if secondary_xaxis in df.keys():
+                yy = df[secondary_xaxis].values if secondary_xaxis != 'time' else df.index.values
+            
+                ax2 = ax.twiny()
+                ax2.plot(yy,np.zeros(len(yy)),linestyle=None,linewidth = 0)
+                ax2.set_xlabel(secondary_xaxis)
+            #if secondary_xaxis in df.keys():
+            #    from scipy.interpolate import interp1d    
+            #    from matplotlib.ticker import AutoMinorLocator
+            #    yy = df[secondary_xaxis].values if secondary_xaxis != 'time' else df.index.values
+
+            #    fowr = interp1d(xx,yy,fill_value='extrapolate')
+            #    invr = interp1d(yy,xx,fill_value='extrapolate')
+
+            #    #print(fowr(xx[0]),fowr(xx[-1]))
+            #    #print(invr(yy[0]),invr(yy[-1]))
+            #    ax.tick_params(axis='x',top=False,which='both')
+            #    secax = ax.secondary_xaxis('top',functions=(fowr,invr))
+            #    #secax.xaxis.set_minor_locator(AutoMinorLocator())
+            #    secax.set_xlabel(secondary_xaxis) 
         ax.legend(loc='upper right')
         if xlabel is not None:
             ax[-1].set_xlabel(xlabel)
