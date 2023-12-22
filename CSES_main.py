@@ -215,39 +215,42 @@ class CSES():
         find file path corresponding to file inside the tree (could be changed to be more universal if
         the convention for the folder changes)
         """ 
-         
-        if self._unstructured_path_:
-            if type(filename) is str:
-                return self.path if os.path.exists(self.path+filename) else []
-            
-            fpath = []
-            for ifile in filename:  
-                fpath.append(self.path) if os.path.exists(self.path+filename) else fpath.append([])
-            return fpath
-
-        if type(filename) is str:
-            info = parse_CSES_filename(filename)
-            if info['Instrument'] == 'EFD':
-                l2a = '_L2A/'if info['Data Level'] == 'L2A' else '/'
-                return self.path+info['Instrument']+'/'+info['year']+'/'+info['Data Product']+l2a+info['month']+'/'
-            elif info['Instrument'] == 'SCM':
-                l2a = '_L2A/'if info['Data Level'] == 'L2A' else '/'
-                return self.path+info['Instrument']+'/'+info['year']+'/'+info['Data Product']+l2a+info['month']+'/'
-
-            else: 
-                return self.path+info['Instrument']+'/'+info['year']+'/'+info['month']+'/'
+        info = parse_CSES_filename(filename)
+        return self.search_file(orbitn=info['orbitn'], instrument=info['Instrument'],\
+            frequency = info['Data Product'], get_file_path = True)[0]
         
-        fpath=[]
-        for ifile in filename:
-            info = parse_CSES_filename(ifile)
-            if info['Instrument'] == 'EFD' or info['Instrument'] == 'SCM':
-                l2a = '_L2A/'if info['Data Level'] == 'L2A' else '/'
-                fpath.append(self.path+info['Instrument']+'/'+info['year']+'/'+info['Data Product']+l2a+info['month']+'/')
-        
-        return fpath
+        #if self._unstructured_path_:
+        #    if type(filename) is str:
+        #        return self.path if os.path.exists(self.path+filename) else []
+        #    
+        #    fpath = []
+        #    for ifile in filename:  
+        #        fpath.append(self.path) if os.path.exists(self.path+filename) else fpath.append([])
+        #    return fpath
+
+        #if type(filename) is str:
+        #    info = parse_CSES_filename(filename)
+        #    if info['Instrument'] == 'EFD':
+        #        l2a = '_L2A/'if info['Data Level'] == 'L2A' else '/'
+        #        return self.path+info['Instrument']+'/'+info['year']+'/'+info['Data Product']+l2a+info['month']+'/'
+        #    elif info['Instrument'] == 'SCM':
+        #        l2a = '_L2A/'if info['Data Level'] == 'L2A' else '/'
+        #        return self.path+info['Instrument']+'/'+info['year']+'/'+info['Data Product']+l2a+info['month']+'/'
+
+        #    else: 
+        #        return self.path+info['Instrument']+'/'+info['year']+'/'+info['month']+'/'
+        #
+        #fpath=[]
+        #for ifile in filename:
+        #    info = parse_CSES_filename(ifile)
+        #    if info['Instrument'] == 'EFD' or info['Instrument'] == 'SCM':
+        #        l2a = '_L2A/'if info['Data Level'] == 'L2A' else '/'
+        #        fpath.append(self.path+info['Instrument']+'/'+info['year']+'/'+info['Data Product']+l2a+info['month']+'/')
+        #
+        #return fpath
     
 
-    def search_file(self,search_string ='',orbitn=None, instrument='EFD', instrument_no=None, frequency = 'ELF',return_path = False, timespan = None):
+    def search_file(self,search_string ='',orbitn=None, instrument='EFD', instrument_no=None, frequency = 'ELF',return_path = False, timespan = None, get_file_path = False):
         """
         Search for a file matching the desired string for the desired instrument and frequency
         
@@ -282,13 +285,13 @@ class CSES():
         filespaths = glob(ppath)
 
         if orbitn is None:
-            files = [i for ipath in filespaths for i in find_file(ipath,search_string)]
-            files = [i for i in files if \
+            files = [(i,ipath) for ipath in filespaths for i in find_file(ipath,search_string)]
+            files = [(i,ipath) for i,ipath in files if \
                 parse_CSES_filename(i)['Instrument'] == instrument and\
                 parse_CSES_filename(i)['Instrument No.'] == instrument_no]
         else:
-            files = [i for ipath in filespaths for i in find_file(ipath,orbitn)]
-            files = [i for i in files if \
+            files = [(i,ipath) for ipath in filespaths for i in find_file(ipath,orbitn)]
+            files = [(i,ipath) for i,ipath in files if \
                 parse_CSES_filename(i)['orbitn'] == orbitn and\
                 parse_CSES_filename(i)['Instrument'] == instrument and\
                 parse_CSES_filename(i)['Instrument No.'] == instrument_no]
@@ -299,7 +302,7 @@ class CSES():
             #Lazy way to find orbit in timespan
             #1-get all files available in storage and parse datetimes
             fls = files
-            b = [parse_CSES_filename(i) for i in fls]
+            b = [parse_CSES_filename(i) for i,ipath in fls]
             t0,t1 = timespan
             #2-cycle through all of them and for each file do:
             #  a-create list of dates with t0,t1,itstart,itend, labeled with [0,0,1,1]
@@ -314,8 +317,12 @@ class CSES():
         
         if files is not None:
             if return_path:
-                files = [self.get_file_path(i)+i for i in files]
-        
+                files = [ipath+i for i,ipath in files]
+                #files = [self.get_file_path(i)+i for i in files]
+            elif get_file_path:
+                files = [ipath for i,ipath in files]
+            else:
+                files = [i for i,ipath in files]
 
         return files
     
@@ -781,8 +788,8 @@ class CSES():
 
         fig,ax,mm : figure, axis, and basemap mm objects
         """
-
-        df = self.data[instrument+'_'+frequency]
+        
+        df = self.data[get_datakey(instrument,frequency)]
 
         pltkwargs = ORBIT_PLOT_TEMPLATES[profile] if type(profile) is str else profile
         

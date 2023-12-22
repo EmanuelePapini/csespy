@@ -158,6 +158,12 @@ CSES_FILESYSTEM = {'EFD':'year/FREQUENCY/month',\
                    'SCM':'year/FREQUENCY/month'}
 
 
+def get_datakey(instrument,frequency):
+
+    if instrument != 'HEP': return instrument+'_'+frequency
+
+    return instrument+frequency
+
 def versetime_to_utc(versetime,t0=(2009,1,1)):
     """
     convert versetime to utc time
