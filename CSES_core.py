@@ -463,8 +463,8 @@ def HEP_load(filename,path='./', instrument_no = '1', channel = 'all', energy_se
     # print file structure
     print('File structure:')
     print(fil.keys())
-    print('File attributes:')
-    print(fil.attrs.keys())
+    #print('File attributes:')
+    #print(fil.attrs.keys())
     orbitnum = int(fil.attrs['ORBITNUM'])
     B1 = b'counts/s'
     lat1 = fil['GEO_LAT'][...].flatten()
@@ -562,7 +562,7 @@ def HEP_load(filename,path='./', instrument_no = '1', channel = 'all', energy_se
 
     Vtime = fil['VERSE_TIME'][...]
     Utime = fil['UTC_TIME'][...]
-    print(Utime)
+    #print(Utime)
     fil.close()
 
     #convert from CSES date (VERSE_TIME) to standard date
