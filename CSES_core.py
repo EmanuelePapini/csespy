@@ -84,12 +84,18 @@ def CSES_load(filename,path='./', return_pandas = False,
     """
     
     import h5py
-    from numpy import interp as interp1
     from .blombly.tools import arrays
     from .blombly.tools.objects import dict_to_recarray
     import pandas as pd
     from datetime import timedelta
-    
+    #from numpy import interp as interp1
+    from scipy.interpolate import interp1d #as interp1
+   
+
+    def interp1(x,xp,fp):#*args,**kwargs):
+        finterp=interp1d(xp,fp,fill_value='extrapolate')
+        return finterp(x)
+
     info = parse_CSES_filename(filename)
     fldtags = CSES_FILE_TABLE[info['Instrument']][info['Instrument No.']]
  
@@ -457,8 +463,8 @@ def HEP_load(filename,path='./', instrument_no = '1', channel = 'all', energy_se
     # print file structure
     print('File structure:')
     print(fil.keys())
-    print('File attributes:')
-    print(fil.attrs.keys())
+    #print('File attributes:')
+    #print(fil.attrs.keys())
     orbitnum = int(fil.attrs['ORBITNUM'])
     B1 = b'counts/s'
     lat1 = fil['GEO_LAT'][...].flatten()
@@ -556,6 +562,7 @@ def HEP_load(filename,path='./', instrument_no = '1', channel = 'all', energy_se
 
     Vtime = fil['VERSE_TIME'][...]
     Utime = fil['UTC_TIME'][...]
+    print(Utime)
     fil.close()
 
     #convert from CSES date (VERSE_TIME) to standard date

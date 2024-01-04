@@ -271,6 +271,12 @@ def wextend(sig, npad, mode = 'constant', **kwargs):
 
     return np.pad(sig, npad, mode = mode,**kwargs)
 
+    
+def interp1(x,xp,fp,fill_value='extrapolate',**kwargs):
+    from scipy.interpolate import interp1d #as interp1
+
+    finterp=interp1d(xp,fp,fill_value=fill_value,**kwargs)
+    return finterp(x)
 
 def interp1_jumps(xint,x,y,interval):
     """
@@ -280,7 +286,7 @@ def interp1_jumps(xint,x,y,interval):
     before interpolating and restores them afterwards.
     """
 
-    from numpy import interp as interp1
+    #from numpy import interp as interp1
 
 
     yper = y.flatten()
