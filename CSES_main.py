@@ -799,10 +799,10 @@ class CSES():
         
         if ion : plt.ion()
 
-        fig,ax = plt.subplots(len(datakeys),sharex=True) 
+        fig,ax = plt.subplots(len(datakeys),sharex=True, figsize=(8,1.5*len(datakeys)))
         
         for i,ikey in enumerate(datakeys):
-            
+            print('plotting '+ikey)
             self.plot_payload(ikey,xaxis=xaxis,fig=fig,ax=ax[i])
 
         return fig,ax
@@ -812,30 +812,52 @@ class CSES():
         df = self.data[datakey]
         xx = df.index.values if xaxis == 'time' else df[xaxis].values
         if datakey == 'LAP_50mm':
+            ax.set_title(datakey)
             ax.semilogy(xx,df['ne'],label=r'$n_e$')
             ax.set_ylabel(r'$n_e \quad (m^{-3})$')
-
-        elif datakey in ['EFD_ULF','EFD_ELF']:
+        elif datakey in ['EFD_ULF','EFD_ELF','EFD_VLF']:
+            ax.set_title(datakey)
             ax.plot(xx,np.sqrt(df['Ex']**2+df['Ey']**2+df['Ez']**2),label='|E|',linewidth=1,color='black')
             ax.plot(xx,df['Ex'],label=r'$E_x$',linewidth=1)
             ax.plot(xx,df['Ey'],label=r'$E_y$',linewidth=1)
             ax.plot(xx,df['Ez'],label=r'$E_z$',linewidth=1)
             ax.set_ylabel('E [V/m]')
         elif datakey in ['SCM_ULF','SCM_ELF','HPM_FGM1Hz']:
+            ax.set_title(datakey)
             ax.plot(xx,np.sqrt(df['Bx']**2+df['By']**2+df['Bz']**2),label='|B|',linewidth=1,color='black')
             ax.plot(xx,df['Bx'],label=r'$B_x$',linewidth=1)
             ax.plot(xx,df['By'],label=r'$B_y$',linewidth=1)
             ax.plot(xx,df['Bz'],label=r'$B_z$',linewidth=1)
             ax.set_ylabel('B [nT]')
         elif datakey == 'HEPD':
+            ax.set_title(datakey)
+            instrument = self.aux[datakey]['instrument']
+            instr_no = self.aux[datakey]['instrument_no']
+            toplot = [[i[1] for i in CSES_FILE_TABLE[instrument][instr_no].items()][0]]
+            for i in toplot:
+                ax.semilogy(xx,df[i].values,label=i,linewidth=1)
+        elif datakey == 'HEPP_L':
+            ax.set_title(datakey)
             instrument = self.aux[datakey]['instrument']
             instr_no = self.aux[datakey]['instrument_no']
             toplot = [i[1] for i in CSES_FILE_TABLE[instrument][instr_no].items()]
-           
+            for i in toplot:
+                ax.semilogy(xx,df[i].values,label=i,linewidth=1)
+        elif datakey == 'HEPP_H':
+            ax.set_title(datakey)
+            instrument = self.aux[datakey]['instrument']
+            instr_no = self.aux[datakey]['instrument_no']
+            toplot = [i[1] for i in CSES_FILE_TABLE[instrument][instr_no].items()]
+            for i in toplot:
+                ax.semilogy(xx,df[i].values,label=i,linewidth=1)
+        elif datakey == 'HEPP_X':
+            ax.set_title(datakey)
+            instrument = self.aux[datakey]['instrument']
+            instr_no = self.aux[datakey]['instrument_no']
+            toplot = [i[1] for i in CSES_FILE_TABLE[instrument][instr_no].items()]
             for i in toplot:
                 ax.semilogy(xx,df[i].values,label=i,linewidth=1)
 
-            
         ax.legend(loc='upper right')
         if xlabel is not None:
             ax[-1].set_xlabel(xlabel)

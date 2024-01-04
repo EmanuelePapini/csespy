@@ -507,10 +507,12 @@ def HEP_load(filename,path='./', instrument_no = '1', channel = 'all', energy_se
                 # select only the energy bins that satisfy the condition 
                 A411_new = np.sum(A411[:,condition_ele,:], axis=(1,2))
                 A412_new = np.sum(A412[:,condition_prot,:], axis=(1,2))
-            Count_Electron = np.sum(fil['Count_Electron'][...], axis = 1).flatten()
-            Count_Proton = np.sum(fil['Count_Proton'][...], axis = 1).flatten()
-            if instrument_no == '1':
-                Count_Particles = np.sum(fil['Count_Particles'][...], axis = 1).flatten()
+            if instrument_no == '2':
+                Count_Electron = fil['Count_Electron'][...]
+                Count_Proton = fil['Count_Proton'][...]
+            else:
+                Count_Electron = np.sum(fil['Count_Electron'][...], axis = 1).flatten()
+                Count_Proton = np.sum(fil['Count_Proton'][...], axis = 1).flatten()
         else:
             print('Channel specified, summing over channel '+channel)
             if energy_selection_list is None:
@@ -531,8 +533,6 @@ def HEP_load(filename,path='./', instrument_no = '1', channel = 'all', energy_se
                 A412_new = np.sum(A412[:,condition_prot,:],axis = (1,2))
             Count_Electron = fil['Count_Electron'][:,int(channel)].flatten()
             Count_Proton = fil['Count_Proton'][:,int(channel)].flatten()
-            if instrument_no == '1':
-                Count_Particles = np.sum(fil['Count_Particles'][:,int(channel)]).flatten()
         
         if energy_bin != None or pitch_bin != None:
             print('Energy and/or pitch bin specified, averaging over selected bins')
@@ -556,7 +556,6 @@ def HEP_load(filename,path='./', instrument_no = '1', channel = 'all', energy_se
 
     Vtime = fil['VERSE_TIME'][...]
     Utime = fil['UTC_TIME'][...]
-    print(Utime)
     fil.close()
 
     #convert from CSES date (VERSE_TIME) to standard date
@@ -583,8 +582,6 @@ def HEP_load(filename,path='./', instrument_no = '1', channel = 'all', energy_se
         res['Count_Proton'] = list(Count_Proton)
         res['Flux_Electrons'] = list(A411_new)
         res['Flux_Protons'] = list(A412_new)
-        if instrument_no == '1':
-            res['Count_Particles'] = list(Count_Particles)
     elif instrument_no == '4':
         res['XrayRate'] = list(XrayRate)
     elif instrument_no == '3':
