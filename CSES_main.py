@@ -806,8 +806,7 @@ class CSES():
         
         if ion : plt.ion()
 
-        fig,ax = plt.subplots(len(datakeys),sharex=True, figsize=(8,1.5*len(datakeys)))
-        
+        fig,ax = plt.subplots(len(datakeys),sharex=True, figsize=(8,2.5*len(datakeys)))
         for i,ikey in enumerate(datakeys):
             if i == 0:
                 if secondary_xaxis != '':
@@ -815,9 +814,12 @@ class CSES():
                         fig=fig,ax=ax[i])
                 else:
                     self.plot_payload(ikey,xaxis=xaxis,fig=fig,ax=ax[i])
-            self.plot_payload(ikey,xaxis=xaxis,fig=fig,ax=ax[i])
+            else:
+                self.plot_payload(ikey,xaxis=xaxis,fig=fig,ax=ax[i])
         
         ax[-1].set_xlabel(xaxis)
+        # rotate thicks
+        ax[-1].tick_params(axis='x',rotation=45)
         fig.subplots_adjust(hspace=0)
         return fig,ax
 
@@ -830,6 +832,7 @@ class CSES():
             ax.set_title(datakey)
             ax.semilogy(xx,df['ne'],label=r'$n_e$')
             ax.set_ylabel(r'$n_e \quad (m^{-3})$')
+            print(datakey)
         elif datakey in ['EFD_ULF','EFD_ELF','EFD_VLF']:
             ax.set_title(datakey)
             ax.plot(xx,np.sqrt(df['Ex']**2+df['Ey']**2+df['Ez']**2),label='|E|',linewidth=1,color='black')
@@ -837,6 +840,7 @@ class CSES():
             ax.plot(xx,df['Ey'],label=r'$E_y$',linewidth=1)
             ax.plot(xx,df['Ez'],label=r'$E_z$',linewidth=1)
             ax.set_ylabel('E [V/m]')
+            print(datakey)
         elif datakey in ['SCM_ULF','SCM_ELF','HPM_FGM1Hz']:
             ax.set_title(datakey)
             ax.plot(xx,np.sqrt(df['Bx']**2+df['By']**2+df['Bz']**2),label='|B|',linewidth=1,color='black')
@@ -844,6 +848,7 @@ class CSES():
             ax.plot(xx,df['By'],label=r'$B_y$',linewidth=1)
             ax.plot(xx,df['Bz'],label=r'$B_z$',linewidth=1)
             ax.set_ylabel('B [nT]')
+            print(datakey)
         elif datakey == 'HEPD':
             ax.set_title(datakey)
             instrument = self.aux[datakey]['instrument']
@@ -851,6 +856,7 @@ class CSES():
             toplot = [[i[1] for i in CSES_FILE_TABLE[instrument][instr_no].items()][0]]
             for i in toplot:
                 ax.semilogy(xx,df[i].values,label=i,linewidth=1)
+            print(datakey)
         elif datakey == 'HEPP_L':
             ax.set_title(datakey)
             instrument = self.aux[datakey]['instrument']
@@ -858,6 +864,7 @@ class CSES():
             toplot = [i[1] for i in CSES_FILE_TABLE[instrument][instr_no].items()]
             for i in toplot:
                 ax.semilogy(xx,df[i].values,label=i,linewidth=1)
+            print(datakey)
         elif datakey == 'HEPP_H':
             ax.set_title(datakey)
             instrument = self.aux[datakey]['instrument']
@@ -865,6 +872,7 @@ class CSES():
             toplot = [i[1] for i in CSES_FILE_TABLE[instrument][instr_no].items()]
             for i in toplot:
                 ax.semilogy(xx,df[i].values,label=i,linewidth=1)
+            print(datakey)
         elif datakey == 'HEPP_X':
             ax.set_title(datakey)
             instrument = self.aux[datakey]['instrument']
@@ -872,6 +880,7 @@ class CSES():
             toplot = [i[1] for i in CSES_FILE_TABLE[instrument][instr_no].items()]
             for i in toplot:
                 ax.semilogy(xx,df[i].values,label=i,linewidth=1)
+            print(datakey)
             
 
 
@@ -879,7 +888,6 @@ class CSES():
         if secondary_xaxis is not None:
             if secondary_xaxis in df.keys():
                 yy = df[secondary_xaxis].values if secondary_xaxis != 'time' else df.index.values
-            
                 ax2 = ax.twiny()
                 ax2.plot(yy,np.zeros(len(yy)),linestyle=None,linewidth = 0)
                 ax2.set_xlabel(secondary_xaxis)
@@ -897,6 +905,7 @@ class CSES():
             #    secax = ax.secondary_xaxis('top',functions=(fowr,invr))
             #    #secax.xaxis.set_minor_locator(AutoMinorLocator())
             #    secax.set_xlabel(secondary_xaxis) 
+            print("last")
         ax.legend(loc='upper right')
         if xlabel is not None:
             ax[-1].set_xlabel(xlabel)

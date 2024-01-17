@@ -460,11 +460,6 @@ def HEP_load(filename,path='./', instrument_no = '1', channel = 'all', energy_se
     from numpy import interp as interp1
     fil = h5py.File(path+filename,'r')
     print('Loading HEP data from file '+filename)
-    # print file structure
-    print('File structure:')
-    print(fil.keys())
-    #print('File attributes:')
-    #print(fil.attrs.keys())
     orbitnum = int(fil.attrs['ORBITNUM'])
     B1 = b'counts/s'
     lat1 = fil['GEO_LAT'][...].flatten()
