@@ -801,12 +801,24 @@ class CSES():
 
 
     def plot_payloads(self,datakeys,xaxis = 'time', xlabel=None,\
-        secondary_xaxis = '',ion=False):
+        secondary_xaxis = '',ion=False,spectrograms = None,psdkwargs={}):
         from .blombly import pylab as plt
         
         if ion : plt.ion()
 
-        fig,ax = plt.subplots(len(datakeys),sharex=True, figsize=(8,1.5*len(datakeys)))
+        plot_der = False
+        if spectrograms is not None:
+            plot_der = True
+            der_key = spectrograms[0]
+            der_fld = spectrograms[1]
+            nplots = len(datakeys) + len(der_key)
+        else:
+            nplots = len(datakeys)
+
+
+        fig,ax = plt.subplots(nplots,sharex=True, figsize=(8,1.5*len(datakeys)))
+        
+        fig.subplots_adjust(hspace=0,right=0.8,left=0.1)
         
         for i,ikey in enumerate(datakeys):
             if i == 0:
@@ -815,10 +827,15 @@ class CSES():
                         fig=fig,ax=ax[i])
                 else:
                     self.plot_payload(ikey,xaxis=xaxis,fig=fig,ax=ax[i])
-            self.plot_payload(ikey,xaxis=xaxis,fig=fig,ax=ax[i])
+            
+            else:
+                self.plot_payload(ikey,xaxis=xaxis,fig=fig,ax=ax[i])
         
+        if plot_der:
+            for i,ikey in enumerate(der_key):
+                self.plot_spectrogram(ikey,der_fld[i],xaxis=xaxis,fig=fig,ax=ax[i+len(datakeys)],**psdkwargs)
+
         ax[-1].set_xlabel(xaxis)
-        fig.subplots_adjust(hspace=0)
         return fig,ax
 
     def plot_payload(self,datakey,xaxis='time',secondary_xaxis=None,\
