@@ -878,6 +878,37 @@ class CSES():
         if xlabel is not None:
             ax[-1].set_xlabel(xlabel)
         return fig,ax
+    
+
+    def plot_spectrogram(self,datakey,fieldkey,xaxis='time',secondary_xaxis=None,\
+        fig=None,ax=None,xlabel=None,cmap='jet',vmin=1e-16,vmax=None,colorbar_width='2%'):
+        
+        from .blombly import pylab as plt
+        from .blombly.pylab import plots as epp
+        from matplotlib.colors import LogNorm
+
+        fig,ax = plt.get_figure(fig,ax,axes=[0.1,0.1,0.7,0.7])
+        df = self.data[datakey+'_P']
+        xx = df['position'].index.values if xaxis == 'time' else df['position'][xaxis].values
+
+        units  = '['+self.aux[datakey][self.orbitn]['units'][fieldkey].decode()+r'$]^2/\mathrm{Hz}$'
+       
+        if vmax is None : vmax = df['psd'][fieldkey].max()
+        ims = ax.pcolormesh(xx,df['freq'],df['psd'][fieldkey],cmap=cmap,norm=LogNorm(vmin=vmin,vmax=vmax))
+        epp.add_subplot_colorbar(fig,ax,ims,width=colorbar_width,\
+                    label=units)
+        ax.set_ylabel('Hz') 
+
+        if secondary_xaxis is not None:
+            if secondary_xaxis in df.keys():
+                yy = df.position[secondary_xaxis].values if secondary_xaxis != 'time' else df.index.values
+            
+                ax2 = ax.twiny()
+                ax2.plot(yy,np.zeros(len(yy)),linestyle=None,linewidth = 0)
+                ax2.set_xlabel(secondary_xaxis)
+        if xlabel is not None:
+            ax[-1].set_xlabel(xlabel)
+        return fig,ax
 ################################################################################
 #################### MANIPULATION AND DATA ANALYSIS TOOLS ######################
 ################################################################################
@@ -941,9 +972,9 @@ class CSES():
         psd = {i:np.abs(ff[i][-1])**2 for i in ff}
         nu = ff[fieldkeys[0]][0]
         tt = df.index.values[::packetsize]
-        self.data[datakey+'_P'] = {'psd':psd,'freq':nu,'time':tt}
+        dff = df[::packetsize].drop(columns=fieldkeys)
+        self.data[datakey+'_P'] = {'psd':psd,'freq':nu,'time':tt,'position':dff}
 
-        
 
 ######WRITING TO DATABASES MACHINERY######
     def save_data_to_h5(self,filename,dataset_name,mode='a',**kwargs):

@@ -48,10 +48,10 @@ if use_amsmath:
 #import numpy as np
 plt.tick_params(axis='both',which='both',direction='in',bottom=True, top=True, left=True, right=True)
 
-def get_figure(fig=None,ax=None):
+def get_figure(fig=None,ax=None,axes=None):
     if fig is None:
-        return subplots()
+        fig = plt.figure()
     if ax is None:
-        ax = fig.add_subplot()
+        ax = fig.add_axes(axes) if axes is not None else fig.subplots()
         return fig,ax
     return fig,ax
