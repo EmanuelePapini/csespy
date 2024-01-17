@@ -806,13 +806,13 @@ class CSES():
         
         if ion : plt.ion()
 
-<<<<<<< HEAD
         plot_der = False
         if spectrograms is not None:
             plot_der = True
             der_key = spectrograms[0]
             der_fld = spectrograms[1]
-            nplots = len(datakeys) + len(der_key)
+            addplots = np.sum([len(i) for i in der_fld])
+            nplots = len(datakeys) + addplots
         else:
             nplots = len(datakeys)
 
@@ -821,9 +821,6 @@ class CSES():
         
         fig.subplots_adjust(hspace=0,right=0.8,left=0.1)
         
-=======
-        fig,ax = plt.subplots(len(datakeys),sharex=True, figsize=(8,2.5*len(datakeys)))
->>>>>>> c8e961300b837240cf5bc08ff64a80ef1c4c5579
         for i,ikey in enumerate(datakeys):
             if i == 0:
                 if secondary_xaxis != '':
@@ -831,24 +828,19 @@ class CSES():
                         fig=fig,ax=ax[i])
                 else:
                     self.plot_payload(ikey,xaxis=xaxis,fig=fig,ax=ax[i])
-<<<<<<< HEAD
-            
-=======
->>>>>>> c8e961300b837240cf5bc08ff64a80ef1c4c5579
             else:
                 self.plot_payload(ikey,xaxis=xaxis,fig=fig,ax=ax[i])
         
         if plot_der:
+            j=len(datakeys)
             for i,ikey in enumerate(der_key):
-                self.plot_spectrogram(ikey,der_fld[i],xaxis=xaxis,fig=fig,ax=ax[i+len(datakeys)],**psdkwargs)
+                for k,ifld in enumerate(der_fld[i]):
+                    self.plot_spectrogram(ikey,ifld,xaxis=xaxis,fig=fig,ax=ax[j],**psdkwargs)
+                    j+=1
 
         ax[-1].set_xlabel(xaxis)
-<<<<<<< HEAD
-=======
         # rotate thicks
         ax[-1].tick_params(axis='x',rotation=45)
-        fig.subplots_adjust(hspace=0)
->>>>>>> c8e961300b837240cf5bc08ff64a80ef1c4c5579
         return fig,ax
 
     def plot_payload(self,datakey,xaxis='time',secondary_xaxis=None,\
