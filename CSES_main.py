@@ -819,7 +819,7 @@ class CSES():
 
         fig,ax = plt.subplots(nplots,sharex=True, figsize=(8,1.5*len(datakeys)))
         
-        fig.subplots_adjust(hspace=0,right=0.8,left=0.1)
+        fig.subplots_adjust(hspace=0)#,right=0.8,left=0.1)
         
         for i,ikey in enumerate(datakeys):
             if i == 0:
@@ -933,7 +933,7 @@ class CSES():
     
 
     def plot_spectrogram(self,datakey,fieldkey,xaxis='time',secondary_xaxis=None,\
-        fig=None,ax=None,xlabel=None,cmap='jet',vmin=1e-16,vmax=None,colorbar_width='2%'):
+        fig=None,ax=None,xlabel=None,cmap='jet',vmin=1e-16,vmax=None,colorbar_width='2%',plot_colorbar = False):
         
         from .blombly import pylab as plt
         from .blombly.pylab import plots as epp
@@ -947,8 +947,9 @@ class CSES():
        
         if vmax is None : vmax = df['psd'][fieldkey].max()
         ims = ax.pcolormesh(xx,df['freq'],df['psd'][fieldkey],cmap=cmap,norm=LogNorm(vmin=vmin,vmax=vmax))
-        epp.add_subplot_colorbar(fig,ax,ims,width=colorbar_width,\
-                    label=units)
+        if plot_colorbar:
+            epp.add_subplot_colorbar(fig,ax,ims,width=colorbar_width,\
+                        label=units)
         ax.set_ylabel( 'Hz  ('+fieldkey+')') 
 
         if secondary_xaxis is not None:
