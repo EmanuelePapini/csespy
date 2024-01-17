@@ -949,7 +949,7 @@ class CSES():
         ims = ax.pcolormesh(xx,df['freq'],df['psd'][fieldkey],cmap=cmap,norm=LogNorm(vmin=vmin,vmax=vmax))
         epp.add_subplot_colorbar(fig,ax,ims,width=colorbar_width,\
                     label=units)
-        ax.set_ylabel('Hz') 
+        ax.set_ylabel( 'Hz  ('+fieldkey+')') 
 
         if secondary_xaxis is not None:
             if secondary_xaxis in df.keys():
