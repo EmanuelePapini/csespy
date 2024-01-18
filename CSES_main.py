@@ -821,7 +821,7 @@ class CSES():
         fig,ax = plt.subplots(nplots,sharex=True, figsize=(8,1.5*len(datakeys)))
         
         fig.subplots_adjust(hspace=0,right=0.8,left=0.1)
-        
+        if nplots == 1 : ax = [ax] 
         for i,ikey in enumerate(datakeys):
             if i == 0:
                 if secondary_xaxis != '':

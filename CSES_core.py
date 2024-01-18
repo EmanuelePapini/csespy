@@ -231,6 +231,13 @@ def CSES_load(filename,path='./', return_pandas = False,
     data = {i:data[i].flatten() for i in data} 
     data.update(pos1)
     data['time'] = t_new.flatten()
+    
+    if info['Instrument'] == 'EFD':
+        for i in fldtags:
+            if units[fldtags[i]] == b'mV/m': 
+                data[fldtags[i]] /=1000
+                units[fldtags[i]] = b'V/m'
+
     res = dict_to_recarray(data)
     if return_pandas:
         index = pd.to_timedelta( res['time'] - res['time'][0],unit='sec') + utc
@@ -241,6 +248,9 @@ def CSES_load(filename,path='./', return_pandas = False,
             df['time']+=Vtime0
         df['orbitn']=int(info['orbitn'])
         res = df 
+    
+
+
     return res, {'ORBITNUM':orbitnum,'units':units ,'UTC':utc, 'verse_zero_utc':vt0_utc, 'verse_time':utc-vt0_utc}
 
 def CSES_load_PSD(filename,path='./', return_xarray = False,
