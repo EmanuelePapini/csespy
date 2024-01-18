@@ -807,6 +807,7 @@ class CSES():
         if ion : plt.ion()
 
         plot_der = False
+        datakeys = [i for i in datakeys if i[-2:] !='_P']
         if spectrograms is not None:
             plot_der = True
             der_key = spectrograms[0]
