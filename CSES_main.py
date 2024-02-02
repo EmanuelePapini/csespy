@@ -818,7 +818,7 @@ class CSES():
             nplots = len(datakeys)
 
 
-        fig,ax = plt.subplots(nplots,sharex=True, figsize=(8,1.5*len(datakeys)))
+        fig,ax = plt.subplots(nplots,sharex=True, figsize=(8,2.5*len(datakeys)))
         
         fig.subplots_adjust(hspace=0,right=0.8,left=0.1)
         if nplots == 1 : ax = [ax] 
@@ -876,6 +876,8 @@ class CSES():
             instr_no = self.aux[datakey]['instrument_no']
             toplot = [[i[1] for i in CSES_FILE_TABLE[instrument][instr_no].items()][0]]
             for i in toplot:
+                if 'Proton' in i:
+                    continue
                 ax.semilogy(xx,df[i].values,label=i,linewidth=1)
             print(datakey)
         elif datakey == 'HEPP_L':
@@ -883,7 +885,9 @@ class CSES():
             instrument = self.aux[datakey]['instrument']
             instr_no = self.aux[datakey]['instrument_no']
             toplot = [i[1] for i in CSES_FILE_TABLE[instrument][instr_no].items()]
-            for i in toplot:
+            for i in toplot:                
+                if 'Proton' in i:
+                    continue
                 ax.semilogy(xx,df[i].values,label=i,linewidth=1)
             print(datakey)
         elif datakey == 'HEPP_H':
@@ -892,6 +896,8 @@ class CSES():
             instr_no = self.aux[datakey]['instrument_no']
             toplot = [i[1] for i in CSES_FILE_TABLE[instrument][instr_no].items()]
             for i in toplot:
+                if 'Proton' in i:
+                    continue
                 ax.semilogy(xx,df[i].values,label=i,linewidth=1)
             print(datakey)
         elif datakey == 'HEPP_X':
@@ -900,6 +906,8 @@ class CSES():
             instr_no = self.aux[datakey]['instrument_no']
             toplot = [i[1] for i in CSES_FILE_TABLE[instrument][instr_no].items()]
             for i in toplot:
+                if 'Proton' in i:
+                    continue
                 ax.semilogy(xx,df[i].values,label=i,linewidth=1)
             print(datakey)
             
