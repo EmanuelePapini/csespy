@@ -97,6 +97,16 @@ class CSES():
                 del self.data 
                 del self.aux
         
+    def find_available_files(self,search_string ='',orbitn=None,timespan=None,**kwargs):
+        outs = {}
+
+        for instr in CSES_DATA_TABLE:
+            outs[instr]={}
+            for ino in CSES_DATA_TABLE[instr]:
+                ifreq = CSES_DATA_TABLE[instr][ino]
+                outs[instr][ifreq] = self.search_file(search_string = search_string, orbitn= orbitn, \
+                    instrument=instr, frequency = ifreq, timespan = timespan,**kwargs)
+        return outs
 
     def find_files_to_load(self,instrument,frequency,instrument_no,unique=True,verbose=False):
         if self.orbitn is not None:
@@ -968,7 +978,7 @@ class CSES():
 #################### MANIPULATION AND DATA ANALYSIS TOOLS ######################
 ################################################################################
     
-    def interpolate_inst1_to_inst2(self,inst1 = 'HPM',inst2 = 'EFD',tags = ['Bx','By','Bz']):
+    def interpolate_inst1_to_inst2(self,inst1 = 'HPM',inst2 = 'EFD',tags = ['Bx','By','Bz'], track_origin = False):
         t_1 = self.data[inst1].index.values.astype(np.int64)
         t_2 = self.data[inst2].index.values.astype(np.int64)
         t0 = t_1[0]
@@ -978,7 +988,10 @@ class CSES():
         t_2 = t_2.astype(np.float64)
         
         for i in tags:
-            self.data[inst2][i] = np.interp(t_2,t_1,self.data[inst1][i].values)
+            if track_origin:
+                self.data[inst2][i+'_'+inst1] = np.interp(t_2,t_1,self.data[inst1][i].values)
+            else:
+                self.data[inst2][i] = np.interp(t_2,t_1,self.data[inst1][i].values)
 
         self._ancillary_['interpolate'] = {}
 

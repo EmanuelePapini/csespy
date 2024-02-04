@@ -155,9 +155,9 @@ CSES_PACKETSIZE = {'EFD_ULF':256,'EFD_ELF':2048,'EFD_VLF':2048,'EFD_HF':2048,\
 CSES_FILESYSTEM = {'EFD':'year/FREQUENCY/month',\
                    'HPM':'year/month',\
                    'LAP':'year/month',\
-                   'SCM':'year/FREQUENCY/month'}
-
-
+                   'SCM':'year/FREQUENCY/month',\
+                   'PAP':'',\
+                   'HEP':''}
 def get_datakey(instrument,frequency):
 
     if instrument != 'HEP': return instrument+'_'+frequency

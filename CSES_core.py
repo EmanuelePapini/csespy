@@ -227,6 +227,9 @@ def CSES_load(filename,path='./', return_pandas = False,
    
         if any([pos1[i].shape != data['gaps_mask'].shape for i in pos1]):
             pos1 = {i:interp1(t_new,t_new.reshape((msnew,ns))[mask_old].flatten(),pos1[i].flatten()) for i in pos1}
+    
+    if fill_missing is not None and 'gaps_mask' not in data:
+        data['gaps_mask'] = np.zeros(data[[i for i in data][0]].shape,dtype=bool)
 
     data = {i:data[i].flatten() for i in data} 
     data.update(pos1)
