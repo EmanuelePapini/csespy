@@ -80,8 +80,11 @@ class CSES():
             orbit number(s) of CSES to be loaded.
         search_string : str
             string that is contained in the filename that one wants to load
-        timespan : tuple of datetime of len == 2
-            desired time interval to be loaded 
+        timespan : tuple 
+            either a tuple of datetime of len == 2 or a tuple of len ==3 with two datetime
+            and a string specifying day 'D', night 'N' side or both ''
+            
+            The two datetime specify the desired time interval to be loaded 
 
         """
         self.search_string = search_string
@@ -136,12 +139,18 @@ class CSES():
                     [fdum.append(i) for i in uniquefy(ifiles)]
                 files = fdum
         elif self.timespan is not None:
+            
+            timespan = self.timespan+('',) if len(self.timespan) == 2 else self.timespan
             try:
-                files = self.search_file(instrument=instrument, frequency = frequency, instrument_no = instrument_no, timespan = self.timespan)
+                files = self.search_file(instrument=instrument, frequency = frequency, instrument_no = instrument_no, timespan = timespan[:-1])
                 if unique: 
                     orbits = [parse_CSES_filename(ifile)['orbitn'] for ifile in files]
                     fdum = []
                     for iorbit in set(orbits):
+                        if timespan[-1] == 'N':
+                            if iorbit[-1] == '0': continue
+                        elif timespan[-1] == 'D':
+                            if iorbit[-1] == '1': continue
                         ifiles = [iff for iff,ior in zip(files,orbits) if ior == iorbit]
                         [fdum.append(i) for i in uniquefy(ifiles)]
                     files = fdum
@@ -854,72 +863,81 @@ class CSES():
         ax[-1].tick_params(axis='x',rotation=45)
         return fig,ax
 
-    def plot_payload(self,datakey,xaxis='time',secondary_xaxis=None,\
-        fig=None,ax=None,xlabel=None,**kwargs):
-
-        df = self.data[datakey]
-        xx = df.index.values if xaxis == 'time' else df[xaxis].values
-        if datakey == 'LAP_50mm':
-            ax.set_title(datakey)
-            ax.semilogy(xx,df['ne'],label=r'$n_e$')
-            ax.set_ylabel(r'$n_e \quad (m^{-3})$')
-            print(datakey)
-        elif datakey in ['EFD_ULF','EFD_ELF','EFD_VLF']:
-            ax.set_title(datakey)
-            ax.plot(xx,np.sqrt(df['Ex']**2+df['Ey']**2+df['Ez']**2),label='|E|',linewidth=1,color='black')
-            ax.plot(xx,df['Ex'],label=r'$E_x$',linewidth=1)
-            ax.plot(xx,df['Ey'],label=r'$E_y$',linewidth=1)
-            ax.plot(xx,df['Ez'],label=r'$E_z$',linewidth=1)
-            ax.set_ylabel('E [V/m]')
-            print(datakey)
-        elif datakey in ['SCM_ULF','SCM_ELF','HPM_FGM1Hz']:
-            ax.set_title(datakey)
-            ax.plot(xx,np.sqrt(df['Bx']**2+df['By']**2+df['Bz']**2),label='|B|',linewidth=1,color='black')
-            ax.plot(xx,df['Bx'],label=r'$B_x$',linewidth=1)
-            ax.plot(xx,df['By'],label=r'$B_y$',linewidth=1)
-            ax.plot(xx,df['Bz'],label=r'$B_z$',linewidth=1)
-            ax.set_ylabel('B [nT]')
-            print(datakey)
-        elif datakey == 'HEPD':
-            ax.set_title(datakey)
-            instrument = self.aux[datakey]['instrument']
-            instr_no = self.aux[datakey]['instrument_no']
-            toplot = [[i[1] for i in CSES_FILE_TABLE[instrument][instr_no].items()][0]]
-            for i in toplot:
-                if 'Proton' in i:
-                    continue
-                ax.semilogy(xx,df[i].values,label=i,linewidth=1)
-            print(datakey)
-        elif datakey == 'HEPP_L':
-            ax.set_title(datakey)
-            instrument = self.aux[datakey]['instrument']
-            instr_no = self.aux[datakey]['instrument_no']
-            toplot = [i[1] for i in CSES_FILE_TABLE[instrument][instr_no].items()]
-            for i in toplot:                
-                if 'Proton' in i:
-                    continue
-                ax.semilogy(xx,df[i].values,label=i,linewidth=1)
-            print(datakey)
-        elif datakey == 'HEPP_H':
-            ax.set_title(datakey)
-            instrument = self.aux[datakey]['instrument']
-            instr_no = self.aux[datakey]['instrument_no']
-            toplot = [i[1] for i in CSES_FILE_TABLE[instrument][instr_no].items()]
-            for i in toplot:
-                if 'Proton' in i:
-                    continue
-                ax.semilogy(xx,df[i].values,label=i,linewidth=1)
-            print(datakey)
-        elif datakey == 'HEPP_X':
-            ax.set_title(datakey)
-            instrument = self.aux[datakey]['instrument']
-            instr_no = self.aux[datakey]['instrument_no']
-            toplot = [i[1] for i in CSES_FILE_TABLE[instrument][instr_no].items()]
-            for i in toplot:
-                if 'Proton' in i:
-                    continue
-                ax.semilogy(xx,df[i].values,label=i,linewidth=1)
-            print(datakey)
+    def plot_payload(self,datakey,xaxis='time',secondary_xaxis=None,fig=None,ax=None,xlabel=None):
+        
+        from .blombly import pylab as plt
+        cols = plt.rcParams['axes.prop_cycle'].by_key()['color'] #colors
+        ncol=len(cols) 
+        dff = self.data[datakey]
+        xxx = dff.index.values if xaxis == 'time' else dff[xaxis].values
+        
+        orbits = list(set(dff.orbitn))
+        orbits.sort()
+        for iorbit in orbits:
+            mask = dff.orbitn == iorbit
+            df = dff[mask]
+            xx = xxx[mask]
+            if datakey == 'LAP_50mm':
+                ax.set_title(datakey)
+                ax.semilogy(xx,df['ne'][mask],label=r'$n_e$',color=cols[0])
+                ax.set_ylabel(r'$n_e \quad (m^{-3})$')
+                print(datakey)
+            elif datakey in ['EFD_ULF','EFD_ELF','EFD_VLF']:
+                ax.set_title(datakey)
+                ax.plot(xx,np.sqrt(df['Ex']**2+df['Ey']**2+df['Ez']**2),label='|E|',linewidth=1,color='black')
+                ax.plot(xx,df['Ex'],label=r'$E_x$',linewidth=1,color=cols[0])
+                ax.plot(xx,df['Ey'],label=r'$E_y$',linewidth=1,color=cols[1])
+                ax.plot(xx,df['Ez'],label=r'$E_z$',linewidth=1,color=cols[2])
+                ax.set_ylabel('E [V/m]')
+                print(datakey)
+            elif datakey in ['SCM_ULF','SCM_ELF','HPM_FGM1Hz']:
+                ax.set_title(datakey)
+                ax.plot(xx,np.sqrt(df['Bx']**2+df['By']**2+df['Bz']**2),label='|B|',linewidth=1,color='black')
+                ax.plot(xx,df['Bx'],label=r'$B_x$',linewidth=1,color=cols[0])
+                ax.plot(xx,df['By'],label=r'$B_y$',linewidth=1,color=cols[1])
+                ax.plot(xx,df['Bz'],label=r'$B_z$',linewidth=1,color=cols[2])
+                ax.set_ylabel('B [nT]')
+                print(datakey)
+            elif datakey == 'HEPD':
+                ax.set_title(datakey)
+                instrument = self.aux[datakey]['instrument']
+                instr_no = self.aux[datakey]['instrument_no']
+                toplot = [[i[1] for i in CSES_FILE_TABLE[instrument][instr_no].items()][0]]
+                for j,i in enumerate(toplot):
+                    if 'Proton' in i:
+                        continue
+                    ax.semilogy(xx,df[i].values,label=i,linewidth=1,color=cols[j%ncol])
+                print(datakey)
+            elif datakey == 'HEPP_L':
+                ax.set_title(datakey)
+                instrument = self.aux[datakey]['instrument']
+                instr_no = self.aux[datakey]['instrument_no']
+                toplot = [i[1] for i in CSES_FILE_TABLE[instrument][instr_no].items()]
+                for j,i in enumerate(toplot):                
+                    if 'Proton' in i:
+                        continue
+                    ax.semilogy(xx,df[i].values,label=i,linewidth=1,color=cols[j%ncol])
+                print(datakey)
+            elif datakey == 'HEPP_H':
+                ax.set_title(datakey)
+                instrument = self.aux[datakey]['instrument']
+                instr_no = self.aux[datakey]['instrument_no']
+                toplot = [i[1] for i in CSES_FILE_TABLE[instrument][instr_no].items()]
+                for j,i in enumerate(toplot):
+                    if 'Proton' in i:
+                        continue
+                    ax.semilogy(xx,df[i].values,label=i,linewidth=1,color=cols[j%ncol])
+                print(datakey)
+            elif datakey == 'HEPP_X':
+                ax.set_title(datakey)
+                instrument = self.aux[datakey]['instrument']
+                instr_no = self.aux[datakey]['instrument_no']
+                toplot = [i[1] for i in CSES_FILE_TABLE[instrument][instr_no].items()]
+                for j,i in enumerate(toplot):
+                    if 'Proton' in i:
+                        continue
+                    ax.semilogy(xx,df[i].values,label=i,linewidth=1,color=cols[j%ncol])
+                print(datakey)
             
 
 
