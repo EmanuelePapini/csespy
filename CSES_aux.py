@@ -207,6 +207,25 @@ def utctime_to_datetime(utc):
 #################################################################################
 ############### AACGM CONVERSION TOOLS   TO BE DEFINED                ###########
 #################################################################################
+def convert_GPS_to_ECEF(lat,lon,alt):
+    """
+    convert Lat,Lon,Altitude in X,Y,Z Earth Centered Earth Fixed (ECEF WGS84) coordinate system
+    
+    input:
+    ------
+        lat : (float)
+            Input latitude in degrees N 
+        lon : (float)
+            Input longitude in degrees E 
+        alt : (float)
+            Altitude above the surface of the earth in km
+    """
+    from pyproj import Proj, transform
+    ecef = Proj(proj='geocent', ellps='WGS84', datum='WGS84')
+    
+    lla = Proj(proj='latlong', ellps='WGS84', datum='WGS84')
+    
+    return transform(lla, ecef, lon, lat, alt*1000, radians=False)
 
 
 #################################################################################
