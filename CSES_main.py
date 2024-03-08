@@ -1099,7 +1099,114 @@ class CSES():
         del dats['time']
         save_dataframe_to_h5(filepath+filename,dats,index=idx,mode=mode,**kwargs)
 
+    
+################################################################################
+#########################      AUXILIARY TOOLS         #########################
+################################################################################
 
+    def get_CHAOS(self,datakey,as_output = False,ref_frame='ecef'):
+        
+        if all([i in self.data[datakey] for i in ['Bx_chaos','By_chaos','Bz_chaos']]):
+            print('Mag. field from CHAOS already calculated for '+datakey+'.')
+            return
+        if as_output:
+            return get_CHAOSmag(self.data[datakey],as_output = True,ref_frame=ref_frame)
+        get_CHAOSmag(self.data[datakey],as_output=False,ref_frame = ref_frame)
+    
+
+    def get_spacecraft_speed(self,datakey='EFD_ELF',ref_frame='ecef',regularize_speed = False,dt_lowfilt=20):
+        """
+        Compute spacecraft velocity from lat,lon,alt and time contained in the L2 
+        data using central finite differences
+        
+        Parameters
+        ----------
+        datakey : str
+            key of self.data denoting the dataset in which one wants to compute
+            the spacecraft speed.
+            
+        ref_frame : str
+            desired reference frame for the output the spacecraft speed.
+
+            'wgs84' : this SHOULD be the frame of the data given by the chineses
+            'ecef' or 'wgs84' : this is the wgs84 (cartesian) coordinate system 
+            'wgs84_spherical' or 'geo': geographic ref. frame 
+                WARNING! GEO FRAME NOT TESTED. COULD BE WRONG!
+
+        regularize_speed : bool
+            to be implemented (fifpy is missing in the module)
+        dt_lowfilt : float
+            to be implemented, inverse frequency cut of the low-pass fif filter
+        
+        Output
+        ------
+        no output is given. The result is stored in self.data[datakey] in the
+        ['vsx','vsy','vsz'] keys in the selected reference frame
+        """
+
+        if not hasattr(self.data,datakey):
+            raise ValueError('You must load the data for the desired input datakey :'+datakey)
+       
+        df = self.data[datakey]
+        
+        from .blombly.math.derivFD import derivfield as deriv #central finite differences derivative 
+        orbits = list(set(df.orbitn.values))
+
+        def get_speed_orbit(data):
+            t = data.index.values.astype(float)/1e9 #dt in seconds
+            t-=t[0]
+            if regularize_speed:
+                from scipy.interpolate import splrep,splev
+                nskip = CSES_PACKETSIZE[datakey]
+                MM = int(dt_lowfilt//np.diff(t[::nskip]).mean())
+                if MM == 1:
+                    print('WARNING: dt_lowfilt < temporal resolution! Skipping lowfiltering!')
+                    x,y,z = convert_GPS_to_ECEF(data.lat.values,data.lon.values,data.alt.values)
+                    vx = deriv(x,t); vy = deriv(y,t); vz = deriv(z,t)
+                else:
+                    tt = t[::nskip]
+                    x,y,z = convert_GPS_to_ECEF(data.lat.values[::nskip],data.lon.values[::nskip],data.alt.values[::nskip])
+                    vx,vy,vz = deriv(x,tt),deriv(y,tt),deriv(z,tt)
+                    vx,vy,vz = fif_lowfilter([vx,vy,vz],MM)
+                    #SPLINE INTERPOLATION TO FULL CADENCE
+                    tck = splrep(tt,vx); vx = splev(t,tck)
+                    tck = splrep(tt,vy); vy = splev(t,tck)
+                    tck = splrep(tt,vz); vz = splev(t,tck)
+            else:
+                x,y,z = convert_GPS_to_ECEF(data.lat.values,data.lon.values,data.alt.values)
+                vx = deriv(x,t); vy = deriv(y,t); vz = deriv(z,t)
+
+            if ref_frame == 'wgs84_spherical' or ref_frame == 'geo':
+                
+                x,y,z = convert_GPS_to_ECEF(data.lat.values,data.lon.values,data.alt.values)
+                #now converting to vlat, -vr, and vphi
+                cost = (z /np.sqrt(x**2+y**2+z**2))#[:-1]
+                sint = np.sqrt(1-cost**2)
+                phi =np.arctan2(y,x); cosp=np.cos(phi); sinp=np.sin(phi)#[:-1]
+                vr = vx*sint*cosp + vy*sint*sinp + vz*cost
+                vt = vx*cost*cosp + vy*cost*sinp - vz*sint
+                vp = -vx*sinp +vy*cosp
+                
+                vx = -vt #v_lat
+                vy =  vp #v_lon
+                vz = -vr #v_radial
+
+            
+            
+            data['vsx'] = vx
+            data['vsy'] = vy
+            data['vsz'] = vz
+
+
+        if len(orbits) == 1:
+            get_speed_orbit(df)
+            return
+        for iorbit in orbits:
+            data = df[df.orbitn == iorbit]
+            get_speed_orbit(data)
+            df['vsx'] = data['vsx']
+            df['vsy'] = data['vsy']
+            df['vsz'] = data['vsz']
 ################################################################################
 #########################some fast diagnostic tool  tbd#########################
 ################################################################################

@@ -980,3 +980,61 @@ def add_packets(xbig,jumps,npacks,dt,fill_missing = 'sampling'):
     return xout, mask
 
 
+################################################################################
+####################         AUXILIARY FUNCTIONS             ###################
+################################################################################
+def get_CHAOSmag(df,as_output = True,ref_frame='ecef'):
+    """
+    Compute magnetic field from CHAOS model on the desired dataframe
+   
+    ref_frame : str
+        string identifying the desired reference frame (CASE INSENSITIVE)
+        'ecef' or 'wgs84': cartesian reference frame Earth Centered Corotating
+        'geo' or 'wgs84_spherical' : geographic
+
+    df : pandas.Dataframe
+        dataframe containing latitude, longitude, altitude, and time ('lat','lon','alt','time')
+    """
+    import chaosmagpy as chaos
+    import sys
+    _path_ = sys.modules[__name__].__path__
+
+    time = chaos.data_utils.mjd2000(df.index.to_pydatetime()) #28 seconds
+    radius = np.sqrt(np.sum(np.array(\
+        convert_GPS_to_ECEF(df.lat.values,df.lon.values,df.alt.values))**2,\
+                            axis=0))/1000
+    lon = df.lon.values
+    colat = 90-df.lat.values
+    lat= df.lat.values
+    model = chaos.load_CHAOS_matfile(_path_+'/CHAOS-7.14.mat')
+
+
+    Br,Bthta,Bphi=model.synth_values_tdep(time,radius,colat,lon)
+
+    if ref_frame.lower() == 'ecef' or ref_frame.lower() == 'wgs84': 
+
+        bb = np.concatenate([Br,Bthta,Bphi]).reshape((3,Br.shape[0]))
+
+        from .blombly.geometry.transformations import transform_vector_sph2car
+
+        bb = transform_vector_sph2car(bb,lat,lon,sphtype='thetaphi')
+    
+    
+        if as_output:
+            return bb[0],bb[1],bb[2]
+        
+        df['Bx_chaos'] = bb[0]
+        df['By_chaos'] = bb[1]
+        df['Bz_chaos'] = bb[2]
+
+    elif ref_frame.lower() == 'geo' or ref_frame.lower() == 'wgs84_spherical': 
+        if as_output: 
+            return -Bthta, Bphi, -Br
+
+        df['Bx_chaos'] = -Bthta
+        df['By_chaos'] = Bphi
+        df['Bz_chaos'] = -Br
+    else:
+        print('unknown input reference frame, returning None')
+        return None
+
