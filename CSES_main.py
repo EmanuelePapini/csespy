@@ -728,14 +728,30 @@ class CSES():
 
     def plot_EFD(self,xaxis = 'lat', xlabel=None,modulus = False, keys = ['Ex','Ey','Ez'],ax = None,fig = None,twiny = True, frequency='ELF',ion=False):
         from .blombly import pylab as plt
+        cols = plt.rcParams['axes.prop_cycle'].by_key()['color'] #colors
+        ncol=len(cols) 
+        
         tag = 'EFD_'+frequency
         fig,ax = plt.get_figure(fig,ax) 
+        
+        dff = self.data[tag]
+        orbits = list(set(dff.orbitn))
+        orbits.sort()
+        
         if modulus:
-            ax.plot(self.data[tag][xaxis],np.sqrt(self.data[tag]['Ex']**2+\
-                                             self.data[tag]['Ey']**2+\
-                                             self.data[tag]['Ez']**2),label='|E|',linewidth=1)
+            for iorbit in orbits:
+                mask = dff.orbitn == iorbit
+                df = dff[mask]
+                
+                ax.plot(df[xaxis],np.sqrt(df['Ex']**2+\
+                                             df['Ey']**2+\
+                                             df['Ez']**2),\
+                                             label='|E|',linewidth=1,color='black')
         else:
-            [ax.plot(self.data[tag][xaxis],self.data[tag][i],label=i,linewidth=1) for i in keys if i in self.data[tag]]
+            for iorbit in orbits:
+                mask = dff.orbitn == iorbit
+                df = dff[mask]
+                [ax.plot(df[xaxis],df[i],label=i,linewidth=1,color=cols[j]) for j,i in enumerate(keys) if i in df]
         ax.set_xlabel(xaxis) if xlabel is None else ax.set_xlabel(xlabel)
         ax.set_ylabel('E [V/m]')
         ylims = ax.set_ylim()
@@ -774,7 +790,7 @@ class CSES():
             [plt.plot(hd[hd.orbitn==i][xaxis],hd[hd.orbitn==i].Bz,color='blue') for i in set(hd.orbitn)]
 
 
-    def plot_orbit(self,instrument,frequency,x='lat',y='lon',basemap = None, fig = None, ax = None,profile = 'default',overplot_continents = True):
+    def plot_orbit(self,instrument,frequency,x='lat',y='lon',basemap = None, fig = None, ax = None,profile = 'default',overplot_continents = True,ion=True,show=True):
         """
         Plot the orbit of the loaded instrument_frequency on the worldmap, using CSES_aux.plot_orbit
 
@@ -812,7 +828,7 @@ class CSES():
 
         pltkwargs = ORBIT_PLOT_TEMPLATES[profile] if type(profile) is str else profile
         
-        fig,ax,mm = plot_orbit(df[x].values,df[y].values, basemap = basemap, fig = fig, ax = ax,**pltkwargs)
+        fig,ax,mm = plot_orbit(df[x].values,df[y].values, basemap = basemap, fig = fig, ax = ax,ion=ion,show=show,**pltkwargs)
 
         if overplot_continents:
             [imm.drawlsmask() for imm in mm]
@@ -1071,13 +1087,17 @@ class CSES():
 
 
 ######WRITING TO DATABASES MACHINERY######
-    def save_data_to_h5(self,filename,dataset_name,mode='a',**kwargs):
+    def save_data_to_h5(self,filepath,dataset_name,filename=None,mode='a',**kwargs):
 
         from .blombly.io import save_dataframe_to_h5
+        
+        orbitn = self.orbitn if type(self.orbitn) is str else self.orbitn[0]+'-'+self.orbitn[-1]
+        if filename is None: filename = dataset_name+'_'+orbitn+'.h5'
+
         dats = self.data[dataset_name].copy()
         idx = {'time':(dats.index.values.astype(float)-dats.index.values.astype(float)[0])/1e9,'t0':str(dats.index[0])}
         del dats['time']
-        save_dataframe_to_h5(filename,dats,index=idx,mode=mode,**kwargs)
+        save_dataframe_to_h5(filepath+filename,dats,index=idx,mode=mode,**kwargs)
 
 
 ################################################################################

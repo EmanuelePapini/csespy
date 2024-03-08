@@ -304,7 +304,7 @@ def plot_orbit(lat,lon, basemap = None, fig = None, ax = None,\
              projection = ['spstere','npstere'],\
              latrange = [[-90,0,15],[0,90,15]],\
              lonrange = [[-180,180,30],[-180,180,30]],\
-             basemap_kwargs = None,pltkwargs={}):
+             basemap_kwargs = None,pltkwargs={},ion=True,show=True):
    
     """
     PURPOSE:
@@ -419,10 +419,16 @@ def plot_orbit(lat,lon, basemap = None, fig = None, ax = None,\
     else: mm = basemap
 
     #PLOTTING
-    plt.ion() 
+    if ion:
+        plt.ion() 
+    else:
+        plt.ioff()
     
-    [imm.plot(lon,lat,latlon=True,**pltkwargs) for imm in mm]
-    plt.show()
+    #this is done to deal with a bug in Basemap
+    latlon = False if mm[0].projection == 'cyl' else True
+    [imm.plot(lon,lat,latlon=latlon,**pltkwargs) for imm in mm]
+    if show:
+        plt.show()
     return fig,ax,tuple(mm)
    
 
