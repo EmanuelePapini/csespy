@@ -450,4 +450,15 @@ def plot_orbit(lat,lon, basemap = None, fig = None, ax = None,\
         plt.show()
     return fig,ax,tuple(mm)
    
+#def fif_lowfilter(flds,MM):
+#    """
+#    returns the low-filtered time-series contained in flds using fif and the desired mask length MM
+#    flds : list-like
+#    MM : int
+#    """
+#    from .blombly.filters import fif_lowfilter as lowfilt
+#    out = []
+#    for ifld in flds:
+#        out.append(lowfilt(ifld,MM,preprocess='extend-periodic'))
+#    return out
 
