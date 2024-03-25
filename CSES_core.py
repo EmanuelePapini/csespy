@@ -983,7 +983,7 @@ def add_packets(xbig,jumps,npacks,dt,fill_missing = 'sampling'):
 ################################################################################
 ####################         AUXILIARY FUNCTIONS             ###################
 ################################################################################
-def get_CHAOSmag(df,as_output = True,ref_frame='ecef'):
+def get_CHAOSmag(df,as_output = True,ref_frame='ecef',chaosfile=None):
     """
     Compute magnetic field from CHAOS model on the desired orbit
     
@@ -992,6 +992,11 @@ def get_CHAOSmag(df,as_output = True,ref_frame='ecef'):
     """
     import chaosmagpy as chaos
 
+    if chaosfile is None:
+        import os
+        chaosfile = os.path.dirname(__file__)+'/CHAOS-7.14.mat'
+        
+
     time = chaos.data_utils.mjd2000(df.index.to_pydatetime()) #28 seconds
     radius = np.sqrt(np.sum(np.array(\
         convert_GPS_to_ECEF(df.lat.values,df.lon.values,df.alt.values))**2,\
@@ -999,7 +1004,7 @@ def get_CHAOSmag(df,as_output = True,ref_frame='ecef'):
     lon = df.lon.values
     colat = 90-df.lat.values
     lat= df.lat.values
-    model = chaos.load_CHAOS_matfile('./CHAOS-7.14.mat')
+    model = chaos.load_CHAOS_matfile(chaosfile)
 
 
     Br,Bthta,Bphi=model.synth_values_tdep(time,radius,colat,lon)
@@ -1032,4 +1037,7 @@ def get_CHAOSmag(df,as_output = True,ref_frame='ecef'):
         return None
 
 
-
+def get_pwd():
+    import os
+    print(__name__)
+    print(os.path.dirname(__file__))
