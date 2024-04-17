@@ -322,7 +322,11 @@ class CSES():
             #1-get all files available in storage and parse datetimes
             fls = files
             b = [parse_CSES_filename(i) for i,ipath in fls]
-            t0,t1 = timespan
+            if len(timespan) == 2: 
+                t0,t1 = timespan 
+                sides = 'both'
+            else:
+                t0,t1,sides = timespan
             #2-cycle through all of them and for each file do:
             #  a-create list of dates with t0,t1,itstart,itend, labeled with [0,0,1,1]
             #  b-get the argsort of the list: if ranges do overlap or one is contained in the other,
@@ -333,6 +337,19 @@ class CSES():
             for ii,i in enumerate(b):
                 c = np.array([0,0,1,1])[np.argsort([t0,t1,i['t_start'],i['t_end']])][0:2].sum()
                 if c == 1: files.append(fls[ii])
+            
+            if len(files) and sides !='both': 
+                orbits = [parse_CSES_filename(i)['orbitn'] for i,ipath in files]
+                fdum = []
+                for iorbit,ifile in zip(orbits,files):
+                    
+                    if sides == 'N':
+                        if iorbit[-1] == '0': continue
+                    elif sides == 'D':
+                        if iorbit[-1] == '1': continue
+                    print(iorbit[-1])
+                    fdum.append(ifile)
+                files = fdum
         
         if files is not None:
             if return_path:
@@ -930,8 +947,6 @@ class CSES():
                 instr_no = self.aux[datakey]['instrument_no']
                 toplot = [i[1] for i in CSES_FILE_TABLE[instrument][instr_no].items()]
                 for j,i in enumerate(toplot):                
-                    if 'Proton' in i:
-                        continue
                     ax.semilogy(xx,df[i].values,label=i,linewidth=1,color=cols[j%ncol])
                 print(datakey)
             elif datakey == 'HEPP_H':

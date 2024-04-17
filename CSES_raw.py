@@ -23,6 +23,7 @@ from .CSES_aux import *
 
 def load_CSES_raw(filename, convert_names = False):
     import h5py
+    datasets_keys = {'A311':'ne','A321':'Te'}
 
     #1st - load data
     with h5py.File(filename,'r') as fil:

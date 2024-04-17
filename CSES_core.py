@@ -979,6 +979,80 @@ def add_packets(xbig,jumps,npacks,dt,fill_missing = 'sampling'):
 
     return xout, mask
 
+def get_spacecraft_speed(df,ref_frame='ecef',as_output = True,\
+    regularize_speed = False,dt_lowfilt=20,nskip=None):
+    """
+    Compute spacecraft velocity from lat,lon,alt and time contained in the input
+    pandas dataframe df using central finite differences
+    
+    Parameters
+    ----------
+
+    df : pandas.Dataframe
+        dataframe containing latitude, longitude, altitude, and time ('lat','lon','alt','time')
+        
+        ref_frame : str
+            'wgs84_spherical' : this SHOULD be the frame of the data given by the chineses
+                in this frame is different from the usual spherical coordinate system, in such that
+                    x: is along meridians with the direction of increasing latitude (i.e. -theta)
+                    z: is the radial direction, but with an inverse sense 
+                       (i.e. vectors going TOWARD the center, -r)
+                    y: hopefully completes the system with HOPEFULLY a right-handed convention
+                       i.e, is along phi
+            'ecef' : this is the wgs84 (cartesian) coordinate system
+    """
+
+   
+    data = df
+    
+    from .blombly.math.derivFD import derivfield as deriv #central finite differences derivative 
+    t = data.index.values.astype(float)/1e9 #dt in seconds
+    t-=t[0]
+    if regularize_speed:
+        if nskip is None:
+         raise Exception ('regularize_speed == True requires setting an int value for nskip')
+        from scipy.interpolate import splrep,splev
+        MM = int(dt_lowfilt//np.diff(t[::nskip]).mean())
+        if MM == 1:
+            print('WARNING: dt_lowfilt < temporal resolution! Skipping lowfiltering!')
+            x,y,z = convert_GPS_to_ECEF(data.lat.values,data.lon.values,data.alt.values)
+            vx = deriv(x,t); vy = deriv(y,t); vz = deriv(z,t)
+        else:
+            tt = t[::nskip]
+            x,y,z = convert_GPS_to_ECEF(data.lat.values[::nskip],data.lon.values[::nskip],data.alt.values[::nskip])
+            vx,vy,vz = deriv(x,tt),deriv(y,tt),deriv(z,tt)
+            vx,vy,vz = fif_lowfilter([vx,vy,vz],MM)
+            #SPLINE INTERPOLATION TO FULL CADENCE
+            tck = splrep(tt,vx); vx = splev(t,tck)
+            tck = splrep(tt,vy); vy = splev(t,tck)
+            tck = splrep(tt,vz); vz = splev(t,tck)
+    else:
+        x,y,z = convert_GPS_to_ECEF(data.lat.values,data.lon.values,data.alt.values)
+        vx = deriv(x,t); vy = deriv(y,t); vz = deriv(z,t)
+        #vx = np.diff(x)/t; vy = np.diff(y)/t; vz = np.diff(z)/t
+
+    if ref_frame == 'wgs84_spherical' or ref_frame == 'geo':
+        
+        x,y,z = convert_GPS_to_ECEF(data.lat.values,data.lon.values,data.alt.values)
+        #vx = np.diff(x)/t; vy = np.diff(y)/t; vz = np.diff(z)/t
+        #now converting to vlat, -vr, and vphi
+        cost = (z /np.sqrt(x**2+y**2+z**2))#[:-1]
+        sint = np.sqrt(1-cost**2)
+        phi =np.arctan2(y,x); cosp=np.cos(phi); sinp=np.sin(phi)#[:-1]
+        vr = vx*sint*cosp + vy*sint*sinp + vz*cost
+        vt = vx*cost*cosp + vy*cost*sinp - vz*sint
+        vp = -vx*sinp +vy*cosp
+        
+        vx = -vt #v_lat
+        vy =  vp #v_lon
+        vz = -vr #v_radial
+    
+    if as_output:
+        return vx,vy,vz
+    
+    data['vsx'] = vx
+    data['vsy'] = vy
+    data['vsz'] = vz
 
 ################################################################################
 ####################         AUXILIARY FUNCTIONS             ###################
