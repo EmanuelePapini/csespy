@@ -337,3 +337,34 @@ def fif_lowfilter(flds,MM,returnIMCs=False):
     
     return out
 
+#################################################################################
+############### GENERIC FUNCTIONS FOR AUXILIARY OPERATIONS ######################
+#################################################################################
+
+def fix_lonlat(lons,lats,times):
+    from scipy.interpolate import splrep,splev
+    time = times.flatten()
+    dt = np.diff(time)
+    lon = lons.flatten()
+    lat = lats.flatten()
+    mm = np.zeros(len(lat),dtype=bool)
+    if np.median(np.diff(lat)) < 0:
+        mm[1:-1] = ~((lat[1:-1]>lat[2::])*(lat[1:-1]<lat[0:-2]))
+    else:
+        mm[1:-1] = ~((lat[1:-1]<lat[2::])*(lat[1:-1]>lat[0:-2]))
+    if np.sum(mm) > 0:
+       tck = splrep(time[~mm],lat[~mm])
+       lat[mm] = splev(time[mm],tck)
+
+    mm = np.zeros(len(lon),dtype=bool)
+    dalon = np.abs(np.diff(lon))
+    mjumps = (dalon>350)*(dalon<360)
+    if np.median(np.diff(lon)) < 0:
+        mm[1:-1] = ~((lon[1:-1]>lon[2::])*(lon[1:-1]<lon[0:-2]))
+    else:
+        mm[1:-1] = ~((lon[1:-1]<lon[2::])*(lon[1:-1]>lon[0:-2]))
+    mm[1:][mjumps] = False
+    if np.sum(mm) > 0:
+       tck = splrep(time[~mm],lon[~mm])
+       lon[mm] = splev(time[mm],tck)
+    return lon.reshape(lons.shape),lat.reshape(lats.shape)

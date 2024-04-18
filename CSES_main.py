@@ -654,7 +654,8 @@ class CSES():
         self.load_EFD_ELF(**kwargs)
 
     def load_CSES(self, subset = None, get_PSD = False, \
-        instrument = 'EFD', frequency = 'ULF',keep_verse_time = True,instrument_no=None, **kwargs):
+        instrument = 'EFD', frequency = 'ULF',keep_verse_time = True,instrument_no=None,\
+        load_RAW = False, **kwargs):
         """
         Load desired data from CSES instrument using CSES_load (see CSES_core.py)
         """
@@ -689,10 +690,15 @@ class CSES():
             if not hasattr(self.aux,dsetname): 
                 self.aux[dsetname] = {}
 
+        if load_RAW:
+            if not hasattr(self,'data_raw'):
+                self.data_raw = AttrDict()
+        
         self.find_files_to_load(instrument,frequency,instrument_no,unique=True)
         
         files = self.check_if_loaded(instrument,frequency)
         #files = self.files[dsetname] 
+
 
         for ifile in files:
             
@@ -704,40 +710,47 @@ class CSES():
             #    ifile = self.search_file(orbitn=infos['orbitn'],instrument='EFD')[0]
             
             ipath = self.get_file_path(ifile)
-
+            
             print('loading file: '+msg.INFO(ipath+ifile))
-            if get_PSD:
-                res, aux = CSES_load_PSD(ifile,ipath,**kwargs)
+            if load_RAW:
+                df = load_CSES_raw(ipath+ifile, convert_names = True)
+                if dsetname not in self.data_raw.keys():
+                    self.data_raw[dsetname] = [df]
+                else:
+                    self.data_raw[dsetname].append(df)
             else:
-                df, aux = CSES_load(ifile, path = ipath,\
-                    return_pandas = True,\
-                    keep_verse_time = keep_verse_time, **kwargs)
+                if get_PSD:
+                    res, aux = CSES_load_PSD(ifile,ipath,**kwargs)
+                else:
+                    df, aux = CSES_load(ifile, path = ipath,\
+                        return_pandas = True,\
+                        keep_verse_time = keep_verse_time, **kwargs)
 
             
-            if subset is not None:
-                for Cond in subset:
-                   df = df[Cond[1](df[Cond[0]],Cond[2])] 
+                if subset is not None:
+                    for Cond in subset:
+                       df = df[Cond[1](df[Cond[0]],Cond[2])] 
 
-            if get_PSD:
-                dsetname += '_psd'
-                if dsetname not in self.data.keys():
-                    self.data[dsetname] = df.copy()
-                    self.data[dsetname+'_freq'] = aux['FREQ']
-                    del df
+                if get_PSD:
+                    dsetname += '_psd'
+                    if dsetname not in self.data.keys():
+                        self.data[dsetname] = df.copy()
+                        self.data[dsetname+'_freq'] = aux['FREQ']
+                        del df
+                    else:
+                        self.data[dsetname].append(df)
+                    self.aux[dsetname][infos['orbitn']]= aux
                 else:
-                    self.data[dsetname].append(df)
-                self.aux[dsetname][infos['orbitn']]= aux
-            else:
-                if dsetname not in self.data.keys():
-                    self.data[dsetname] = df.copy()
-                    del df
-                else:
-                    self.data[dsetname] = pd.concat([self.data[dsetname],df])
-                self.aux[dsetname][infos['orbitn']]= aux
-            
-            self.aux[dsetname]['instrument'] = instrument
-            self.aux[dsetname]['frequency'] = frequency
-            self.aux[dsetname]['instrument_no'] = instrument_no
+                    if dsetname not in self.data.keys():
+                        self.data[dsetname] = df.copy()
+                        del df
+                    else:
+                        self.data[dsetname] = pd.concat([self.data[dsetname],df])
+                    self.aux[dsetname][infos['orbitn']]= aux
+                
+                self.aux[dsetname]['instrument'] = instrument
+                self.aux[dsetname]['frequency'] = frequency
+                self.aux[dsetname]['instrument_no'] = instrument_no
 ################################################################################
 ############################### PLOTTING TOOLS #################################
 ################################################################################

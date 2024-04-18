@@ -25,7 +25,7 @@ from .CSES_aux import *
 from .CSES_raw import *
 
 def CSES_load(filename,path='./', return_pandas = False,
-            with_mag_coords = False,keep_verse_time = True, fill_missing=None):
+            with_mag_coords = False,keep_verse_time = True, fill_missing=None, load_RAW = False):
     """
     Generic method to read any CSES data product, info to read properly the hdf5 file are 
     saved in CSES_DATASETS in CSES_aux
@@ -129,6 +129,11 @@ def CSES_load(filename,path='./', return_pandas = False,
     Utime = fil['UTC_TIME'][...]
     
     fil.close()
+    
+    #fixing bad jumps in orbital position
+    lont,latt = fix_lonlat(pos['lon'],pos['lat'],Vtime)
+    pos['lon'] = lont; pos['lat'] = latt
+    del lont,latt
     
     #convert from CSES date (VERSE_TIME) to standard date
     vt0_utc, utc = datenum(2009,1,1,utc = str(Utime[0][0]))    #CSES initial time
