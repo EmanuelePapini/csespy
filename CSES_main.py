@@ -171,12 +171,14 @@ class CSES():
 
         self.files[instrument+'_'+frequency] = uniquefy(self.files[instrument+'_'+frequency])
     
-    def check_if_loaded(self,instrument,frequency):
-        
+    def check_if_loaded(self,instrument,frequency,load_RAW=False):
+       
+        datastr = 'data_raw' if load_RAW else 'data'
+
         dsetname = instrument+'_'+frequency
-        if not hasattr(self,'data'): return self.files[dsetname] 
+        if not hasattr(self,datastr): return self.files[dsetname] 
             
-        if dsetname not in self.data : return self.files[dsetname]
+        if dsetname not in getattr(self,datastr) : return self.files[dsetname]
 
         if dsetname not in self.files : 
             msg.error('self.find_files_to_load must be run before self.check_if_loaded')
@@ -696,7 +698,7 @@ class CSES():
         
         self.find_files_to_load(instrument,frequency,instrument_no,unique=True)
         
-        files = self.check_if_loaded(instrument,frequency)
+        files = self.check_if_loaded(instrument,frequency,load_RAW=load_RAW)
         #files = self.files[dsetname] 
 
 
