@@ -1069,7 +1069,7 @@ def get_CHAOSmag(df,as_output = True,ref_frame='ecef',chaosfile=None):
     df : pandas.Dataframe
         dataframe containing latitude, longitude, altitude, and time ('lat','lon','alt','time')
     """
-    import chaosmagpy as chaos
+    from . import chaosmagpy as chaos
 
     if chaosfile is None:
         import os

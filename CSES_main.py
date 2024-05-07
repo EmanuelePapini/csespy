@@ -1123,7 +1123,9 @@ class CSES():
         
         orbitn = self.orbitn if type(self.orbitn) is str else self.orbitn[0]+'-'+self.orbitn[-1]
         if filename is None: filename = dataset_name+'_'+orbitn+'.h5'
-
+        
+        msg.info('saving '+dataset_name+' DataFrame to '+filepath+filename+'...')
+        
         dats = self.data[dataset_name].copy()
         idx = {'time':(dats.index.values.astype(float)-dats.index.values.astype(float)[0])/1e9,'t0':str(dats.index[0])}
         del dats['time']
