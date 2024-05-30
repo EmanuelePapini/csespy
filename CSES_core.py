@@ -116,7 +116,7 @@ def CSES_load(filename,path='./', return_pandas = False,
                             for i in fldtags if i in fil}
             fldtags = {i:fldtags[i] for i in fldtags if i in fil}
     data =  {fldtags[i]:fil[i][...] for i in fldtags}
-    pos = {CSES_POSITION[i]:fil[i][...] for i in CSES_POSITION}
+    pos = {CSES_POSITION[i]:fil[i][...] for i in CSES_POSITION if i in fil}
 
     ms, ns = dshape = data[[fldtags[i] for i in fldtags][0]].shape
 
@@ -366,7 +366,7 @@ def CSES_load_PSD(filename,path='./', return_xarray = False,
 
     
     data = {i:data[i] for i in data} 
-    data.update(pos1)
+    #data.update(pos1)
     data['time'] = time1.flatten()
     data['frequency'] = freqs
     if return_xarray:
