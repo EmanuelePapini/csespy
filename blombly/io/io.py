@@ -1,6 +1,7 @@
 import numpy as np
 from ..tools.objects import Dict_to_AttrDict
 import flammkuchen as fl
+from . import msg
 import h5py 
 
 def write_h5(*args,**kwargs):
@@ -34,19 +35,19 @@ def load_h5(filename,**kwargs):
     
     return out
 
-def save_dataframe_to_h5(filename,df,index=None,**kwargs):
+def save_dataframe_to_h5(filename,df,group='/',index=None,**kwargs):
 
     fil = h5py.File(filename,**kwargs)
 
     try:
         for i in df.keys():
             if type(df[i].values[0]) == np.bool_:
-                fil.create_dataset(i,data=df[i].values.astype(int))
+                fil.create_dataset(group+i,data=df[i].values.astype(int))
             else:
-                fil.create_dataset(i,data=df[i].values)
+                fil.create_dataset(group+i,data=df[i].values)
         if type(index) == dict:
             for i in index:
-                fil.create_dataset(i,data=index[i])
+                fil.create_dataset(group+i,data=index[i])
     except:
         print("unable to save dataframe to file, please find the mistake!")
     fil.close()
@@ -55,9 +56,9 @@ def save_dataframe_to_h5(filename,df,index=None,**kwargs):
 #taken directly from stack overflow 
 #https://codereview.stackexchange.com/questions/120802/recursively-save-python-dictionaries-to-hdf5-files-using-h5py/121308
 
-def save_dict_to_hdf5(dic, filename):
+def save_dict_to_hdf5(dic, filename,mode = 'w',**kwargs):
 
-    with h5py.File(filename, 'w') as h5file:
+    with h5py.File(filename, mode = mode,**kwargs) as h5file:
         try:
             recursively_save_dict_contents_to_group(h5file, '/', dic)
         except:
@@ -81,20 +82,26 @@ def recursively_save_dict_contents_to_group( h5file, path, dic):
     if not isinstance(h5file, h5py._hl.files.File):
         raise ValueError("must be an open h5py file")
     # save items to the hdf5 file
-    for key, item in dic.items():
+    print([key for key,item in dic.items()])
+    for skey in dic.keys():
         #print(key,item)
-        key = str(key)
+        item = dic[skey]
+        key = str(skey)
+        print(key,type(item))
         if isinstance(item, list):
             item = np.array(item)
             #print(item)
-        if not isinstance(key, str):
-            raise ValueError("dict keys must be strings to save to hdf5")
+        #if not isinstance(key, str):
+        #    raise ValueError("dict keys must be strings to save to hdf5")
         # save strings, numpy.int64, and numpy.float64 types
         if isinstance(item, (np.int64, np.float64, str, np.float, float, np.float32,int)):
-            #print( 'here' )
-            h5file[path + key] = item
-            if not h5file[path + key].value == item:
-                raise ValueError('The data representation in the HDF5 file does not match the original dict.')
+            print( 'here',key )
+            h5file.create_dataset(path + key,data = item)
+            print( 'still here',key )
+
+            if not np.array_equal(h5file[path + key], item):
+                msg.warning('Dataset <'+path+key+'> written on HDF5, but the data representation in the HDF5 file does not match the original dict.')
+                #raise ValueError('The data representation in the HDF5 file does not match the original dict.')
         #save datetime as list of timestamps
         elif str(type(item)) =="<class 'pandas.core.indexes.datetimes.DatetimeIndex'>":
             h5file[path + key] = np.array([i.timestamp() for i in item])
@@ -103,27 +110,48 @@ def recursively_save_dict_contents_to_group( h5file, path, dic):
         elif isinstance(item,(np.bool_,bool)):
             #print( 'here' )
             h5file[path + key] = int(item)
-            if not h5file[path + key].value == item:
+            if not np.array_equal(h5file[path + key], item):
                 raise ValueError('The data representation in the HDF5 file does not match the original dict.')
         # save numpy arrays
         elif isinstance(item, np.recarray):            
             recursively_save_dict_contents_to_group(h5file, path + key + '/', _recarray_to_dict(item))
-        # save dictionaries
+        # save ndarrays
         elif isinstance(item, np.ndarray):            
             try:
-                h5file[path + key] = item
+                h5file.create_dataset(path + key, data = item)
             except:
                 item = np.array(item).astype('|S9')
                 h5file[path + key] = item
             if not np.array_equal(h5file[path + key], item):
-                raise ValueError('The data representation in the HDF5 file does not match the original dict.')
+                #print(np.array_equal(h5file[path + key], item))
+                #print(path+key)
+                #print(h5file[path+key].shape)
+                #print(np.shape(item))
+                #print('ciao3')
+                msg.warning('Dataset <'+path+key+'> written on HDF5, but the data representation in the HDF5 file does not match the original dict.')
         # save dictionaries
         elif isinstance(item, dict):
             recursively_save_dict_contents_to_group(h5file, path + key + '/', item)
         # other types cannot be saved and will result in an error
+        #save dataframes
+        elif str(type(item)) == "<class 'pandas.core.frame.DataFrame'>":
+            try:
+               for i in item.keys():
+                   #print(i)
+                   if type(item[i].values[0]) == np.bool_:
+                       h5file.create_dataset(path+key+'/'+i,data=item[i].values.astype(int))
+                   else:
+                       h5file.create_dataset(path+key+'/'+i,data=item[i].values)
+               #if type(index) == dict:
+               #    for i in index:
+               #        fil.create_dataset(path+key+'/'+i,data=index[i])
+            except:
+                print("unable to save dataframe to file, please find the mistake!")
+            
         else:
             print(item)
-            raise ValueError('Cannot save key "%s" of  %s type.' % (key,type(item)))
+            print('Cannot save key "%s" of  %s type.' % (key,type(item)))
+        print( 'ola',key )
 
 def recursively_load_dict_contents_from_group( h5file, path): 
 

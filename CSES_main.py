@@ -1117,7 +1117,7 @@ class CSES():
 
 
 ######WRITING TO DATABASES MACHINERY######
-    def save_data_to_h5(self,filepath,dataset_name,filename=None,mode='a',**kwargs):
+    def save_data_to_h5(self,filepath,dataset_name,filename=None,mode='a',return_outputfilepath=False,**kwargs):
 
         from .blombly.io import save_dataframe_to_h5
         
@@ -1127,10 +1127,13 @@ class CSES():
         msg.info('saving '+dataset_name+' DataFrame to '+filepath+filename+'...')
         
         dats = self.data[dataset_name].copy()
-        idx = {'time':(dats.index.values.astype(float)-dats.index.values.astype(float)[0])/1e9,'t0':str(dats.index[0])}
+        
+        idx = {'time':(dats.index.values.astype(float)-dats.index.values.astype(float)[0])/1e9,\
+               't0':datetime_to_versetime(dats.index[0])}
         del dats['time']
-        save_dataframe_to_h5(filepath+filename,dats,index=idx,mode=mode,**kwargs)
-
+        save_dataframe_to_h5(filepath+filename,dats,group=dataset_name+'/',index=idx,mode=mode,**kwargs)
+        if return_outputfilepath:
+            return filepath+filename
     
 ################################################################################
 #########################      AUXILIARY TOOLS         #########################

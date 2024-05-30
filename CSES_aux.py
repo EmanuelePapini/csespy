@@ -42,6 +42,9 @@ def versetime_to_utc(versetime,t0=(2009,1,1)):
 
     return datetime(t0[0],t0[1],t0[2]) + timedelta(milliseconds=versetime)
 
+def datetime_to_versetime(date):
+    """"convert datetime to versetime in seconds"""
+    return (date-datetime(2009,1,1)).total_seconds()
 def datenum(yy,mm,dd, utc = None):
     """
     Convert string to datetime objects
@@ -144,7 +147,20 @@ def find_file(path,search_string ='',extension = '.h5'):
     """
     find all files with a given extension whose name contains the search_string in the path and return them into a list
     """
-    return [i[len(path):] for i in  glob(path+'*'+search_string+'*'+extension)] 
+    return [i[len(path):] for i in  glob(path+'*'+search_string+'*'+extension) if is_valid_CSES_filename(i[len(path):])] 
+
+def is_valid_CSES_filename(filname,thorough = False):
+    """Check whether a given input string is a valid CSES filename"""
+
+    if len(filname) != 66 : return False #first check its length
+    if filname[:4] != 'CSES': return False #check if it begins correctly
+    if filname.count('_') != 11 : return False # check number of underscores
+
+    #OTHER CHECKS CAN BE IMPLEMENTED, BUT I'LL STOP HERE FOR NOW
+    if thorough:
+        if len(parse_CSES_filename(filname)) == 0 : return False
+    
+    return True
 
 def uniquefy(fnames,sort_by='orbitn',keep='longer',check = True):
     """
