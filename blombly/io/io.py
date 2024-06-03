@@ -82,12 +82,12 @@ def recursively_save_dict_contents_to_group( h5file, path, dic):
     if not isinstance(h5file, h5py._hl.files.File):
         raise ValueError("must be an open h5py file")
     # save items to the hdf5 file
-    print([key for key,item in dic.items()])
+    #print([key for key,item in dic.items()])
     for skey in dic.keys():
         #print(key,item)
         item = dic[skey]
         key = str(skey)
-        print(key,type(item))
+        #print(key,type(item))
         if isinstance(item, list):
             item = np.array(item)
             #print(item)
@@ -95,9 +95,9 @@ def recursively_save_dict_contents_to_group( h5file, path, dic):
         #    raise ValueError("dict keys must be strings to save to hdf5")
         # save strings, numpy.int64, and numpy.float64 types
         if isinstance(item, (np.int64, np.float64, str, np.float, float, np.float32,int)):
-            print( 'here',key )
+            #print( 'here',key )
             h5file.create_dataset(path + key,data = item)
-            print( 'still here',key )
+            #print( 'still here',key )
 
             if not np.array_equal(h5file[path + key], item):
                 msg.warning('Dataset <'+path+key+'> written on HDF5, but the data representation in the HDF5 file does not match the original dict.')
@@ -149,9 +149,9 @@ def recursively_save_dict_contents_to_group( h5file, path, dic):
                 print("unable to save dataframe to file, please find the mistake!")
             
         else:
-            print(item)
+            #print(item)
             print('Cannot save key "%s" of  %s type.' % (key,type(item)))
-        print( 'ola',key )
+        #print( 'ola',key )
 
 def recursively_load_dict_contents_from_group( h5file, path): 
 
