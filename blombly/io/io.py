@@ -59,10 +59,10 @@ def save_dataframe_to_h5(filename,df,group='/',index=None,**kwargs):
 def save_dict_to_hdf5(dic, filename,mode = 'w',**kwargs):
 
     with h5py.File(filename, mode = mode,**kwargs) as h5file:
-        try:
-            recursively_save_dict_contents_to_group(h5file, '/', dic)
-        except:
-            h5file.close()
+        #try:
+        recursively_save_dict_contents_to_group(h5file, '/', dic)
+        #except:
+        #h5file.close()
 
 def load_dict_from_hdf5(filename):
 
@@ -94,7 +94,7 @@ def recursively_save_dict_contents_to_group( h5file, path, dic):
         #if not isinstance(key, str):
         #    raise ValueError("dict keys must be strings to save to hdf5")
         # save strings, numpy.int64, and numpy.float64 types
-        if isinstance(item, (np.int64, np.float64, str, np.float, float, np.float32,int)):
+        if isinstance(item, (np.int64, np.float64, str, np.float16, float, np.float32,int)):
             #print( 'here',key )
             h5file.create_dataset(path + key,data = item)
             #print( 'still here',key )
