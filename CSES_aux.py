@@ -42,9 +42,14 @@ def versetime_to_utc(versetime,t0=(2009,1,1)):
 
     return datetime(t0[0],t0[1],t0[2]) + timedelta(milliseconds=versetime)
 
+def utc_to_versetime(date):
+    """"convert datetime to versetime in seconds"""
+    return datetime_to_versetime(date)
+    
 def datetime_to_versetime(date):
     """"convert datetime to versetime in seconds"""
     return (date-datetime(2009,1,1)).total_seconds()
+    
 def datenum(yy,mm,dd, utc = None):
     """
     Convert string to datetime objects
