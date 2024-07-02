@@ -1026,8 +1026,13 @@ class CSES():
         df = self.data[datakey+'_P']
         xx = df['position'].index.values if xaxis == 'time' else df['position'][xaxis].values
 
-        units  = '['+self.aux[datakey][self.orbitn]['units'][fieldkey].decode()+r'$]^2/\mathrm{Hz}$'
-       
+        if fieldkey in self.aux[datakey][self.orbitn]['units'].keys():
+            units  = '['+self.aux[datakey][self.orbitn]['units'][fieldkey].decode()+r'$]^2/\mathrm{Hz}$'
+        elif fieldkey.split('_')[0] in self.aux[datakey][self.orbitn]['units'].keys():
+            units  = '['+self.aux[datakey][self.orbitn]['units'][fieldkey.split('_')[0]].decode()+r'$]^2/\mathrm{Hz}$'
+        else:
+            units = r'[?]^2/\mathrm{Hz}$' 
+
         if vmax is None : vmax = df['psd'][fieldkey].max()
         if vmin is None : vmin = np.percentile(df['psd'][fieldkey],5)
         ims = ax.pcolormesh(xx,df['freq'],df['psd'][fieldkey],cmap=cmap,norm=LogNorm(vmin=vmin,vmax=vmax))
