@@ -54,7 +54,7 @@ class CSES():
 
         self.path = path
         self.files = AttrDict()
-        self.files['input'] = None #THIS IS DEPRECATED AND HAS TO BE REMOVED
+        #self.files['input'] = None #THIS IS DEPRECATED AND HAS TO BE REMOVED
         self.search_string = search_string
         self.orbitn = orbitn
         self.append_data = False
@@ -114,23 +114,26 @@ class CSES():
     def find_files_to_load(self,instrument,frequency,instrument_no,unique=True,verbose=False):
         if self.orbitn is not None:
             if type(self.orbitn) is str:
-                files = self.search_file(orbitn=self.orbitn,instrument=instrument, frequency = frequency, instrument_no = instrument_no)
-                #DONT KNOW WHY  but sometimes there are two files for the same orbit.
+                files = self.search_file(orbitn=self.orbitn,instrument=instrument,\
+                    frequency = frequency, instrument_no = instrument_no)
+                #sometimes there are two files for the same orbit.
                 #In that case, the file with the larger timespan is selected.
                 files = uniquefy(files)
             elif type(self.orbitn) is list:
                 try:
                     files = []
                     for iorbitn in self.orbitn:
-                        ifiles = self.search_file(orbitn=iorbitn,instrument=instrument, frequency = frequency, instrument_no = instrument_no)
-                        #DONT KNOW WHY  but sometimes there are two files for the same orbit.
+                        ifiles = self.search_file(orbitn=iorbitn,instrument=instrument,\
+                            frequency = frequency, instrument_no = instrument_no)
+                        #sometimes there are two files for the same orbit.
                         #In that case, the file with the larger timespan is selected.
                         ifiles = uniquefy(ifiles)
                         [files.append(ifi) for ifi in ifiles]
                 except:
                     raise ValueError('Not all values inside self.orbitn are strings') 
         elif type(self.search_string) is str:
-            files = self.search_file(self.search_string,instrument=instrument, frequency = frequency, instrument_no = instrument_no)
+            files = self.search_file(self.search_string,instrument=instrument,\
+                frequency = frequency, instrument_no = instrument_no)
             if unique: 
                 orbits = [parse_CSES_filename(ifile)['orbitn'] for ifile in files]
                 fdum = []
@@ -142,7 +145,8 @@ class CSES():
             
             timespan = self.timespan+('',) if len(self.timespan) == 2 else self.timespan
             try:
-                files = self.search_file(instrument=instrument, frequency = frequency, instrument_no = instrument_no, timespan = timespan[:-1])
+                files = self.search_file(instrument=instrument, frequency = frequency,\
+                    instrument_no = instrument_no, timespan = timespan[:-1])
                 if unique: 
                     orbits = [parse_CSES_filename(ifile)['orbitn'] for ifile in files]
                     fdum = []
@@ -184,7 +188,8 @@ class CSES():
             msg.error('self.find_files_to_load must be run before self.check_if_loaded')
             return
 
-        orbits_to_load = set([int(parse_CSES_filename(i)['orbitn']) for i in self.files[dsetname]]) -  set(self.data[dsetname].orbitn)
+        orbits_to_load = set([int(parse_CSES_filename(i)['orbitn']) \
+            for i in self.files[dsetname]]) -  set(self.data[dsetname].orbitn)
 
         return [i for i in self.files[dsetname] if int(parse_CSES_filename(i)['orbitn']) in orbits_to_load]
         
@@ -218,16 +223,16 @@ class CSES():
 
     def get_dataset_path(self, instrument='EFD', instrument_no=None, frequency = 'ELF'):
 
-        if self.files.input is None:
-            if type(self.orbitn) is str:
-                files = self.search_file(orbitn=self.orbitn,instrument=instrument,\
-                    instrument_no=instrument_no, frequency = frequency,return_path = True)
-            elif type(self.search_string) is str:
-                files = self.search_file(search_string=self.search_string,instrument=instrument,\
-                    instrument_no=instrument_no, frequency = frequency,return_path = True)
-            else:
-                msg.error('file for the desired dataset not found!')
-                return None
+        #if self.files.input is None:
+        if type(self.orbitn) is str:
+            files = self.search_file(orbitn=self.orbitn,instrument=instrument,\
+                instrument_no=instrument_no, frequency = frequency,return_path = True)
+        elif type(self.search_string) is str:
+            files = self.search_file(search_string=self.search_string,instrument=instrument,\
+                instrument_no=instrument_no, frequency = frequency,return_path = True)
+        else:
+            msg.error('file for the desired dataset not found!')
+            return None
 
         return files
 
@@ -240,38 +245,10 @@ class CSES():
         return self.search_file(orbitn=info['orbitn'], instrument=info['Instrument'],\
             frequency = info['Data Product'], get_file_path = True)[0]
         
-        #if self._unstructured_path_:
-        #    if type(filename) is str:
-        #        return self.path if os.path.exists(self.path+filename) else []
-        #    
-        #    fpath = []
-        #    for ifile in filename:  
-        #        fpath.append(self.path) if os.path.exists(self.path+filename) else fpath.append([])
-        #    return fpath
-
-        #if type(filename) is str:
-        #    info = parse_CSES_filename(filename)
-        #    if info['Instrument'] == 'EFD':
-        #        l2a = '_L2A/'if info['Data Level'] == 'L2A' else '/'
-        #        return self.path+info['Instrument']+'/'+info['year']+'/'+info['Data Product']+l2a+info['month']+'/'
-        #    elif info['Instrument'] == 'SCM':
-        #        l2a = '_L2A/'if info['Data Level'] == 'L2A' else '/'
-        #        return self.path+info['Instrument']+'/'+info['year']+'/'+info['Data Product']+l2a+info['month']+'/'
-
-        #    else: 
-        #        return self.path+info['Instrument']+'/'+info['year']+'/'+info['month']+'/'
-        #
-        #fpath=[]
-        #for ifile in filename:
-        #    info = parse_CSES_filename(ifile)
-        #    if info['Instrument'] == 'EFD' or info['Instrument'] == 'SCM':
-        #        l2a = '_L2A/'if info['Data Level'] == 'L2A' else '/'
-        #        fpath.append(self.path+info['Instrument']+'/'+info['year']+'/'+info['Data Product']+l2a+info['month']+'/')
-        #
-        #return fpath
     
 
-    def search_file(self,search_string ='',orbitn=None, instrument='EFD', instrument_no=None, frequency = 'ELF',return_path = False, timespan = None, get_file_path = False):
+    def search_file(self,search_string ='',orbitn=None, instrument='EFD', instrument_no=None,\
+        frequency = 'ELF',return_path = False, timespan = None, get_file_path = False):
         """
         Search for a file matching the desired string for the desired instrument and frequency
         
@@ -381,36 +358,10 @@ class CSES():
         if not hasattr(self.aux,datakey): 
             self.aux[datakey]={}
 
-        # if self.files.input is None:
-        #     if type(self.orbitn) is str:
-        #         files = self.search_file(orbitn=self.orbitn,instrument='HEP',\
-        #             instrument_no=instrument_no, frequency = '')
-        #     elif type(self.search_string) is str:
-        #         files = self.search_file(self.search_string,instrument='HEP',\
-        #             instrument_no=instrument_no, frequency = '')
-        #     else:
-        #         raise ValueError('not enough input for file search!')
-        #     self.files['HEP'] = files
-
-        # else:
-        #     filess = self.files.input.copy()
-        #     #checking if files are HPM files
-        #     infos = [parse_CSES_filename(ifiles) for ifiles in filess]
-        #     for i,info in enumerate(infos):
-        #         #if the file in the list is not HPM, then it searches for an HPM
-        #         #file in the folders with the same orbit
-        #         if info['Instrument'] != 'HEP':
-        #             files[i] = self.search_file(orbitn=info['orbitn'],instrument='HEP',\
-        #             instrument_no=instrument_no, frequency = '')[0]
-        #     self.files['HEP'] = files
-
-        # if unique : files = uniquefy(files) 
         self.find_files_to_load(instrument,frequency,instrument_no,unique=True)
         
         files = self.check_if_loaded(instrument,frequency)
-        #files = self.files[dsetname] 
 
-        #for ifile,ipath in zip(files,fpaths):
         for ifiles in files:
             
             infos = parse_CSES_filename(ifiles)
@@ -463,77 +414,10 @@ class CSES():
         """
         
         self.load_CSES(instrument='HPM',frequency='FGM1Hz',subset=subset,keep_verse_time = keep_verse_time,**kwargs)
-        #import pandas as pd
-        #from glob import glob
-        #from .blombly.tools.objects import AttrDict
-
-        #if not hasattr(self,'data'): 
-        #    self.data=AttrDict()
-        #if not hasattr(self,'aux'): 
-        #    self.aux=AttrDict()
-        #if not hasattr(self.aux,'hpm'): 
-        #    self.aux.hpm={}
 
 
-        #if self.files.input is None:
-        #    if type(self.orbitn) is str:
-        #        files = self.search_file(orbitn=self.orbitn,instrument='HPM',\
-        #            instrument_no=instrument_no, frequency = '')
-        #    elif type(self.search_string) is str:
-        #        files = self.search_file(self.search_string,instrument='HPM',\
-        #            instrument_no=instrument_no, frequency = '')
-        #    else:
-        #        raise ValueError('not enough input for file search!')
-        #    self.files['HPM'] = files
-        #else:
-        #    filess = self.files.input.copy()
-        #    #checking if files are HPM files
-        #    infos = [parse_CSES_filename(ifiles) for ifiles in filess]
-        #    for i,info in enumerate(infos):
-        #        #if the file in the list is not HPM, then it searches for an HPM
-        #        #file in the folders with the same orbit
-        #        if info['Instrument'] != 'HPM':
-        #            files[i] = self.search_file(orbitn=info['orbitn'],instrument='HPM',\
-        #            instrument_no=instrument_no, frequency = '')[0]
-        #    self.files['HPM'] = files
-  
-
-        #if unique : files = uniquefy(files) 
-
-        ##for ifile,ipath in zip(files,fpaths):
-        #for ifiles in files:
-        #    
-        #    infos = parse_CSES_filename(ifiles)
-        #    
-        #    if infos['Instrument'] == 'HPM':
-        #        ifile = ifiles
-        #    else:
-        #        ifile = self.search_file(orbitn=infos['orbitn'],instrument='HPM',instrument_no=instrument_no)[0]
-        #    
-        #    ipath = self.get_file_path(ifile)
-        #    
-        #    print('loading HPM file: '+msg.INFO(ipath+ifile))
-        #    res, aux = HPM_load(ifile,ipath,**kwargs)
-
-        #    index = pd.to_timedelta( res['time'] - res['time'][0],unit='sec') + aux['UTC']
-        #    df = pd.DataFrame(res,index=index)
-        #    if not keep_verse_time : df.drop('time',axis='columns',inplace=True)
-        #    df['orbitn'] = int(infos['orbitn'])
-        #    
-        #    if subset is not None:
-        #        for Cond in subset:
-        #           df = df[Cond[1](df[Cond[0]],Cond[2])] 
-
-
-        #    if 'hpm' not in self.data.keys():
-        #        self.data.HPM = df.copy()
-        #        del df
-        #    else:
-        #        self.data.HPM = self.data.HPM.append(df)
-
-        #    self.aux.hpm[infos['orbitn']]= aux
-
-    def load_EFD_ELF(self, subset = None, get_PSD = False, keep_verse_time = True, versetime_to_datetime = False, **kwargs):
+    def load_EFD_ELF(self, subset = None, get_PSD = False, keep_verse_time = True,\
+        versetime_to_datetime = False, **kwargs):
         """
         This method is kept for legacy reasons. Now is simply a wrapper that calls
         CSES.load_CSES(instrument='EFD',frequency='ELF')
@@ -556,98 +440,6 @@ class CSES():
                 df.drop('time',axis='columns',inplace=True)
                 df['time'] = df.index.to_pydatetime()
         
-        #import pandas as pd
-        #from glob import glob
-        #from .blombly.tools.objects import AttrDict
-
-        #if not hasattr(self,'data'): 
-        #    self.data=AttrDict()
-        #if not hasattr(self,'aux'): 
-        #    self.aux=AttrDict()
-        #if get_PSD:
-        #    if not hasattr(self.aux,'efd_psd'): 
-        #        self.aux.efd_psd={}
-        #else:
-        #    if not hasattr(self.aux,'efd'): 
-        #        self.aux.efd={}
-
-
-        #if self.files.input is None:
-        #    if type(self.orbitn) is str:
-        #        files = self.search_file(orbitn=self.orbitn,instrument='EFD', frequency = 'ELF')
-        #        #DONT KNOW WHY  but sometimes there are two files for the same orbit.
-        #        #In that case, the file with the larger timespan is selected.
-        #        files = uniquefy(files) 
-        #        #if len(files)>1:
-        #        #    inf = [parse_CSES_filename(ifile) for ifile in files]
-        #        #    inf = [i['t_end']-i['t_start'] for i in inf]
-        #        #    files = [files[np.argmax(inf)]]
-        #    elif type(self.search_string) is str:
-        #        files = self.search_file(self.search_string,instrument='EFD', frequency = 'ELF')
-        #    else:
-        #        raise ValueError('not enough input for file search!')
-        #    self.files['EFD'] = files
-        #else:
-        #    filess = self.files.input.copy()
-        #    files=[]
-        #    #checking if files are EFD files
-        #    infos = [parse_CSES_filename(ifiles) for ifiles in filess]
-        #    for i,info in enumerate(infos):
-        #        if info['Instrument'] == 'EFD' and info['Data Product'] == 'ELF':
-        #            files.append(filess[i])
-        #            #files[i] = self.search_file(orbitn=info['orbitn'],instrument='EFD',\
-        #            #instrument_no=instrument_no, frequency = '')[0]
-        #    self.files['EFD'] = files
-        #
-
-        ##fpaths = self.get_file_path(files)
-        ##for ifile,ipath in zip(files,fpaths):
-        #for ifiles in files:
-        #    
-        #    infos = parse_CSES_filename(ifiles)
-        #    
-        #    if infos['Instrument'] == 'EFD':
-        #        ifile = ifiles
-        #    else:
-        #        ifile = self.search_file(orbitn=infos['orbitn'],instrument='EFD')[0]
-        #    
-        #    ipath = self.get_file_path(ifile)
-
-        #    print('loading EFD file: '+msg.INFO(ipath+ifile))
-        #    if get_PSD:
-        #        res, aux = EFD_load_ELF_PSD(ifile,ipath,**kwargs)
-        #    else:
-        #        res, aux = EFD_load_ELF(ifile,ipath,**kwargs)
-
-        #    index = pd.to_timedelta( res['time'] - res['time'][0],unit='sec') + aux['UTC']
-        #    df = pd.DataFrame(res,index=index)
-        #    
-        #    if not keep_verse_time : 
-        #        df.drop('time',axis='columns',inplace=True)
-        #    elif versetime_to_datetime:
-        #        df.drop('time',axis='columns',inplace=True)
-        #        df['time'] = df.index.to_pydatetime()
-
-        #    if subset is not None:
-        #        for Cond in subset:
-        #           df = df[Cond[1](df[Cond[0]],Cond[2])] 
-
-        #    if get_PSD:
-        #        if 'EFD_ELF_PSD' not in self.data.keys():
-        #            self.data.EFD_ELF_PSD = df.copy()
-        #            self.data.EFD_ELF_PSD_freq = aux['FREQ']
-        #            del df
-        #        else:
-        #            self.data.EFD_PSD.append(df)
-        #        self.aux.efd_psd[infos['orbitn']]= aux
-        #    else:
-        #        if 'EFD_ELF' not in self.data.keys():
-        #            self.data['EFD_ELF'] = df.copy()
-        #            del df
-        #        else:
-        #            self.data.EFD = pd.concat([self.data.EFD,df])
-        #        self.aux.efd[infos['orbitn']]= aux
-    
     def load_EFD(self,**kwargs):
         """
         Warning: The use of load_EFD is DEPRECATED! For historical reasons (compatibility) it can still be used
@@ -706,11 +498,6 @@ class CSES():
             
             infos = parse_CSES_filename(ifile)
             
-            #if infos['Instrument'] == 'EFD':
-            #    ifile = ifiles
-            #else:
-            #    ifile = self.search_file(orbitn=infos['orbitn'],instrument='EFD')[0]
-            
             ipath = self.get_file_path(ifile)
             
             print('loading file: '+msg.INFO(ipath+ifile))
@@ -758,7 +545,8 @@ class CSES():
 ################################################################################
 
 
-    def plot_EFD(self,xaxis = 'lat', xlabel=None,modulus = False, keys = ['Ex','Ey','Ez'],ax = None,fig = None,twiny = True, frequency='ELF',ion=False):
+    def plot_EFD(self,xaxis = 'lat', xlabel=None,modulus = False, keys = ['Ex','Ey','Ez'],\
+        ax = None,fig = None,twiny = True, frequency='ELF',ion=False):
         from .blombly import pylab as plt
         cols = plt.rcParams['axes.prop_cycle'].by_key()['color'] #colors
         ncol=len(cols) 
@@ -994,20 +782,7 @@ class CSES():
                 ax2 = ax.twiny()
                 ax2.plot(yy,np.zeros(len(yy)),linestyle=None,linewidth = 0)
                 ax2.set_xlabel(secondary_xaxis)
-            #if secondary_xaxis in df.keys():
-            #    from scipy.interpolate import interp1d    
-            #    from matplotlib.ticker import AutoMinorLocator
-            #    yy = df[secondary_xaxis].values if secondary_xaxis != 'time' else df.index.values
-
-            #    fowr = interp1d(xx,yy,fill_value='extrapolate')
-            #    invr = interp1d(yy,xx,fill_value='extrapolate')
-
-            #    #print(fowr(xx[0]),fowr(xx[-1]))
-            #    #print(invr(yy[0]),invr(yy[-1]))
-            #    ax.tick_params(axis='x',top=False,which='both')
-            #    secax = ax.secondary_xaxis('top',functions=(fowr,invr))
-            #    #secax.xaxis.set_minor_locator(AutoMinorLocator())
-            #    secax.set_xlabel(secondary_xaxis) 
+            
             print("last")
         ax.legend(loc='upper right')
         if xlabel is not None:
@@ -1196,12 +971,10 @@ class CSES():
         else:
             x,y,z = convert_GPS_to_ECEF(data.lat.values,data.lon.values,data.alt.values)
             vx = deriv(x,t); vy = deriv(y,t); vz = deriv(z,t)
-            #vx = np.diff(x)/t; vy = np.diff(y)/t; vz = np.diff(z)/t
 
         if ref_frame == 'wgs84_spherical' or ref_frame == 'geo':
             
             x,y,z = convert_GPS_to_ECEF(data.lat.values,data.lon.values,data.alt.values)
-            #vx = np.diff(x)/t; vy = np.diff(y)/t; vz = np.diff(z)/t
             #now converting to vlat, -vr, and vphi
             cost = (z /np.sqrt(x**2+y**2+z**2))#[:-1]
             sint = np.sqrt(1-cost**2)
