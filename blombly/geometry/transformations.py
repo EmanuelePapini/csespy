@@ -159,10 +159,10 @@ def get_transform_matrix_car2sph(x,y,z):
     given the coordinates (x,y,z) of the application point of the vector
     """
 
-    r = np.sqrt(x**2+y**2+z**2)
+    r = np.sqrt( x**2 + y**2 + z**2 )
     theta = np.arccos(z/r)
     phi = np.arctan2(y,x) 
-    phi[phi<0] = 2*np.pi-phi[phi<0]
+    #phi[phi<0] = 2*np.pi+phi[phi<0]
     sint = np.sin(theta); cost = np.cos(theta);
     sinp = np.sin(phi); cosp = np.cos(phi);
     mat = np.zeros((3,3,theta.size))

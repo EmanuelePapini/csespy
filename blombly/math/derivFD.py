@@ -47,5 +47,5 @@ def derivfield(fld,x=None,axis=0,**kwargs):
             out[:,1:-1] = (dif[:,:-1]/dx[:-1] + dif[:,1:]/dx[1:])/2
             out[:,0] = dif[:,0]/dx[0]
             out[:,-1] = dif[:,-1]/dx[-1]
-        return out
+        return out.transpose(dims)
     
