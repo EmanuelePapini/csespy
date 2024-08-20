@@ -1062,6 +1062,34 @@ class CSES():
         dat['VsxB_x'] = (vsy*Bz - vsz*By)*1e-9 
         dat['VsxB_y'] = (vsz*Bx - vsx*Bz)*1e-9 
         dat['VsxB_z'] = (vsx*By - vsy*Bx)*1e-9
+    
+    def remove_vsxb_drift(self,instrument='EFD',frequency='ELF',overwrite=False):
+        """
+        remove E=vs X B drift from the EFD electric field contained 
+        in self.data[instrument+'_'+frequency], so to allow removal from interpolated
+        instruments
+        the pd dataframe must contain the VsxB_[xyz] fields as given by self.get_vsxb_drift
+        and the E_[xyz] fields. 
+
+        WARNING: the two vector fields must be in the same right-handed orthogonal ref.frame.
+        """
+        datakey = instrument+'_'+frequency
+        efd = self.data[datakey]
+        if any([not hasattr(efd,'VsxB_'+i) for i in ['x','y','z']]):
+            raise ValueError('VsB not found. use self.get_vsxb_drift!')
+        if any([not hasattr(efd,'E'+i) for i in ['x','y','z']]):
+            raise ValueError('E field not found in self.data["'+datakey+'"]!')
+       
+        if overwrite:
+            efd['Ex'] -=efd['VsxB_x']
+            efd['Ey'] -=efd['VsxB_y']
+            efd['Ez'] -=efd['VsxB_z']
+
+        else:
+            efd['Ex_nodrift'] =efd['Ex']-efd['VsxB_x']
+            efd['Ey_nodrift'] =efd['Ey']-efd['VsxB_y']
+            efd['Ez_nodrift'] =efd['Ez']-efd['VsxB_z']
+
 ################################################################################
 #########################some fast diagnostic tool  tbd#########################
 ################################################################################
