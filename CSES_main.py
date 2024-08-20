@@ -49,7 +49,8 @@ class CSES():
         I am now rewriting the class to add reading HPM and SCM data as well
     """
 
-    def __init__(self, path='./',search_string = None,orbitn=None,timespan=None,unstructured_path=False):
+    def __init__(self, path='./',search_string = None,orbitn=None,timespan=None,unstructured_path=False,\
+                 orbit_database_buf = None, database_source = 'pandas-hdf5'):
 
 
         self.path = path
@@ -63,16 +64,26 @@ class CSES():
         self._unstructured_path_ = unstructured_path
         if not unstructured_path: self.check_path()
 
+        if orbit_database_buf is not None:
+            self.load_orbitdb(orbit_database_buf,database_source)
+
+
+    def load_orbitdb(self, orbit_database_buf, database_source = 'pandas-hdf5'):
+        try:
+            self.orbitdb = CSES_database(orbit_database_buf, source = database_source)
+        except:
+            msg.error('Could not load CSES database from '+orbit_database_file+' using source: '+database_source+'.')
 ################################################################################
 ##################### DATASET SELECTION TOOLS ##################################
 ################################################################################
-    def select_data_to_load(self,orbitn = None, search_string = None, timespan = None, append = True):
+    def select_data_to_load(self,orbitn = None, search_string = None, timespan = None,\
+                            latspan = None, lonspan = None, append = True):
         """
         set the data selection method for loading the data (using CSES.load_CSES or other methods)
 
         Data selections are mutually exclusive and ordered in priority
         
-        1) orbitn; 2) search_string; 3) timespan.
+        1) orbitn; 2) search_string; 3) timespan , latspan, lonspan
 
         parameters
         ----------
@@ -85,11 +96,18 @@ class CSES():
             and a string specifying day 'D', night 'N' side or both ''
             
             The two datetime specify the desired time interval to be loaded 
-
+        latspan : 2-elements arraylike
+            latitudinal range of the desired orbit
+        lonspan : 2-elements arraylike
+            longitudinal range of the desired orbit
+        
+        WARNING: both latspan and lonspan require an orbit database to be loaded. If not so, an error will be thrown.
         """
         self.search_string = search_string
         self.orbitn = orbitn
         self.timespan = timespan
+        self.latspan = latspan
+        self.lonspan = lonspan
         self.append_data = append
 
         if not append:
@@ -99,7 +117,36 @@ class CSES():
             if hasattr(self,'data') : 
                 del self.data 
                 del self.aux
-        
+       
+        if latspan is None and lonspan is None:
+            return
+        #Section executed if latlon ranges are given
+        if orbitn is None and search_string is None:
+            
+            if not hasattr(self,'orbitdb'):
+                self.latspan = None
+                self.lonspan = None
+                msg.error('Orbit database not loaded! Ignoring input latspan/lonspan...')
+                return
+            
+            csdb = self.orbitdb
+           
+            use_sel_db = False
+            if timespan is not None:
+                orbits = csdb.search_orbit_timespan(timespan, return_orbitn = True, use_selected_db = use_sel_db)
+                use_sel_db = True
+            if latspan is not None:
+                orbits = csdb.search_orbit_lat(latspan, return_orbitn = True, use_selected_db = use_sel_db)
+                use_sel_db = True
+            if lonspan is not None:
+                orbits = csdb.search_orbit_lon(lonspan, return_orbitn = True, use_selected_db = use_sel_db)
+                use_sel_db = True
+
+            self.orbitn = list(orbits)
+
+            if len(self.orbitn) == 0 :
+                msg.warning('Orbit(s) satisfying lon/lat/time constraint NOT FOUND!')
+
     def find_available_files(self,search_string ='',orbitn=None,timespan=None,**kwargs):
         outs = {}
 
@@ -523,11 +570,11 @@ class CSES():
                 if get_PSD:
                     dsetname += '_psd'
                     if dsetname not in self.data.keys():
-                        self.data[dsetname] = df.copy()
+                        self.data[dsetname] = res.copy()
                         self.data[dsetname+'_freq'] = aux['FREQ']
                         del df
                     else:
-                        self.data[dsetname].append(df)
+                        self.data[dsetname].append(res)
                     self.aux[dsetname][infos['orbitn']]= aux
                 else:
                     if dsetname not in self.data.keys():
@@ -540,6 +587,11 @@ class CSES():
                 self.aux[dsetname]['instrument'] = instrument
                 self.aux[dsetname]['frequency'] = frequency
                 self.aux[dsetname]['instrument_no'] = instrument_no
+
+        #resorting dataframe
+        if dsetname in self.data:
+            if type(self.data[dsetname]) is pd.DataFrame:
+                self.data[dsetname].sort_index(inplace=True)
 ################################################################################
 ############################### PLOTTING TOOLS #################################
 ################################################################################
@@ -897,7 +949,7 @@ class CSES():
 
 
 ######WRITING TO DATABASES MACHINERY######
-    def save_data_to_h5(self,filepath,dataset_name,filename=None,mode='a',return_outputfilepath=False,**kwargs):
+    def save_data_to_h5(self,filepath,dataset_name,filename=None,mode='a',return_outputfilepath=False,track_origin=True,**kwargs):
 
         from .blombly.io import save_dataframe_to_h5
         
@@ -911,7 +963,10 @@ class CSES():
         idx = {'time':(dats.index.values.astype(float)-dats.index.values.astype(float)[0])/1e9,\
                't0':datetime_to_versetime(dats.index[0])}
         del dats['time']
-        save_dataframe_to_h5(filepath+filename,dats,group=dataset_name+'/',index=idx,mode=mode,**kwargs)
+        if track_origin:
+            save_dataframe_to_h5(filepath+filename,dats,group=dataset_name+'/',index=idx,mode=mode,**kwargs)
+        else:
+            save_dataframe_to_h5(filepath+filename,dats,group='/',index=idx,mode=mode,**kwargs)
         if return_outputfilepath:
             return filepath+filename
     
@@ -1011,4 +1066,148 @@ class CSES():
 #########################some fast diagnostic tool  tbd#########################
 ################################################################################
     
+class CSES_database():
 
+    methods = {'pandas-hdf5':'load_pd_hdf5'}
+
+    def __init__(self,dbbuf = None, source = 'pandas-hdf5'):
+        """
+        Class for managing of CSES orbit databases
+
+        default initialization assumes an hdf5 file containing a pandas Dataframe of the orbits.
+        Other methods may be implemented.
+
+        parameters
+        ----------
+        dbbuf : obj or str
+            str: file path of the file containing the database
+            obj: buffer of data (e.g. a pd dataframe or an xarray or other) from which to read the database (to be implemented)
+                 WARNING: the right method must be chosen accordingly (see below)
+
+        source: str
+            'pandas': the buffer/file source is/contains a pandas dataframe
+        """
+
+        self.source = source
+        if type(dbbuf) is str: self.dbfile = dbbuf
+
+        self.load_db(dbbuf,source)
+
+    def load_db(self,dbbuf,source):
+        """
+        load database using desired buf/file and source.
+        """
+
+        getattr(self,self.methods[source])(dbbuf)
+
+
+    def load_pd_hdf5(self,dbbuf):
+        
+        import pandas as pd
+        
+        self.db = pd.read_hdf(dbbuf)
+
+    def search_orbit(self,ranges, return_orbitn = True, use_selected_db = False): 
+        """
+        
+        This is a generic method to select a subset of orbits fulfilling the conditions set in ranges (see below).
+
+        parameters
+        ----------
+        ranges = 3-elements tuple or tuple/list of 3-elements tuples with the following structures
+            (('key', boolean_function, comparing value),)
+
+            for example: self.search_orbit([('lat',numpy.greater,44),('lat',numpy.less,48),('lon',numpy.greater,10),('lon',numpy.less,15)]) 
+            will return all orbit numbers of orbits fulfilling the condition "48>latitude > 44" and "15 > longitude > 10".
+
+        return_orbitn : bool
+            if False, then the full database information of the selected orbit is returned.
+            if True, only a list of the orbit numbers fulfilling the conditions set in ranges is returned
+        
+        input_db : None or pandas dataframe
+        """
+        
+        df = self.db if not use_selected_db else self.sel_db
+        
+        for Cond in ranges:
+           df = df[Cond[1](df[Cond[0]],Cond[2])] 
+
+        self.sel_db = df
+
+        #if df.size == 0 : return None
+
+        if not return_orbitn:
+            return df
+        
+        return np.unique(df.orbitn)
+
+    def search_orbit_lat(self,lat,**kwargs):
+        """
+        find all available orbits in given latitude range
+        """
+
+        return self.search_orbit([('lat',np.greater,np.min(lat)),('lat',np.less,np.max(lat))],**kwargs)
+    
+    def search_orbit_lon(self,lon,**kwargs):
+        """
+        find all available orbits in given latitude range
+        """
+
+        return self.search_orbit([('lon',np.greater,np.min(lon)),('lon',np.less,np.max(lon))],**kwargs)
+
+
+    def search_orbit_latlon(self,lat,lon,**kwargs):
+        """
+        find all available orbits in given latitude and longitude ranges
+        """
+
+        return self.search_orbit([('lat',np.greater,np.min(lat)),('lat',np.less,np.max(lat)),\
+                                  ('lon',np.greater,np.min(lon)),('lon',np.less,np.max(lon))],**kwargs)
+
+    def search_orbit_timespan(self,timespan, return_orbitn = True, use_selected_db = False):
+        """
+        find all available orbits in given temporal range
+        """
+
+        df = self.db if not use_selected_db else self.sel_db
+
+        mask = (df.index > timespan[0]) * (df.index < timespan[1])
+
+        self.sel_db = df[mask]
+        
+        if self.sel_db.size == 0 : return self.sel_db
+
+        if len(timespan)  == 3:
+            if timespan[-1] != '':
+                
+                ND = [i[-1] for i in self.sel_db.orbitn] 
+            
+                if timespan[2] == 'D':
+                    mask = [i == '0' for i in ND]
+                if timespan[2] == 'N':
+                    mask = [i == '1' for i in ND]
+            
+                self.sel_db = self.sel_db[mask]
+
+        if not return_orbitn:
+            return self.sel_db
+
+        return np.unique(self.sel_db.orbitn)
+
+    def search_orbit_latlontimespan(self,lat,lon,timespan, return_orbitn = True, use_selected_db = False):
+        """
+        self explaining
+        """
+
+        df = self.db if not use_selected_db else self.sel_db
+
+        df = self.search_orbit_latlon(lat,lon,return_orbitn = False)
+
+        if df.size == 0: return df
+
+        df = self.search_orbit_timespan(timespan,use_selected_db = True)
+
+        if return_orbitn: 
+            return np.unique(self.sel_db.orbitn)
+
+        return self.sel_db
