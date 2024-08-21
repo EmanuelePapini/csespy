@@ -16,8 +16,8 @@ csdb.search_orbit_latlontimespan([20,22],[-10,-8],[t0,t1])#,use_selected_db=True
 cses_init
 import numpy
 
-t0 = datetime(2018,8,11)
-t1 = datetime(2018,8,22)
+t0 = datetime(2023,6,11)
+t1 = datetime(2023,6,11,2)
 css= csespy.CSES(path=fpath, orbit_database_buf = 'CSES01_orbitdb.h5')
 
 css.select_data_to_load(timespan=(t0,t1,'N'),latspan=[10,20],lonspan=[0,10])

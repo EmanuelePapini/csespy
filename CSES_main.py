@@ -72,7 +72,7 @@ class CSES():
         try:
             self.orbitdb = CSES_database(orbit_database_buf, source = database_source)
         except:
-            msg.error('Could not load CSES database from '+orbit_database_file+' using source: '+database_source+'.')
+            msg.error('Could not load CSES database from '+orbit_database_buf+' using source: '+database_source+'.')
 ################################################################################
 ##################### DATASET SELECTION TOOLS ##################################
 ################################################################################
