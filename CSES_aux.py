@@ -363,16 +363,24 @@ def fif_lowfilter(flds,MM,returnIMCs=False):
 #################################################################################
 
 def fix_lonlat(lons,lats,times):
-    from scipy.interpolate import splrep,splev
+    from scipy.interpolate import splrep,splev,interp1d
     time = times.flatten()
     dt = np.diff(time)
     lon = lons.flatten()
     lat = lats.flatten()
     mm = np.zeros(len(lat),dtype=bool)
+    
+    #fix_zero_diff = lambda x : np.interp(np.arange(np.size(x)),np.unique(x,return_index=True)[1],np.unique(x))
+    fix_zero_diff = lambda x : interp1d(np.unique(x,return_index=True)[1],np.unique(x),fill_value='extrapolate')(np.arange(np.size(x)))
+    if any(np.diff(lat)==0) : lat = fix_zero_diff(lat)
+    if any(np.diff(lon)==0) : lon = fix_zero_diff(lon)
     if np.median(np.diff(lat)) < 0:
+        #descending orbit (day side)
         mm[1:-1] = ~((lat[1:-1]>lat[2::])*(lat[1:-1]<lat[0:-2]))
     else:
+        #ascending orbit (night side)
         mm[1:-1] = ~((lat[1:-1]<lat[2::])*(lat[1:-1]>lat[0:-2]))
+    
     if np.sum(mm) > 0:
        tck = splrep(time[~mm],lat[~mm])
        lat[mm] = splev(time[mm],tck)
