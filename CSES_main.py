@@ -662,7 +662,7 @@ class CSES():
             [plt.plot(hd[hd.orbitn==i][xaxis],hd[hd.orbitn==i].Bz,color='blue') for i in set(hd.orbitn)]
 
 
-    def plot_orbit(self,instrument,frequency,x='lat',y='lon',basemap = None, fig = None, ax = None,profile = 'default',overplot_continents = True,ion=True,show=True):
+    def plot_orbit(self,instrument,frequency,y='lat',x='lon',basemap = None, fig = None, ax = None,profile = 'default',overplot_continents = True,ion=True,show=True):
         """
         Plot the orbit of the loaded instrument_frequency on the worldmap, using CSES_aux.plot_orbit
 
@@ -700,10 +700,11 @@ class CSES():
 
         pltkwargs = ORBIT_PLOT_TEMPLATES[profile] if type(profile) is str else profile
         
-        fig,ax,mm = plot_orbit(df[x].values,df[y].values, basemap = basemap, fig = fig, ax = ax,ion=ion,show=show,**pltkwargs)
+        fig,ax,mm = plot_orbit(df[y].values,df[x].values, basemap = basemap, fig = fig, ax = ax,ion=ion,show=show,**pltkwargs)
 
         if overplot_continents:
-            [imm.drawlsmask() for imm in mm]
+            [imm.fillcontinents() for imm in mm]
+            #[imm.drawlsmask() for imm in mm]
         return fig,ax,mm
 
 
@@ -1239,3 +1240,74 @@ class CSES_database():
             return np.unique(self.sel_db.orbitn)
 
         return self.sel_db
+    
+
+    def plot_orbit(self,df=None,y='lat',x='lon',basemap = None, fig = None, ax = None,\
+        profile = 'default',overplot_continents = True,ion=True,show=True,\
+        annotate_orbitn = True, color = None):
+        """
+        Plot the orbits present in df  in the worldmap, using CSES_aux.plot_orbit
+
+        Parameters
+        ----------
+
+        df : None or pandas dataframe
+            if not None, then it plots the orbit contained in df, otherwise plots 
+            the orbits contained in self.sel_db (if orbits were selected using search_orbit method)
+            or plots all orbits in database.
+
+        basemap : None or Basemap object (optional)
+            if not None, then the input basemap is used.
+
+        fig : None or figure object (optional)
+            if not None, then input figure is used
+            (used if basemap and ax are None).
+
+        ax : None or list of axis objects (optional)
+            if not None, then input axes are used
+            (used if basemap is None).
+
+        profile : str or dict
+            if str, then the key with the desired CSES_aux.plot_orbit kwargs is used.
+            available kwargs are stored in CSES_aux.ORBIT_PLOT_TEMPLATES
+            if dict, then use the input dictionary as kwargs (see CSES_aux.ORBIT_PLOT_TEMPLATES 
+            and CSES_aux.plot_orbit to get an idea of what must go in the dictionary).
+        
+        annotate_orbitn : bool
+            if True, for each orbit, the orbitnumber is annotated at the lowermost (nightside)
+            or uppermost (dayside) orbit point.
+
+        returns:
+
+        fig,ax,mm : figure, axis, and basemap mm objects
+        """
+        from .blombly import pylab as plt
+        
+        if df is None:
+            if hasattr(self,'sel_db'):
+                df = self.sel_db
+            else:
+                df = self.db
+
+        pltkwargs = ORBIT_PLOT_TEMPLATES[profile] if type(profile) is str else profile
+        
+        orbits = set(df.orbitn.values)
+
+        for iorbit in orbits:
+            dff = df[df.orbitn.values == iorbit]
+            fig,ax,basemap = plot_orbit(dff[y].values,dff[x].values, \
+                basemap = basemap, fig = fig, ax = ax,ion=False,show=False,color = color, **pltkwargs)
+            if annotate_orbitn:
+                [axi.annotate(iorbit,[dff[x][0],dff[y][0]*1.1],fontsize=10) for axi in ax]
+
+        if overplot_continents:
+            [imm.fillcontinents() for imm in basemap]
+            #[imm.drawlsmask() for imm in basemap]
+        if ion:
+           plt.ion()
+        else:
+            plt.ioff()
+        if show:
+            plt.show()
+
+        return fig,ax,basemap

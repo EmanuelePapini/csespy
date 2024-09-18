@@ -212,7 +212,7 @@ def plot_orbit(lat,lon, basemap = None, fig = None, ax = None,\
              projection = ['spstere','npstere'],\
              latrange = [[-90,0,15],[0,90,15]],\
              lonrange = [[-180,180,30],[-180,180,30]],\
-             basemap_kwargs = None,pltkwargs={},ion=True,show=True):
+             color = None, basemap_kwargs = None,pltkwargs={},ion=True,show=True):
    
     """
     PURPOSE:
@@ -289,7 +289,9 @@ def plot_orbit(lat,lon, basemap = None, fig = None, ax = None,\
     """
     from mpl_toolkits.basemap import Basemap
     from .blombly import pylab as plt
-    
+    from copy import deepcopy
+    pltkwargs = deepcopy(pltkwargs)
+    if color is not None : pltkwargs['color'] = color
     #axtitle = ('GEO. SOUTHERN HEMISPHERE','GEO. NORTHERN HEMISPHERE') if not aacgm else \
     #          ('MAG. SOUTHERN HEMISPHERE','MAG. NORTHERN HEMISPHERE')
     
