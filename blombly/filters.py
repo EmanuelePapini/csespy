@@ -277,6 +277,7 @@ def fif_lowfilter(f,M,tol = 1e-18, preprocess='extend-periodic', \
     
     from numpy import linalg as LA
     from .prefixed_double_filter import MM
+    MM=np.array(MM)
     def get_mask_v1_1(y, k,verbose,tol):
         """
         Rescale the mask y so that its length becomes 2*k+1.

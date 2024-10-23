@@ -316,12 +316,42 @@ def interp1_jumps(xint,x,y,interval):
     else:
         return interp1(xint,x,yper)
         
+def remove_jumps(y,interval):
+    """
+    if y is a function defined in an domain with interval [a,b] (e.g. from -180 to 180)
+    and y is discontinous , the function removes the jumps 
+    """
+
+    #from numpy import interp as interp1
 
 
+    yper = y.flatten()
 
+    dy = np.diff(yper)
 
+    intdif = interval[1]-interval[0]
 
+    dymed = np.median(np.abs(dy))
+    mask = (dy>dymed)* (dy>intdif*0.51)
+    #print(np.sum(mask))
+    if np.sum(mask) >0:
+        for i in np.where(mask)[0]:
+            yper[i+1:] -= np.sign(dy[i])*intdif
+            
+    return yper 
+        
+def add_jumps(y,interval):
+    """
+    given an input array y, return the array defined in a domain 
+    with interval [a,b] (e.g. from -180 to 180)
+    by adding jumps that bring y in mod(y-a,b-a)+a.
+    i.e. make y leave in a modular set (useful, e.g., to deal with 
+    longitude coordinates jumps between +180 and -180 )
+    """
 
+    intdif = interval[1]-interval[0]
+    
+    return np.mod(y - interval[0],intdif) + interval[0]
 
 
 

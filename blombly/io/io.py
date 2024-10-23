@@ -35,19 +35,23 @@ def load_h5(filename,**kwargs):
     
     return out
 
-def save_dataframe_to_h5(filename,df,group='/',index=None,**kwargs):
+def save_dataframe_to_h5(filename,df,group='/',index=None,compression='gzip',\
+    compression_opts=9,**kwargs):
 
     fil = h5py.File(filename,**kwargs)
 
     try:
         for i in df.keys():
             if type(df[i].values[0]) == np.bool_:
-                fil.create_dataset(group+i,data=df[i].values.astype(int))
+                fil.create_dataset(group+i,data=df[i].values.astype(int),\
+                compression=compression,compression_opts=compression_opts)
             else:
-                fil.create_dataset(group+i,data=df[i].values)
+                fil.create_dataset(group+i,data=df[i].values,\
+                compression=compression,compression_opts=compression_opts)
         if type(index) == dict:
             for i in index:
-                fil.create_dataset(group+i,data=index[i])
+                fil.create_dataset(group+i,data=index[i],\
+                compression=compression,compression_opts=compression_opts)
     except:
         print("unable to save dataframe to file, please find the mistake!")
     fil.close()

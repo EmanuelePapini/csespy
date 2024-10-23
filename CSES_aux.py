@@ -366,6 +366,10 @@ def fif_lowfilter(flds,MM,returnIMCs=False):
 
 def fix_lonlat(lons,lats,times):
     from scipy.interpolate import splrep,splev,interp1d
+    from scipy.signal import argrelextrema
+    from scipy.ndimage import uniform_filter1d as running_avg
+    from .blombly.math.derivFD import derivfield as deriv #central finite differences derivative 
+    from .blombly.tools.arrays import remove_jumps,add_jumps
     time = times.flatten()
     dt = np.diff(time)
     lon = lons.flatten()
@@ -376,26 +380,152 @@ def fix_lonlat(lons,lats,times):
     fix_zero_diff = lambda x : interp1d(np.unique(x,return_index=True)[1],np.unique(x),fill_value='extrapolate')(np.arange(np.size(x)))
     if any(np.diff(lat)==0) : lat = fix_zero_diff(lat)
     if any(np.diff(lon)==0) : lon = fix_zero_diff(lon)
-    if np.median(np.diff(lat)) < 0:
-        #descending orbit (day side)
-        mm[1:-1] = ~((lat[1:-1]>lat[2::])*(lat[1:-1]<lat[0:-2]))
-    else:
-        #ascending orbit (night side)
-        mm[1:-1] = ~((lat[1:-1]<lat[2::])*(lat[1:-1]>lat[0:-2]))
     
-    if np.sum(mm) > 0:
-       tck = splrep(time[~mm],lat[~mm])
-       lat[mm] = splev(time[mm],tck)
+    #CHECK if orbit is on the polar cap
+    split_coord = split_orbit(lat,lon,times,return_index = True)
+    if len(split_coord[1]) > 1 : 
+        idx,otype = split_coord 
+        idx[-1]-=1
+        #idx:split orbit ranges indices
+        #otype: orbit type (ascending or descending)
+        for i in range(len(otype)):
+            if otype[i] == 0:
+                #descending orbit (day side)
+                mm[idx[i]+1:idx[i+1]] = ~((lat[idx[i]+1:idx[i+1]]>lat[idx[i]+2:idx[i+1]+1])*(lat[idx[i]+1:idx[i+1]]<lat[idx[i]:idx[i+1]-1]))
+            else:
+                #ascending orbit (night side)
+                mm[idx[i]+1:idx[i+1]] = ~((lat[idx[i]+1:idx[i+1]]<lat[idx[i]+2:idx[i+1]+1])*(lat[idx[i]+1:idx[i+1]]>lat[idx[i]:idx[i+1]-1]))
+        
+        if np.sum(mm) > 0:
+           tck = splrep(time[~mm],lat[~mm])
+           lat[mm] = splev(time[mm],tck)
 
-    mm = np.zeros(len(lon),dtype=bool)
-    dalon = np.abs(np.diff(lon))
-    mjumps = (dalon>350)*(dalon<360)
-    if np.median(np.diff(lon)) < 0:
-        mm[1:-1] = ~((lon[1:-1]>lon[2::])*(lon[1:-1]<lon[0:-2]))
     else:
-        mm[1:-1] = ~((lon[1:-1]<lon[2::])*(lon[1:-1]>lon[0:-2]))
-    mm[1:][mjumps] = False
-    if np.sum(mm) > 0:
-       tck = splrep(time[~mm],lon[~mm])
-       lon[mm] = splev(time[mm],tck)
+        if np.median(np.diff(lat)) < 0:
+            #descending orbit (day side)
+            mm[1:-1] = ~((lat[1:-1]>lat[2::])*(lat[1:-1]<lat[0:-2]))
+        else:
+            #ascending orbit (night side)
+            mm[1:-1] = ~((lat[1:-1]<lat[2::])*(lat[1:-1]>lat[0:-2]))
+    
+        if np.sum(mm) > 0:
+           tck = splrep(time[~mm],lat[~mm])
+           lat[mm] = splev(time[mm],tck)
+
+    
+    #doing the same for longitude
+    lon = remove_jumps(lon,np.array([-180,180]))
+    
+    #removing bad longitudinal points that are found in some data 
+    #(e.g. sporadic points clearly outside
+    #def fix_bad_lonlat_linear(lon,lat,n):
+    #    dlondlat = deriv(lon,lat)
+    #    mdlondlat= uniform_filter1d(dlondlat,n)
+    #    idx = np.where(np.abs(dlondlat/dmlondlat-1)>0.4)[0]
+    #    if ~len(idx) % 2 :
+    #        idx = idx.reshape((idx.size//2,2))
+    def fix_bad_lon_linear(lon):
+        """
+        Rationale: a point out of the orbit will be above/below the mean
+        given by the neighbor points. Conversely, the neighbor points will be
+        below/above average. 
+        The procedure localizes thes points using std and np.sign, then adjust them
+        using linear interpolation.
+        """
+        meanlon = np.zeros(lon.shape)
+        meanlon[1:-1] = (lon[:-2]+lon[2:])/2
+        meanlon[1:-1] = (meanlon/lon)[1:-1] - 1
+        meanlon/=np.std(meanlon)
+        meanlon[np.abs(meanlon)<5] = 0
+        meanlon = np.sign(meanlon)
+        mask = (meanlon[1:-1] != 0) & (meanlon[0:-2] !=0) & (meanlon[2:] !=0)
+        #mask = np.concatenate([[False],mask,[False]])
+        lont=lon[...]
+        lont[1:-1][mask] = (lont[0:-2][mask]+lont[2:][mask])/2
+        return lont
+    lon = fix_bad_lon_linear(lon)
+    split_coord = split_orbit(lon,lat,return_index = True)
+    if len(split_coord[1]) > 1 : 
+        mm = np.zeros(len(lon),dtype=bool)
+        for i in range(len(otype)):
+            if otype[i]==0:
+                #recessing orbit 
+                mm[idx[i]+1:idx[i+1]] = ~((lon[idx[i]+1:idx[i+1]]>lon[idx[i]+2:idx[i+1]+1])*(lon[idx[i]+1:idx[i+1]]<lon[idx[i]:idx[i+1]-1]))
+            else:
+                #precessing orbit 
+                mm[idx[i]+1:idx[i+1]] = ~((lon[idx[i]+1:idx[i+1]]<lon[idx[i]+2:idx[i+1]+1])*(lon[idx[i]+1:idx[i+1]]>lon[idx[i]:idx[i+1]-1]))
+        
+        if np.sum(mm) > 0:
+           tck = splrep(time[~mm],lon[~mm])
+           lon[mm] = splev(time[mm],tck)
+    
+    else:
+        mm = np.zeros(len(lon),dtype=bool)
+        if np.median(np.diff(lon)) < 0:
+            mm[1:-1] = ~((lon[1:-1]>lon[2::])*(lon[1:-1]<lon[0:-2]))
+        else:
+            mm[1:-1] = ~((lon[1:-1]<lon[2::])*(lon[1:-1]>lon[0:-2]))
+        if np.sum(mm) > 0:
+           tck = splrep(time[~mm],lon[~mm])
+           lon[mm] = splev(time[mm],tck)
+    
+    lon = add_jumps(lon,np.array([-180,180]))
     return lon.reshape(lons.shape),lat.reshape(lats.shape)
+
+def split_orbit(lat,lon,*args,return_index = False):
+    """
+    given a series of latitudinal and longitudinal points, it return
+    a list containing the coordinates of the orbit, split according to 
+    whether latitude passes from being ascending to be descending. This
+    is done to properly process orbits that pass through the poles
+
+    parameters
+    ----------
+    lat : 1D array like (size N)
+        latitudinal coordinates of the orbit
+    lon : 1D array like (size N)
+        longitudinal coordinates of the orbit
+    *args: 1D array like (size N)
+        additional arrays to split accordingly
+    return_index : bool
+        if True, then it return the index ranges of the orbits instead
+    output
+    ------
+    [(lat_1,lon_1,0),(lat_2,lon_2,1),(...)]:
+        list of tuples.
+        the len of the list is the number of split orbits
+        each element of the list is a tuple (lat_i,lon_i,type) 
+        in which the first two elements are latitude and longitude of the split orbit
+        and the third element is an integer: 
+            0 -> if it is a descending orbit 
+            1 -> if it is an ascending orbit
+    
+    if *args is provided, then the output takes the form (pseudo code)
+        [(lat_i,lon_i,orbit_type_i,[arg_i for arg in args])]
+    where the last element of the tuple contains the arrays passed through args and split 
+    according to latitude.
+    """
+    from scipy.signal import argrelextrema
+    inorth = argrelextrema(lat,np.greater)[0]
+    isouth = argrelextrema(lat,np.less)[0]
+    ilast = np.size(lat)-1
+    if np.size(inorth):
+        inorth = inorth[inorth !=0 and inorth !=ilast]
+    if np.size(isouth):
+        isouth = isouth[isouth !=0 and isouth !=ilast]
+
+    idxlr = np.sort(np.concatenate([[0,ilast+1],inorth,isouth]))
+
+    #selecting ascending or descending
+    orbit_type = lambda x: 1 if np.sign(np.mean(np.diff(x)))>0 else 0
+
+    if return_index:
+        otype = [orbit_type(lat[idxlr[i]:idxlr[i+1]]) for i in range(len(idxlr)-1)]
+        return idxlr,otype
+
+    if args is None: 
+        return [(lat[idxlr[i]:idxlr[i+1]],lon[idxlr[i]:idxlr[i+1]],\
+            orbit_type(lat[idxlr[i]:idxlr[i+1]])) for i in range(len(idxlr)-1)]
+
+    return [(lat[idxlr[i]:idxlr[i+1]],lon[idxlr[i]:idxlr[i+1]],orbit_type(lat[idxlr[i]:idxlr[i+1]]),\
+            [karg[idxlr[i]:idxlr[i+1]] for karg in args]) for i in range(len(idxlr)-1)]

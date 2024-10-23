@@ -709,7 +709,7 @@ class CSES():
 
 
     def plot_payloads(self,datakeys,xaxis = 'time', xlabel=None,\
-        secondary_xaxis = '',ion=False,spectrograms = None,psdkwargs={}):
+        secondary_xaxis = '',ion=False,spectrograms = None,rotate_xticks=True,psdkwargs={}):
         from .blombly import pylab as plt
         
         if ion : plt.ion()
@@ -749,7 +749,8 @@ class CSES():
 
         ax[-1].set_xlabel(xaxis)
         # rotate thicks
-        ax[-1].tick_params(axis='x',rotation=45)
+        if rotate_xticks:
+            ax[-1].tick_params(axis='x',rotation=45)
         return fig,ax
 
     def plot_payload(self,datakey,xaxis='time',secondary_xaxis=None,fig=None,ax=None,xlabel=None):
@@ -767,12 +768,10 @@ class CSES():
             df = dff[mask]
             xx = xxx[mask]
             if datakey == 'LAP_50mm':
-                ax.set_title(datakey)
-                ax.semilogy(xx,df['ne'][mask],label=r'$n_e$',color=cols[0])
+                ax.semilogy(xx,df['ne'],label=r'$n_e$',color=cols[0])
                 ax.set_ylabel(r'$n_e \quad (m^{-3})$')
                 print(datakey)
             elif datakey in ['EFD_ULF','EFD_ELF','EFD_VLF']:
-                ax.set_title(datakey)
                 ax.plot(xx,np.sqrt(df['Ex']**2+df['Ey']**2+df['Ez']**2),label='|E|',linewidth=1,color='black')
                 ax.plot(xx,df['Ex'],label=r'$E_x$',linewidth=1,color=cols[0])
                 ax.plot(xx,df['Ey'],label=r'$E_y$',linewidth=1,color=cols[1])
@@ -780,7 +779,6 @@ class CSES():
                 ax.set_ylabel('E [V/m]')
                 print(datakey)
             elif datakey in ['SCM_ULF','SCM_ELF','HPM_FGM1Hz']:
-                ax.set_title(datakey)
                 ax.plot(xx,np.sqrt(df['Bx']**2+df['By']**2+df['Bz']**2),label='|B|',linewidth=1,color='black')
                 ax.plot(xx,df['Bx'],label=r'$B_x$',linewidth=1,color=cols[0])
                 ax.plot(xx,df['By'],label=r'$B_y$',linewidth=1,color=cols[1])
@@ -788,7 +786,6 @@ class CSES():
                 ax.set_ylabel('B [nT]')
                 print(datakey)
             elif datakey == 'HEPD':
-                ax.set_title(datakey)
                 instrument = self.aux[datakey]['instrument']
                 instr_no = self.aux[datakey]['instrument_no']
                 toplot = [[i[1] for i in CSES_FILE_TABLE[instrument][instr_no].items()][0]]
@@ -798,7 +795,6 @@ class CSES():
                     ax.semilogy(xx,df[i].values,label=i,linewidth=1,color=cols[j%ncol])
                 print(datakey)
             elif datakey == 'HEPP_L':
-                ax.set_title(datakey)
                 instrument = self.aux[datakey]['instrument']
                 instr_no = self.aux[datakey]['instrument_no']
                 toplot = [i[1] for i in CSES_FILE_TABLE[instrument][instr_no].items()]
@@ -806,7 +802,6 @@ class CSES():
                     ax.semilogy(xx,df[i].values,label=i,linewidth=1,color=cols[j%ncol])
                 print(datakey)
             elif datakey == 'HEPP_H':
-                ax.set_title(datakey)
                 instrument = self.aux[datakey]['instrument']
                 instr_no = self.aux[datakey]['instrument_no']
                 toplot = [i[1] for i in CSES_FILE_TABLE[instrument][instr_no].items()]
@@ -816,7 +811,6 @@ class CSES():
                     ax.semilogy(xx,df[i].values,label=i,linewidth=1,color=cols[j%ncol])
                 print(datakey)
             elif datakey == 'HEPP_X':
-                ax.set_title(datakey)
                 instrument = self.aux[datakey]['instrument']
                 instr_no = self.aux[datakey]['instrument_no']
                 toplot = [i[1] for i in CSES_FILE_TABLE[instrument][instr_no].items()]
@@ -825,6 +819,10 @@ class CSES():
                         continue
                     ax.semilogy(xx,df[i].values,label=i,linewidth=1,color=cols[j%ncol])
                 print(datakey)
+            elif datakey == 'PAP_':
+                [ax.semilogy(xx,df[ikey],label=ikey) for ikey in ['nH+', 'nHe+', 'nO+']]
+            
+        #ax.set_title(datakey,loc='left',y=1.0,pad=-14)
             
 
 
@@ -837,7 +835,7 @@ class CSES():
                 ax2.set_xlabel(secondary_xaxis)
             
             print("last")
-        ax.legend(loc='upper right')
+        ax.legend(loc='upper right',title=datakey)
         if xlabel is not None:
             ax[-1].set_xlabel(xlabel)
         return fig,ax
@@ -955,7 +953,11 @@ class CSES():
         from .blombly.io import save_dataframe_to_h5
         
         orbitn = self.orbitn if type(self.orbitn) is str else self.orbitn[0]+'-'+self.orbitn[-1]
-        if filename is None: filename = dataset_name+'_'+orbitn+'.h5'
+        
+        if filename is None: 
+            if dataset_name in self.aux:
+                time0=self.aux[dataset_name][orbitn]['UTC'].isoformat('_')
+            filename = dataset_name+'_'+orbitn+'_'+time0+'.h5'
         
         msg.info('saving '+dataset_name+' DataFrame to '+filepath+filename+'...')
         

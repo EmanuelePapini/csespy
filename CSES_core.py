@@ -25,7 +25,7 @@ from .CSES_aux import *
 from .CSES_raw import *
 
 def CSES_load(filename,path='./', return_pandas = False,
-            with_mag_coords = False,keep_verse_time = True, fill_missing=None, load_RAW = False):
+            with_mag_coords = False,keep_verse_time = True, fill_missing=None):
     """
     Generic method to read any CSES data product, info to read properly the hdf5 file are 
     saved in CSES_DATASETS in CSES_aux
