@@ -709,7 +709,13 @@ class CSES():
 
 
     def plot_payloads(self,datakeys,xaxis = 'time', xlabel=None,\
-        secondary_xaxis = '',ion=False,spectrograms = None,rotate_xticks=True,psdkwargs={}):
+        secondary_xaxis = '',ion=False,spectrograms = None,rotate_xticks=True,psdkwargs={},\
+        plot_coordinates=None):
+        """
+        TBD
+        """
+
+
         from .blombly import pylab as plt
         
         if ion : plt.ion()
@@ -724,6 +730,9 @@ class CSES():
             nplots = len(datakeys) + addplots
         else:
             nplots = len(datakeys)
+
+        if plot_coordinates is not None:
+            nplots +=np.size(plot_coordinates)
 
 
         fig,ax = plt.subplots(nplots,sharex=True, figsize=(8,2.5*len(datakeys)))
@@ -746,6 +755,11 @@ class CSES():
                 for k,ifld in enumerate(der_fld[i]):
                     self.plot_spectrogram(ikey,ifld,xaxis=xaxis,fig=fig,ax=ax[j],**psdkwargs)
                     j+=1
+
+        if plot_coordinates is not None:
+            for ikey in plot_coordinates:
+                ax[j].plot(self.data[datakeys[0]][ikey])
+                j+=1
 
         ax[-1].set_xlabel(xaxis)
         # rotate thicks
@@ -834,7 +848,6 @@ class CSES():
                 ax2.plot(yy,np.zeros(len(yy)),linestyle=None,linewidth = 0)
                 ax2.set_xlabel(secondary_xaxis)
             
-            print("last")
         ax.legend(loc='upper right',title=datakey)
         if xlabel is not None:
             ax[-1].set_xlabel(xlabel)
