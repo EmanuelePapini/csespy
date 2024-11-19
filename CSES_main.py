@@ -509,7 +509,13 @@ class CSES():
         if instrument == 'HPM':
             frequency='FGM1Hz'
             instrument_no='5'
-            
+        if instrument == 'HEP':
+            if instrument_no is None:
+                instrument_no=frequency
+            self.load_HEP(instrument_no = instrument_no, subset = subset,\
+                keep_verse_time = keep_verse_time, **kwargs)
+            return
+
         if frequency is None and instrument_no is None:
             msg.error('either frequency or instrument_no must be provided')
             return
