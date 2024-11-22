@@ -40,7 +40,7 @@ def versetime_to_utc(versetime,t0=(2009,1,1)):
     
     vt0 = datetime(t0[0],t0[1],t0[2])
 
-    return datetime(t0[0],t0[1],t0[2]) + timedelta(milliseconds=versetime)
+    return datetime(t0[0],t0[1],t0[2]) + timedelta(milliseconds=int(versetime))
 
 def utc_to_versetime(date):
     """"convert datetime to versetime in seconds"""
@@ -102,6 +102,67 @@ def convert_GPS_to_ECEF(lat,lon,alt):
     lla = Proj(proj='latlong', ellps='WGS84', datum='WGS84')
     
     return transform(lla, ecef, lon, lat, alt*1000, radians=False)
+
+def dataframe_aacgm_convert(df, method="ALLOWTRACE"):
+    """
+    return geomagnetic coordinates of the panda dataframe 
+    uses the python wrapper of aacgmv2 C library
+    """
+    
+    #dates = efd.index.to_pydatetime()
+    #import aacgmv2
+    #aacgm = [aacgmv2.get_aacgm_coord(efd.lat[i],efd.lon[i],efd.alt[i],dates[i]) for i in range(efd.shape[0])]    
+    efd=df
+    
+    method_code = "G2A|{:s}".format(method)
+    import aacgmv2._aacgmv2 as c_aacgmv2
+    from aacgmv2._aacgmv2 import TRACE, ALLOWTRACE, BADIDEA
+    import aacgmv2
+    import sys
+    # Recast the data as numpy arrays
+    dates = efd.index.to_pydatetime()
+    in_lat =efd.lat.to_numpy()  
+    in_lon =efd.lon.to_numpy() 
+    height =efd.alt.to_numpy()
+    
+    # Initialise output
+    lat_out = np.full(shape=in_lat.shape, fill_value=np.nan)
+    lon_out = np.full(shape=in_lon.shape, fill_value=np.nan)
+    r_out = np.nan
+    # Set the coordinate coversion method code in bits
+    try:
+        bit_code = aacgmv2.convert_str_to_bit(method_code.upper())
+    except AttributeError:
+        bit_code = method_code
+    
+    for i in range(in_lat.size):
+        
+        dtime = dates[i]
+        # Set current date and time
+        try:
+            c_aacgmv2.set_datetime(dtime.year, dtime.month, dtime.day, dtime.hour,
+                                   dtime.minute, dtime.second)
+        except (TypeError, RuntimeError) as err:
+            raise RuntimeError("cannot set time for {:}: {:}".format(dtime, err))
+        try:
+            lat_out[i], lon_out[i], r_out = c_aacgmv2.convert(in_lat[i], in_lon[i], height[i],
+                                                        bit_code)
+        except Exception:
+            err = sys.exc_info()[0]
+            estr = "unable to perform conversion at {:.1f},".format(in_lat[i])
+            estr = "{:s}{:.1f} {:.1f} km, {:} ".format(estr, in_lon[i], height[i], dtime)
+            estr = "{:s}using method {:}: {:}".format(estr, bit_code, err)
+            aacgmv2.logger.warning(estr)
+            pass
+    
+    
+    if np.any(np.isfinite(lon_out)):
+        # Get magnetic local time
+        mlt = aacgmv2.convert_mlt(lon_out, dates, m2a=False)
+    else:
+        mlt = np.full(shape=len(lat_out), fill_value=np.nan)
+
+    return lat_out,lon_out, mlt
 
 
 #################################################################################
@@ -529,3 +590,132 @@ def split_orbit(lat,lon,*args,return_index = False):
 
     return [(lat[idxlr[i]:idxlr[i+1]],lon[idxlr[i]:idxlr[i+1]],orbit_type(lat[idxlr[i]:idxlr[i+1]]),\
             [karg[idxlr[i]:idxlr[i+1]] for karg in args]) for i in range(len(idxlr)-1)]
+
+#################################################################################
+#################### TIMESERIES MANIPULATION TOOLS ##############################
+#################################################################################
+def derotate_field(Ex, Ey, Ez, nskip = 2048, rot_mat = None, nskip_fixed = True, mask = None):#, min_angle = 0):
+    """
+    Remove the artificial jumps between data packets introduced by rotations performed in 
+    the chinese CSES pipeline to rotate the electric field from the spacecraft frame to ECEF.
+    The jumps are present every nskip steps (length of one packet). 
+    It compensate for the wrong rotation in the following way:
+        1) It assumes that the electric field vectors measured at every i*nskip 
+           (i.e. at the beginning of the packet) are correctly rotated,
+        2) calculates the rotation matrix from i*nskip-1 to i*nskip
+        3) create a sequence of matrices which perform a rotation from the first point of 
+           the packet (i.e. i*nskip-nskip) to the last point (i*nskip-1) calculated by 
+           interpolating from zero rotation (identity matrix) to the calculated 
+           rotation matrix.
+        4) Performs the rotation of the points.
+
+    N.B. The orientation of the electric field with respect to (e.g.) GCS reference frame 
+         should be preserved in this way.
+    """
+
+    import numpy as np
+    from .blombly.geometry import transformations as rot 
+    nn =  np.size(Ex)#[::nskip])
+    oex = np.copy(Ex)#[::nskip])
+    oey = np.copy(Ey)#[::nskip])
+    oez = np.copy(Ez)#[::nskip])
+    EE =  np.array([Ex,Ey,Ez])
+    
+    def perform_rotation(ex,ey,ez,mrot):
+        from scipy.spatial.transform import Rotation as R
+        from scipy.spatial.transform import Slerp
+        #creating interpolant
+        nskip = np.size(ex)
+        mrotl2r = np.zeros((2,3,3)) 
+        mrotl2r[0] = np.eye(3) #identity matrix
+        mrotl2r[1] = mrot
+        slerpint = Slerp([0,1],R.from_matrix(mrotl2r))
+        #rotation matrices from identity to mrot
+        interp_rot = slerpint(np.arange(nskip)/nskip).as_matrix()
+        
+        BB = np.array([ex,ey,ez]).transpose()
+        return np.array([np.dot(interp_rot[i],BB[i]) for i in range(nskip)]).transpose()
+        
+    if nskip_fixed:
+        if rot_mat is None:
+            mats = []
+            for i in range(nskip,nn,nskip):
+            
+                il = i-1 
+                ir = i
+            
+                r=np.array((oex[ir],oey[ir],oez[ir]))
+                l=np.array((oex[il],oey[il],oez[il]))
+            
+                l/= np.sqrt(np.sum(l**2))  
+                r/= np.sqrt(np.sum(r**2))  
+                mat = rot.get_rotation_matrix_from_vectors(l,r) #rotate from l to r
+                mats.append(mat)
+                #if cost[-1][1] >= min_angle:
+                
+                #NOW rotating electric field in the packet
+                ee = perform_rotation(Ex[i-nskip:i],Ey[i-nskip:i],Ez[i-nskip:i],mat)
+           
+                EE[:,i-nskip:i] = ee 
+            return {'x':EE[0],'y':EE[1],'z':EE[2],'rot_mat':mats}
+
+        else:
+            for j,i in enumerate(range(nskip,nn,nskip)):
+                mat = rot_mat[j]
+                #NOW rotating electric field in the packet
+                ee = perform_rotation(Ex[i-nskip:i],Ey[i-nskip:i],Ez[i-nskip:i],mat)
+           
+                EE[:,i-nskip:i] = ee 
+            return {'x':EE[0],'y':EE[1],'z':EE[2]}
+    else:
+        if rot_mat is None:
+            mats = []
+            jumps = find_rotational_jumps({'Ex':Ex,'Ey':Ey,'Ez':Ez},['Ex','Ey','Ez'],nskip,mask = mask)
+            for j,i in enumerate(jumps):
+            
+                il = i-1 
+                ir = i
+            
+                r=np.array((oex[ir],oey[ir],oez[ir]))
+                l=np.array((oex[il],oey[il],oez[il]))
+            
+                l/= np.sqrt(np.sum(l**2))  
+                r/= np.sqrt(np.sum(r**2))  
+                mat = rot.get_rotation_matrix_from_vectors(l,r) #rotate from l to r
+                mats.append(mat)
+                #if cost[-1][1] >= min_angle:
+                
+                #NOW rotating electric field in the packet
+                if j == 0:
+                    ee = perform_rotation(Ex[i-nskip:i],Ey[i-nskip:i],Ez[i-nskip:i],mat)
+                    EE[:,i-nskip:i] = ee 
+                else:
+                    ee = perform_rotation(Ex[jumps[j-1]:i],Ey[jumps[j-1]:i],Ez[jumps[j-1]:i],mat)
+                    EE[:,jumps[j-1]:i] = ee 
+
+            return {'x':EE[0],'y':EE[1],'z':EE[2],'rot_mat':mats,'kjumps':jumps}
+
+def find_rotational_jumps(EE,keys,nskip, n_sigma = 4.,mask = None):
+    """
+    finds rotational jumps location in the electric field, using outlier detection.
+    Calculates the diff of Ex[(i+1)*2048] -  Ex[(i+1)*2048-1]. If such diff is 
+    above n_sigma times the median diff (i.e. it is an outlier), then the point is identified as an outlier
+    """
+
+    dn = np.max([15,int(nskip//50)])
+    nn = np.size(EE[keys[0]])
+    kjump = []
+    for i in range(nskip,nn,nskip):
+        
+        if mask is not None:
+           if mask[i]: continue 
+        spks = [np.abs(EE[ikey][i] - EE[ikey][i-1]) for ikey in keys]
+        #stds = [np.nanmedian(np.diff(EE[ikey][i-dn:i+dn])) for ikey in keys]
+        x0 = [np.nanmedian(np.diff(EE[ikey][i-dn:i+dn])) for ikey in keys]
+        stds = [np.nanmedian(np.abs(np.diff(EE[ikey][i-dn:i+dn]) - ix0)) for ix0,ikey in zip(x0,keys)]
+        
+        #if any([(ispk/istd > n_sigma) *(istd != 0) for ispk,istd in zip(spks,stds)]):
+        if any([ispk/istd > n_sigma for ispk,istd in zip(spks,stds)]):
+            kjump.append(i)
+
+    return kjump

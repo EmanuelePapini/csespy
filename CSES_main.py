@@ -598,6 +598,71 @@ class CSES():
         if dsetname in self.data:
             if type(self.data[dsetname]) is pd.DataFrame:
                 self.data[dsetname].sort_index(inplace=True)
+    
+    def derotate_fields(self,overwrite=False, instrument='EFD', frequency='ELF',\
+        nskip_fixed = False,tags=['Ex','Ey','Ez']):
+        """
+        Derotate (electric) fields according to de-rotation of the derotate_fields
+        function cotained in CSES_aux.py. This rotation is done to remove the jumps
+        introduced in EFD Level2 data by the approach used for using attitude 
+        quaternions in the  processing pipeline of CSES01.
+        
+        parameters
+        ----------
+        overwrite : bool
+            True : derotated fields overwrite the original fields.
+            False : derotated fields are saved preserving the name (in tags) 
+            adding the subscript '_rot'.
+        nskip_fixed: bool
+            if not fixed, the algorithm will look whether jumps are present or not
+            in the data, at multiples of data packet size (2048 for EFD_ELF) and
+            if so, will update the rotation between two jumps.
+            This workaround is necessary because for some orbits of EFD ELF it was 
+            found that this number is be 2048*2 or 2048*3 (consistent with 
+            quaternion update rate of CSES-01)
+        instrument : str
+            desired instrument
+        frequency : str
+            desired frequency band
+        tags : len=3 list of str
+            list of str of the three components fo the field to be derotated 
+            (contained in self.data.<instrument>_<frequency>).
+
+        """
+
+        datakey = instrument+'_'+frequency
+        nskip = CSES_PACKETSIZE[datakey] 
+        if 'derotate_'+datakey in self._ancillary_:
+            if self._ancillary_['derotate_'+datakey] :
+                E_rotated = True
+            else:
+                E_rotated = False
+        else:
+            E_rotated = False
+
+        df = self.data[datakey]
+        t1,t2,t3=tags
+        if not E_rotated:
+            print('Derotating fields...')
+            #1-removing jumps by derotating artificially
+            if 'gaps_mask' in df:
+                EE = derotate_field(df[t1].values,df[t2].values,df[t3].values,nskip=nskip,\
+                    nskip_fixed = nskip_fixed, mask = df.gaps_mask.values)
+            else:
+                EE = derotate_field(df[t1].values,df[t2].values,df[t3].values,nskip=nskip,\
+                    nskip_fixed = nskip_fixed)
+
+            if not overwrite:
+                df[t1+'_rot'] = EE['x'] 
+                df[t2+'_rot'] = EE['y'] 
+                df[t3+'_rot'] = EE['z'] 
+            else:
+                df[t1] = EE['x'] 
+                df[t2] = EE['y'] 
+                df[t3] = EE['z'] 
+            self._ancillary_['derotate_'+datakey] = True
+        else:
+            print('field already rotated...')
 ################################################################################
 ############################### PLOTTING TOOLS #################################
 ################################################################################
@@ -743,7 +808,7 @@ class CSES():
 
         fig,ax = plt.subplots(nplots,sharex=True, figsize=(8,2.5*len(datakeys)))
         
-        fig.subplots_adjust(hspace=0,right=0.8,left=0.1)
+        fig.subplots_adjust(hspace=0,right=0.8,left=0.1,top=0.93,bottom=0.12)
         if nplots == 1 : ax = [ax] 
         for i,ikey in enumerate(datakeys):
             if i == 0:
@@ -1111,6 +1176,41 @@ class CSES():
             efd['Ex_nodrift'] =efd['Ex']-efd['VsxB_x']
             efd['Ey_nodrift'] =efd['Ey']-efd['VsxB_y']
             efd['Ez_nodrift'] =efd['Ez']-efd['VsxB_z']
+    
+
+    def get_aacgm_coord(self, datakey='EFD_ELF', minify = False, nskip = None, **kwargs):
+
+        #datakey=instrument+'_'+frequency
+        inst = self.data[datakey]
+        
+        if nskip is None:
+            nskip = CSES_PACKETSIZE[datakey]
+
+        #if instrument.lower() == 'efd' and minify == False:
+        #    minify = 1
+        #if minify: 
+        #    inst = inst.iloc[::nskip] #DETACHING inst from self.data[instrument]
+            
+        mlat,mlon,mlt = dataframe_aacgm_convert(inst.iloc[::nskip],**kwargs)
+        
+        if minify:
+            inst = inst.iloc[::nskip]
+            inst['mag_lat'] = mlat
+            inst['mag_lon'] = mlon
+            inst['mlt'] = mlt
+            return inst
+
+        if nskip > 1:
+            fld = self.data[datakey]
+            from scipy.interpolate import interp1d as interp1
+            xx = inst.iloc[::nskip].index.values.astype(float)
+            xnew = inst.index.values.astype(float) - xx[0]
+            xx-=xx[0]
+            fld['mag_lat'] = interp1(xx,mlat,bounds_error=False,fill_value='extrapolate')(xnew)
+            fld['mag_lon'] = interp1(xx,mlon,bounds_error=False,fill_value='extrapolate')(xnew)
+            fld['mlt'] = interp1(xx,mlt,bounds_error=False,fill_value='extrapolate')(xnew)
+            #fld['mag_lon'] = interp1(fld['lat'],lat,mlon) 
+            #fld['mlt'] = interp1(fld['lat'],lat,mlt) 
 
 ################################################################################
 #########################some fast diagnostic tool  tbd#########################
