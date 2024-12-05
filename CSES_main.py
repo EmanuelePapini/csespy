@@ -1362,6 +1362,28 @@ class CSES_database():
 
         return self.sel_db
     
+    def search_orbit_orbitn(self,orbitn, return_orbitn = True, use_selected_db = False):
+        """
+        self explaining
+        """
+
+        df = self.db if not use_selected_db else self.sel_db
+
+        
+        orbs = [str(i).zfill(6) for i in orbitn] if type(orbitn) is list else str(orbitn).zfill(6)
+                
+        if type(orbs) is list:
+            mask = np.array([df.orbitn.values == i for i in orbs])
+           
+            if mask.ndim == 2: mask = np.sum(mask,axis=0,dtype=bool) 
+        else:
+            mask = df.orbitn.values == orbs 
+        self.sel_db = df[mask]
+
+        if return_orbitn: 
+            return np.unique(self.sel_db.orbitn)
+
+        return self.sel_db
 
     def plot_orbit(self,df=None,y='lat',x='lon',basemap = None, fig = None, ax = None,\
         profile = 'default',overplot_continents = True,ion=True,show=True,\

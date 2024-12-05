@@ -437,12 +437,16 @@ def fix_lonlat(lons,lats,times):
     lat = lats.flatten()
     mm = np.zeros(len(lat),dtype=bool)
     
-    #fix_zero_diff = lambda x : np.interp(np.arange(np.size(x)),np.unique(x,return_index=True)[1],np.unique(x))
+    #-1- fix non increasing coordinate. Some contiguous points have same
+    #    coordinate, due to the fact that satellite telemetry did not update.
+    #    this code part deal with it by interpolating linearly with neighbor different
+    #    points.
     fix_zero_diff = lambda x : interp1d(np.unique(x,return_index=True)[1],np.unique(x),fill_value='extrapolate')(np.arange(np.size(x)))
     if any(np.diff(lat)==0) : lat = fix_zero_diff(lat)
     if any(np.diff(lon)==0) : lon = fix_zero_diff(lon)
     
-    #CHECK if orbit is on the polar cap
+    #-2- CHECK if orbit is in the polar cap
+    #    and eventually split the orbit
     split_coord = split_orbit(lat,lon,times,return_index = True)
     if len(split_coord[1]) > 1 : 
         idx,otype = split_coord 
@@ -452,10 +456,12 @@ def fix_lonlat(lons,lats,times):
         for i in range(len(otype)):
             if otype[i] == 0:
                 #descending orbit (day side)
-                mm[idx[i]+1:idx[i+1]] = ~((lat[idx[i]+1:idx[i+1]]>lat[idx[i]+2:idx[i+1]+1])*(lat[idx[i]+1:idx[i+1]]<lat[idx[i]:idx[i+1]-1]))
+                mm[idx[i]+1:idx[i+1]] = ~((lat[idx[i]+1:idx[i+1]]>lat[idx[i]+2:idx[i+1]+1])*\
+                    (lat[idx[i]+1:idx[i+1]]<lat[idx[i]:idx[i+1]-1]))
             else:
                 #ascending orbit (night side)
-                mm[idx[i]+1:idx[i+1]] = ~((lat[idx[i]+1:idx[i+1]]<lat[idx[i]+2:idx[i+1]+1])*(lat[idx[i]+1:idx[i+1]]>lat[idx[i]:idx[i+1]-1]))
+                mm[idx[i]+1:idx[i+1]] = ~((lat[idx[i]+1:idx[i+1]]<lat[idx[i]+2:idx[i+1]+1])*\
+                    (lat[idx[i]+1:idx[i+1]]>lat[idx[i]:idx[i+1]-1]))
         
         if np.sum(mm) > 0:
            tck = splrep(time[~mm],lat[~mm])
@@ -485,7 +491,7 @@ def fix_lonlat(lons,lats,times):
     #    idx = np.where(np.abs(dlondlat/dmlondlat-1)>0.4)[0]
     #    if ~len(idx) % 2 :
     #        idx = idx.reshape((idx.size//2,2))
-    def fix_bad_lon_linear(lon):
+    def fix_bad_lon_linear(lon,nk=11):
         """
         Rationale: a point out of the orbit will be above/below the mean
         given by the neighbor points. Conversely, the neighbor points will be
@@ -493,17 +499,34 @@ def fix_lonlat(lons,lats,times):
         The procedure localizes thes points using std and np.sign, then adjust them
         using linear interpolation.
         """
-        meanlon = np.zeros(lon.shape)
-        meanlon[1:-1] = (lon[:-2]+lon[2:])/2
-        meanlon[1:-1] = (meanlon/lon)[1:-1] - 1
-        meanlon/=np.std(meanlon)
-        meanlon[np.abs(meanlon)<5] = 0
-        meanlon = np.sign(meanlon)
-        mask = (meanlon[1:-1] != 0) & (meanlon[0:-2] !=0) & (meanlon[2:] !=0)
+        #from .blombly.stats import running_mean1D
+ 
+        #meanlon = running_mean1D(lon,nk,meantype='neighbor')
+        #meanlon = lon/meanlon - 1
+        #meanlon[0] = 0
+        #meanlon[-1] = 0
+        #mask = np.abs(meanlon)>0.05
+        #meanlon = np.sign(meanlon)
+        #meanlon = np.zeros(lon.shape)
+        #meanlon[1:-1] = (lon[:-2]+lon[2:])/2
+        #meanlon[1:-1] = (meanlon/lon)[1:-1] - 1
+        #meanlon/=np.std(meanlon)
+        #meanlon[np.abs(meanlon)<5] = 0
+        #meanlon = np.sign(meanlon)
+        #mask = (meanlon[1:-1] != 0) & (meanlon[0:-2] !=0) & (meanlon[2:] !=0)
         #mask = np.concatenate([[False],mask,[False]])
-        lont=lon[...]
-        lont[1:-1][mask] = (lont[0:-2][mask]+lont[2:][mask])/2
-        return lont
+        #lont[1:-1][mask] = (lont[0:-2][mask]+lont[2:][mask])/2
+        from scipy.interpolate import splrep,splev
+        from .blombly.filters import hampel_filter
+        _,idx = hampel_filter(lon,20)
+        if np.size(idx) > 0:
+            tt = np.arange(lon.shape[0])
+            tck = splrep(np.delete(tt,idx),np.delete(lon,idx))
+            return splev(tt,tck)
+        
+        return lon[...]
+        
+    
     lon = fix_bad_lon_linear(lon)
     split_coord = split_orbit(lon,lat,return_index = True)
     if len(split_coord[1]) > 1 : 
