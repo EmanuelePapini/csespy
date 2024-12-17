@@ -177,11 +177,11 @@ def parse_CSES_filename(filename):
         out['Satellite'] = fl_list[0]+fl_list[1]
         out['Instrument'] = fl_list[2]
         try:
-            out['Data Product'] = CSES_DATA_TABLE[fl_list[2]][fl_list[3]]
+            out['DataProduct'] = CSES_DATA_TABLE[fl_list[2]][fl_list[3]]
         except:
-            out['Data Product'] = 'Unknown' 
-        out['Instrument No.'] = fl_list[3]
-        out['Data Level'] = fl_list[4]
+            out['DataProduct'] = 'Unknown' 
+        out['InstrumentNum'] = fl_list[3]
+        out['DataLevel'] = fl_list[4]
         out['orbitn'] = fl_list[6]
         out['year'] = fl_list[7][0:4]
         out['month'] = fl_list[7][4:6]
@@ -194,8 +194,8 @@ def parse_CSES_filename(filename):
     elif len(filename) == 69:
         out['Satellite'] = fl_list[0]+'_01'
         out['Instrument'] = fl_list[1]
-        out['Data Product'] = fl_list[2]
-        out['Data Level'] = fl_list[-2]
+        out['DataProduct'] = fl_list[2]
+        out['DataLevel'] = fl_list[-2]
         out['orbitn'] = fl_list[3]
         out['year'] = fl_list[4][0:4]
         out['month'] = fl_list[4][4:6]
@@ -518,7 +518,7 @@ def fix_lonlat(lons,lats,times):
         #lont[1:-1][mask] = (lont[0:-2][mask]+lont[2:][mask])/2
         from scipy.interpolate import splrep,splev
         from .blombly.filters import hampel_filter
-        _,idx = hampel_filter(lon,20)
+        _,idx = hampel_filter(lon,nk)
         if np.size(idx) > 0:
             tt = np.arange(lon.shape[0])
             tck = splrep(np.delete(tt,idx),np.delete(lon,idx))
@@ -528,6 +528,7 @@ def fix_lonlat(lons,lats,times):
         
     
     lon = fix_bad_lon_linear(lon)
+    lon = fix_bad_lon_linear(lon,3)
     split_coord = split_orbit(lon,lat,return_index = True)
     if len(split_coord[1]) > 1 : 
         mm = np.zeros(len(lon),dtype=bool)

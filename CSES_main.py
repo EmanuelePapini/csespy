@@ -290,7 +290,7 @@ class CSES():
         """ 
         info = parse_CSES_filename(filename)
         return self.search_file(orbitn=info['orbitn'], instrument=info['Instrument'],\
-            frequency = info['Data Product'], get_file_path = True)[0]
+            frequency = info['DataProduct'], get_file_path = True)[0]
         
     
 
@@ -333,13 +333,13 @@ class CSES():
             files = [(i,ipath) for ipath in filespaths for i in find_file(ipath,search_string)]
             files = [(i,ipath) for i,ipath in files if \
                 parse_CSES_filename(i)['Instrument'] == instrument and\
-                parse_CSES_filename(i)['Instrument No.'] == instrument_no]
+                parse_CSES_filename(i)['InstrumentNum'] == instrument_no]
         else:
             files = [(i,ipath) for ipath in filespaths for i in find_file(ipath,orbitn)]
             files = [(i,ipath) for i,ipath in files if \
                 parse_CSES_filename(i)['orbitn'] == orbitn and\
                 parse_CSES_filename(i)['Instrument'] == instrument and\
-                parse_CSES_filename(i)['Instrument No.'] == instrument_no]
+                parse_CSES_filename(i)['InstrumentNum'] == instrument_no]
 
         
         

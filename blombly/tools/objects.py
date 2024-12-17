@@ -1,6 +1,51 @@
 import numpy as np
 from collections import OrderedDict
-from attrdict import AttrDict
+#from attrdict import AttrDict
+
+class AttrDict(dict):
+    def __process_args(self, obj):
+        if isinstance(obj, dict):
+            for k, v in obj.items():
+                if isinstance(v, dict):
+                    obj[k] = AttrDict(v)
+                elif isinstance(v, (tuple, list)):
+                    obj[k] = self.__process_args(v)
+        elif isinstance(obj, (tuple, list)):
+            for i, v in enumerate(obj):
+                if isinstance(v, dict):
+                    obj[i] = AttrDict(v)
+
+        return obj
+
+    def __init__(self, obj=None, **kwargs):
+        obj = self.__process_args(obj)
+        kwargs = self.__process_args(kwargs)
+        super().__init__(obj or {}, **kwargs)
+
+    def __getattr__(self, item: str):
+        if item in self:
+            return self[item]
+        else:
+            return super().__getattribute__(item)
+
+    def __getattribute__(self, item: str):
+        if item != 'items' and item in self:
+            return self[item]
+        else:
+            return super().__getattribute__(item)
+
+    def __setattr__(self, key, value):
+        self[key] = value
+
+    def __delattr__(self, item):
+        del self[item]
+
+    def __getstate__(self):
+        return dict(self)
+
+    @staticmethod
+    def __setstate__(obj):
+        return obj
 
 AttrDictSens = AttrDict
 class voidobj(object):

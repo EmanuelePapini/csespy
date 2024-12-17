@@ -27,7 +27,7 @@ from .CSES_raw import *
 def CSES_load(filename,path='./', return_pandas = False,
             with_mag_coords = False,keep_verse_time = True, fill_missing=None):
     """
-    Generic method to read any CSES data product, info to read properly the hdf5 file are 
+    Generic method to read any CSES DataProduct, info to read properly the hdf5 file are 
     saved in CSES_DATASETS in CSES_aux
     Filename conventions should be according to the following example:
         
@@ -97,7 +97,7 @@ def CSES_load(filename,path='./', return_pandas = False,
         return finterp(x)
 
     info = parse_CSES_filename(filename)
-    fldtags = CSES_FILE_TABLE[info['Instrument']][info['Instrument No.']]
+    fldtags = CSES_FILE_TABLE[info['Instrument']][info['InstrumentNum']]
  
     fil = h5py.File(path+filename,'r')
     orbitnum = int(fil.attrs['ORBITNUM'][0])
@@ -148,7 +148,7 @@ def CSES_load(filename,path='./', return_pandas = False,
     del tx
 
     packet_size  = ns
-    dtrate = 1/CSES_SAMPLINGFREQS[info['Instrument']+'_'+info['Data Product']]
+    dtrate = 1/CSES_SAMPLINGFREQS[info['Instrument']+'_'+info['DataProduct']]
     do_interp = dshape != time1.shape
 
     time1 = time1.flatten()
@@ -264,7 +264,7 @@ def CSES_load(filename,path='./', return_pandas = False,
 def CSES_load_PSD(filename,path='./', return_xarray = False,
             with_mag_coords = False,keep_verse_time = True, fill_missing=None):
     """
-    Generic method to read any CSES data product PSD, info to read properly the 
+    Generic method to read any CSES DataProduct PSD, info to read properly the 
     hdf5 file are  saved in CSES_DATASETS in CSES_aux
     Filename conventions should be according to the following example:
         
