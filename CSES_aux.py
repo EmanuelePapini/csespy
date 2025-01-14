@@ -481,7 +481,6 @@ def fix_lonlat(lons,lats,times):
 
     
     #doing the same for longitude
-    lon = remove_jumps(lon,np.array([-180,180]))
     
     #removing bad longitudinal points that are found in some data 
     #(e.g. sporadic points clearly outside
@@ -529,6 +528,7 @@ def fix_lonlat(lons,lats,times):
     
     lon = fix_bad_lon_linear(lon)
     lon = fix_bad_lon_linear(lon,3)
+    lon = remove_jumps(lon,np.array([-180,180]))
     split_coord = split_orbit(lon,lat,return_index = True)
     if len(split_coord[1]) > 1 : 
         mm = np.zeros(len(lon),dtype=bool)

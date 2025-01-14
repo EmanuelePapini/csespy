@@ -327,19 +327,21 @@ def remove_jumps(y,interval):
 
     yper = y.flatten()
 
-    dy = np.diff(yper)
+    dy = np.abs(np.diff(yper))
 
     intdif = interval[1]-interval[0]
 
     dymed = np.median(np.abs(dy))
     mask = (dy>dymed)* (dy>intdif*0.51)
+    dy=np.diff(yper)
     #print(np.sum(mask))
     if np.sum(mask) >0:
         for i in np.where(mask)[0]:
             yper[i+1:] -= np.sign(dy[i])*intdif
             
     return yper 
-        
+
+
 def add_jumps(y,interval):
     """
     given an input array y, return the array defined in a domain 
@@ -353,14 +355,54 @@ def add_jumps(y,interval):
     
     return np.mod(y - interval[0],intdif) + interval[0]
 
+def find_jumps(y,jump):
+    """
+    it returns the indices where a 1d array has jumps exceeding the absolute jump value
+    parameters:
+    -----------
+    y : 1D array-like
+        the input array
+    jump: float
+        threshold absolute value of the jump
+    """
 
+    return np.where(np.abs(np.diff(y))>jump)
 
+def unfold_periodic(y,interval,*args):
 
+    """
+    given an input array y, which is assumed to be periodic in the
+    input interval (y in [a,b]), it returns the unfolded array in the interval
+    [a-b,a+b], together with the indices to unfold related arrays.
 
+    e.g. assume y is a longitude coordinate defined in [-180,180] and you need
+    to unfold it in [-360,360]. This routine does that and return the unfolded
+    1D arrays in *args that are assumed to be defined on the support described  
+    by the y coordinates.
+    N.B. It assumes that y covers the full interval!
+    
+    """
+    yper = y.flatten()
 
+    dy = np.abs(np.diff(yper))
 
+    intdif = interval[1]-interval[0]
 
+    dymed = np.median(np.abs(dy))
+    mask = (dy>dymed)* (dy>intdif*0.51)
+    ijump = np.arange(np.size(yper)-1)[mask]    
 
+    yper = np.roll(yper,-ijump-1)
+
+    yout = np.concatenate([yper-intdif,yper,yper+intdif])
+
+    if len(args):
+        argout = []
+        for iarg in args:
+            iarg = np.roll(iarg.flatten(),-ijump-1)
+            argout.append(np.concatenate([iarg,iarg,iarg]))
+        return yout,*tuple(argout)
+    return yout
 
 
 
