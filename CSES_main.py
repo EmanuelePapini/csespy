@@ -828,9 +828,11 @@ class CSES():
                     j+=1
 
         if plot_coordinates is not None:
+            if 'j' not in locals(): j=len(datakeys)
             for ikey in plot_coordinates:
                 xxx = self.data[datakeys[0]].index.values if xaxis == 'time' else self.data[datakeys[0]][xaxis].values
                 ax[j].plot(xxx,self.data[datakeys[0]][ikey])
+                ax[j].set_ylabel(ikey)
                 j+=1
 
         ax[-1].set_xlabel(xaxis)
