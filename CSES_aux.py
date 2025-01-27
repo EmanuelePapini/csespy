@@ -526,8 +526,9 @@ def fix_lonlat(lons,lats,times):
         return lon[...]
         
     
-    lon = fix_bad_lon_linear(lon)
-    lon = fix_bad_lon_linear(lon,3)
+    lon = fix_bad_lon_linear(lon,3) #first remove spikes
+    lon = fix_bad_lon_linear(lon) #then remove longer outliers
+    lon = fix_bad_lon_linear(lon,3) #then remove residual spikes
     lon = remove_jumps(lon,np.array([-180,180]))
     split_coord = split_orbit(lon,lat,return_index = True)
     if len(split_coord[1]) > 1 : 

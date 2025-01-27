@@ -829,7 +829,8 @@ class CSES():
 
         if plot_coordinates is not None:
             for ikey in plot_coordinates:
-                ax[j].plot(self.data[datakeys[0]][ikey])
+                xxx = self.data[datakeys[0]].index.values if xaxis == 'time' else self.data[datakeys[0]][xaxis].values
+                ax[j].plot(xxx,self.data[datakeys[0]][ikey])
                 j+=1
 
         ax[-1].set_xlabel(xaxis)
@@ -941,7 +942,7 @@ class CSES():
         elif fieldkey.split('_')[0] in self.aux[datakey][self.orbitn]['units'].keys():
             units  = '['+self.aux[datakey][self.orbitn]['units'][fieldkey.split('_')[0]].decode()+r'$]^2/\mathrm{Hz}$'
         else:
-            units = r'[?]^2/\mathrm{Hz}$' 
+            units = r'[?$]^2/\mathrm{Hz}$' 
 
         if vmax is None : vmax = df['psd'][fieldkey].max()
         if vmin is None : vmin = np.percentile(df['psd'][fieldkey],5)
