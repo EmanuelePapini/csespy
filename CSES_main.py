@@ -159,6 +159,7 @@ class CSES():
         return outs
 
     def find_files_to_load(self,instrument,frequency,instrument_no,unique=True,verbose=False):
+        print('searching for files to load...')
         if self.orbitn is not None:
             if type(self.orbitn) is str:
                 files = self.search_file(orbitn=self.orbitn,instrument=instrument,\
@@ -311,7 +312,7 @@ class CSES():
             frequency = CSES_DATA_TABLE[instrument][instrument_no]
         else:
            instrument_no = get_dictkey_from_value(CSES_DATA_TABLE[instrument],frequency)[0]
-       
+
         if unstruct_path:
             ppath = self.path
         else:
@@ -340,8 +341,6 @@ class CSES():
                 parse_CSES_filename(i)['orbitn'] == orbitn and\
                 parse_CSES_filename(i)['Instrument'] == instrument and\
                 parse_CSES_filename(i)['InstrumentNum'] == instrument_no]
-
-        
         
         if timespan is not None:
             #Lazy way to find orbit in timespan
@@ -503,6 +502,8 @@ class CSES():
         import pandas as pd
         from glob import glob
 
+        print('loading '+instrument+'-'+frequency+' data...')
+
         if instrument == 'LAP':
             frequency='50mm'
             instrument_no='1'
@@ -542,13 +543,10 @@ class CSES():
                 self.data_raw = AttrDict()
         
         self.find_files_to_load(instrument,frequency,instrument_no,unique=True)
-        
         files = self.check_if_loaded(instrument,frequency,load_RAW=load_RAW)
         #files = self.files[dsetname] 
 
-
         for ifile in files:
-            
             infos = parse_CSES_filename(ifile)
             
             ipath = self.get_file_path(ifile)
@@ -567,7 +565,6 @@ class CSES():
                     df, aux = CSES_load(ifile, path = ipath,\
                         return_pandas = True,\
                         keep_verse_time = keep_verse_time, **kwargs)
-
             
                 if subset is not None:
                     for Cond in subset:
@@ -940,11 +937,14 @@ class CSES():
         xx = df['position'].index.values if xaxis == 'time' else df['position'][xaxis].values
 
         if fieldkey in self.aux[datakey][self.orbitn]['units'].keys():
-            units  = '['+self.aux[datakey][self.orbitn]['units'][fieldkey].decode()+r'$]^2/\mathrm{Hz}$'
+            field_unit = self.aux[datakey][self.orbitn]['units'][fieldkey]
+            units = '[' + (field_unit.decode('utf-8') if isinstance(field_unit, bytes) else field_unit) + r'$]^2/\mathrm{Hz}$'
         elif fieldkey.split('_')[0] in self.aux[datakey][self.orbitn]['units'].keys():
-            units  = '['+self.aux[datakey][self.orbitn]['units'][fieldkey.split('_')[0]].decode()+r'$]^2/\mathrm{Hz}$'
+            base_field_unit = self.aux[datakey][self.orbitn]['units'][fieldkey.split('_')[0]]
+            units = '[' + (base_field_unit.decode('utf-8') if isinstance(base_field_unit, bytes) else base_field_unit) + r'$]^2/\mathrm{Hz}$'
         else:
             units = r'[?$]^2/\mathrm{Hz}$' 
+
 
         if vmax is None : vmax = df['psd'][fieldkey].max()
         if vmin is None : vmin = np.percentile(df['psd'][fieldkey],5)
