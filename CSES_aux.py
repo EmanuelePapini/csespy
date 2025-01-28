@@ -173,7 +173,7 @@ def parse_CSES_filename(filename):
 
     fl_list = filename.split('_')
     out={}
-    if len(filename) == 66:
+    if len(filename) == 66 or len(filename) == 72:
         out['Satellite'] = fl_list[0]+fl_list[1]
         out['Instrument'] = fl_list[2]
         try:
@@ -210,15 +210,17 @@ def parse_CSES_filename(filename):
 
 
 def find_file(path,search_string ='',extension = '.h5'):
+    extension = '.zarr.zip'
     """
     find all files with a given extension whose name contains the search_string in the path and return them into a list
     """
+    print(path+'*'+search_string+'*'+extension)
     return [i[len(path):] for i in  glob(path+'*'+search_string+'*'+extension) if is_valid_CSES_filename(i[len(path):])] 
 
 def is_valid_CSES_filename(filname,thorough = False):
     """Check whether a given input string is a valid CSES filename"""
 
-    if len(filname) != 66 : return False #first check its length
+    if len(filname) != 66 and len(filname) != 72 : return False #first check its length
     if filname[:4] != 'CSES': return False #check if it begins correctly
     if filname.count('_') != 11 : return False # check number of underscores
 
@@ -526,8 +528,9 @@ def fix_lonlat(lons,lats,times):
         return lon[...]
         
     
-    lon = fix_bad_lon_linear(lon)
-    lon = fix_bad_lon_linear(lon,3)
+    lon = fix_bad_lon_linear(lon,3) #first remove spikes
+    lon = fix_bad_lon_linear(lon) #then remove longer outliers
+    lon = fix_bad_lon_linear(lon,3) #then remove residual spikes
     lon = remove_jumps(lon,np.array([-180,180]))
     split_coord = split_orbit(lon,lat,return_index = True)
     if len(split_coord[1]) > 1 : 
