@@ -100,10 +100,10 @@ def CSES_load(filename,path='./', return_pandas = False,
     fldtags = CSES_FILE_TABLE[info['Instrument']][info['InstrumentNum']]
     
     # check extension
-    if filename[-3:] == '.h5':
+    if info['extension'] == '.h5':
         fil = h5py.File(path+filename,'r')
         orbitnum = int(fil.attrs['ORBITNUM'][0])
-    elif filename[-9:] == '.zarr.zip':
+    elif info['extension'] == '.zarr.zip':
         import zarr
         fil = zarr.open(path+filename)
         orbitnum = int(fil.attrs['ORBITNUM'])

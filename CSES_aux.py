@@ -191,6 +191,7 @@ def parse_CSES_filename(filename):
                             int(fl_list[8][0:2]),int(fl_list[8][2:4]),int(fl_list[8][4:6])) 
         out['t_end'] = datetime(int(fl_list[9][0:4]),int(fl_list[9][4:6]),int(fl_list[9][6:8]),\
                             int(fl_list[10][0:2]),int(fl_list[10][2:4]),int(fl_list[10][4:6]))
+        out['extension'] = fl_list[-1][3:]
     elif len(filename) == 69:
         out['Satellite'] = fl_list[0]+'_01'
         out['Instrument'] = fl_list[1]
@@ -205,17 +206,19 @@ def parse_CSES_filename(filename):
                             int(fl_list[5][0:2]),int(fl_list[5][2:4]),int(fl_list[5][4:6])) 
         out['t_end'] = datetime(int(fl_list[6][0:4]),int(fl_list[6][4:6]),int(fl_list[6][6:8]),\
                             int(fl_list[7][0:2]),int(fl_list[7][2:4]),int(fl_list[7][4:6]))
-
+        out['extension'] = fl_list[-1][3:]
     return out
 
 
-def find_file(path,search_string ='',extension = '.h5'):
-    extension = '.zarr.zip'
+def find_file(path,search_string ='',extension = CSES_EXTENSIONS):
     """
     find all files with a given extension whose name contains the search_string in the path and return them into a list
     """
     print(path+'*'+search_string+'*'+extension)
-    return [i[len(path):] for i in  glob(path+'*'+search_string+'*'+extension) if is_valid_CSES_filename(i[len(path):])] 
+    if type(extension) is str:
+        return [i[len(path):] for i in  glob(path+'*'+search_string+'*'+extension) if is_valid_CSES_filename(i[len(path):])] 
+    return list(np.concatenate([[i[len(path):] for i in  glob(path+'*'+search_string+'*'+iext) if \
+                                 is_valid_CSES_filename(i[len(path):])] for iext in extension]))
 
 def is_valid_CSES_filename(filname,thorough = False):
     """Check whether a given input string is a valid CSES filename"""
@@ -239,6 +242,8 @@ def uniquefy(fnames,sort_by='orbitn',keep='longer',check = True):
 
     if keep == 'longer': #discriminating filter
         filtby = lambda x : np.argmax([j['t_end']-j['t_start'] for j in x])
+    else:
+        filtby = lambda x : x
     fns = np.array([parse_CSES_filename(i)[sort_by] for i in fnames])
     fout = []
     for i in set(fns):
