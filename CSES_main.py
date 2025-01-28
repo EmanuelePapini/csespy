@@ -943,7 +943,8 @@ class CSES():
             base_field_unit = self.aux[datakey][self.orbitn]['units'][fieldkey.split('_')[0]]
             units = '[' + (base_field_unit.decode('utf-8') if isinstance(base_field_unit, bytes) else base_field_unit) + r'$]^2/\mathrm{Hz}$'
         else:
-            units = r'[?]^2/\mathrm{Hz}$'
+            units = r'[?$]^2/\mathrm{Hz}$' 
+
 
         if vmax is None : vmax = df['psd'][fieldkey].max()
         if vmin is None : vmin = np.percentile(df['psd'][fieldkey],5)
