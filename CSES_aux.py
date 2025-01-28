@@ -214,7 +214,7 @@ def find_file(path,search_string ='',extension = CSES_EXTENSIONS):
     """
     find all files with a given extension whose name contains the search_string in the path and return them into a list
     """
-    print(path+'*'+search_string+'*'+extension)
+    #print(path+'*'+search_string+'*'+extension)
     if type(extension) is str:
         return [i[len(path):] for i in  glob(path+'*'+search_string+'*'+extension) if is_valid_CSES_filename(i[len(path):])] 
     return list(np.concatenate([[i[len(path):] for i in  glob(path+'*'+search_string+'*'+iext) if \
