@@ -141,3 +141,4 @@ CSES_FILESYSTEM = {'EFD':'year/FREQUENCY/month',\
                    'SCM':'year/FREQUENCY/month',\
                    'PAP':'',\
                    'HEP':'year/month'}
+CSES_EXTENSIONS = ['.h5','.zarr.zip']
