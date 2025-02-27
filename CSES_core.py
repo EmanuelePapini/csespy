@@ -98,10 +98,16 @@ def CSES_load(filename,path='./', return_pandas = False,
 
     info = parse_CSES_filename(filename)
     fldtags = CSES_FILE_TABLE[info['Instrument']][info['InstrumentNum']]
- 
-    fil = h5py.File(path+filename,'r')
-    orbitnum = int(fil.attrs['ORBITNUM'][0])
     
+    # check extension
+    if info['extension'] == '.h5':
+        fil = h5py.File(path+filename,'r')
+        orbitnum = int(fil.attrs['ORBITNUM'][0])
+    elif info['extension'] == '.zarr.zip':
+        import zarr
+        fil = zarr.open(path+filename)
+        orbitnum = int(fil.attrs['ORBITNUM'])
+
     try:
         units = {fldtags[i]:fil[i].attrs['units'][0] for i in fldtags}
     except:
@@ -127,8 +133,10 @@ def CSES_load(filename,path='./', return_pandas = False,
     
     Vtime = fil['VERSE_TIME'][...]
     Utime = fil['UTC_TIME'][...]
-    
-    fil.close()
+    if filename[-3:] == '.h5':
+        fil.close()
+    else:
+        pass
     
     #fixing bad jumps in orbital position
     lont,latt = fix_lonlat(pos['lon'],pos['lat'],Vtime)
@@ -476,9 +484,17 @@ def EFD_load_ELF_PSD(filename, path='./', with_mag_coords = False):
 def HEP_load(filename,path='./', instrument_no = '1', channel = 'all', energy_selection_list = None, energy_bin = None, pitch_bin = None, with_mag_coords=False, time_from_samplerate = True, fill_missing = None):
     import h5py
     from numpy import interp as interp1
-    fil = h5py.File(path+filename,'r')
+
+    if filename[-3:] == '.h5':
+        fil = h5py.File(path+filename,'r')
+        orbitnum = int(fil.attrs['ORBITNUM'][0])
+    elif filename[-9:] == '.zarr.zip':
+        import zarr
+        fil = zarr.open(path+filename)
+        orbitnum = int(fil.attrs['ORBITNUM'])
+
     print('Loading HEP data from file '+filename)
-    orbitnum = int(fil.attrs['ORBITNUM'])
+
     B1 = b'counts/s'
     lat1 = fil['GEO_LAT'][...].flatten()
     lon1 = fil['GEO_LON'][...].flatten()
@@ -576,7 +592,10 @@ def HEP_load(filename,path='./', instrument_no = '1', channel = 'all', energy_se
     Vtime = fil['VERSE_TIME'][...]
     Utime = fil['UTC_TIME'][...]
     #print(Utime)
-    fil.close()
+    if filename[-3:] == '.h5':
+        fil.close()
+    else:
+        pass
 
     #convert from CSES date (VERSE_TIME) to standard date
     vt0_utc, utc = datenum(2009,1,1,utc = str(Utime[0][0]))    #CSES initial time

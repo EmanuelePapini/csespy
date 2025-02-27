@@ -35,8 +35,8 @@ def load_h5(filename,**kwargs):
     
     return out
 
-def save_dataframe_to_h5(filename,df,group='/',index=None,compression='gzip',\
-    compression_opts=9,**kwargs):
+def save_dataframe_to_h5(filename,df,group='/',index=None,compression=None,\
+    compression_opts=None,**kwargs):
 
     fil = h5py.File(filename,**kwargs)
 
@@ -53,7 +53,7 @@ def save_dataframe_to_h5(filename,df,group='/',index=None,compression='gzip',\
                 fil.create_dataset(group+i,data=index[i],\
                 compression=compression,compression_opts=compression_opts)
     except:
-        print("unable to save dataframe to file, please find the mistake!")
+        print("unable to save dataframe to file, try with different compression options or filename!")
     fil.close()
 
 #amazing set of routines to recursively save dictionaries of dictionaries to hdf5 file
