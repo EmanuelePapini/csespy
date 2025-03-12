@@ -24,7 +24,8 @@
 
 from .CSES_core import *
 from .blombly.io import msg
-from attrdict import AttrDict
+#from attrdict import AttrDict
+from .blombly.tools.objects import AttrDict
 
 
 #CSES MAIN CLASS
@@ -108,6 +109,7 @@ class CSES():
         self.timespan = timespan
         self.latspan = latspan
         self.lonspan = lonspan
+        self.orbit_database_ranges = orbit_database_ranges
         self.append_data = append
 
         if not append:
@@ -118,15 +120,14 @@ class CSES():
                 del self.data 
                 del self.aux
        
-        if latspan is None and lonspan is None:
-            return
         #Section executed if latlon ranges are given
         if orbitn is None and search_string is None:
             
             if not hasattr(self,'orbitdb'):
                 self.latspan = None
                 self.lonspan = None
-                msg.error('Orbit database not loaded! Ignoring input latspan/lonspan...')
+                self.orbit_database_ranges = None
+                msg.error('Orbit database not loaded! Ignoring input latspan/lonspan/orbit_database_ranges...')
                 return
             
             csdb = self.orbitdb
@@ -535,8 +536,8 @@ class CSES():
         if not hasattr(self,'aux'): 
             self.aux=AttrDict()
         if get_PSD:
-            if not hasattr(self.aux,dsetname+'_psd'): 
-                self.aux[dsetname+'_psd']={}
+            if not hasattr(self.aux,dsetname+'_P'): 
+                self.aux[dsetname+'_P']={}
         else:
             if not hasattr(self.aux,dsetname): 
                 self.aux[dsetname] = {}
@@ -574,20 +575,20 @@ class CSES():
                        df = df[Cond[1](df[Cond[0]],Cond[2])] 
 
                 if get_PSD:
-                    dsetname += '_psd'
+                    dsetname += '_P'
                     if dsetname not in self.data.keys():
                         self.data[dsetname] = res.copy()
-                        self.data[dsetname+'_freq'] = aux['FREQ']
-                        del df
+                        del res
                     else:
-                        self.data[dsetname].append(res)
+                        self.data[dsetname] = res.copy() #OVERRIDE UNTIL WE FIND A WAY TO MERGE
+                        #self.data[dsetname].append(res)
                     self.aux[dsetname][infos['orbitn']]= aux
                 else:
                     if dsetname not in self.data.keys():
                         self.data[dsetname] = df.copy()
                         del df
                     else:
-                        self.data[dsetname] = pd.concat([self.data[dsetname],df])
+                        self.data[dsetname] = pd.concat([self.data[dsetname],df]).sort_index(inplace=True)
                     self.aux[dsetname][infos['orbitn']]= aux
                 
                 self.aux[dsetname]['instrument'] = instrument
@@ -939,7 +940,9 @@ class CSES():
         df = self.data[datakey+'_P']
         xx = df['position'].index.values if xaxis == 'time' else df['position'][xaxis].values
 
-        if fieldkey in self.aux[datakey][self.orbitn]['units'].keys():
+        if datakey not in self.aux: #in this case, spectra were loaded directly from the files
+            field_unit = self.aux[datakey+'_P'][self.orbitn]['units'][fieldkey+'_P']
+        elif fieldkey in self.aux[datakey][self.orbitn]['units'].keys():
             field_unit = self.aux[datakey][self.orbitn]['units'][fieldkey]
             units = '[' + (field_unit.decode('utf-8') if isinstance(field_unit, bytes) else field_unit) + r'$]^2/\mathrm{Hz}$'
         elif fieldkey.split('_')[0] in self.aux[datakey][self.orbitn]['units'].keys():
@@ -1249,7 +1252,7 @@ class CSES_database():
         if type(dbbuf) is str: self.dbfile = dbbuf
 
         self.check_buf(dbbuf)
-        print(self._loaded_)
+        
         self.load_db(dbbuf)
 
     def check_buf(self,dbbuf):

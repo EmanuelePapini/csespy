@@ -5,7 +5,7 @@ change variables accordingly should the path to cses database (fpath) change
 """
 
 import csespy
-from attrdict import AttrDict
+from .blombly.tools.objects import AttrDict
 import numpy as np
 from .blombly import pylab as plt
 plt.ion()

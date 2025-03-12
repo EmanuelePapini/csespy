@@ -346,7 +346,7 @@ def CSES_load_PSD(filename,path='./', return_xarray = False,
                             for i in fldtags if i in fil}
         fldtags = {i:fldtags[i] for i in fldtags if i in fil}
     data =  {fldtags[i]:fil[i][...] for i in fldtags}
-    pos = {CSES_POSITION[i]:fil[i][...] for i in CSES_POSITION}
+    pos = {CSES_POSITION[i]:fil[i][...].flatten() for i in CSES_POSITION}
 
     ms, ns = dshape = data[[fldtags[i] for i in fldtags][0]].shape
 
@@ -373,10 +373,16 @@ def CSES_load_PSD(filename,path='./', return_xarray = False,
     del tx
 
     
-    data = {i:data[i] for i in data} 
+    psd = {i[:-2]:data[i] for i in data}
     #data.update(pos1)
+    data = {'psd':psd}
     data['time'] = time1.flatten()
-    data['frequency'] = freqs
+    data['freq'] = freqs.flatten()
+    index = pd.to_timedelta( data['time'] - data['time'][0],unit='sec') + utc
+    data['time'] = index
+    position = pd.DataFrame(pos,index=index)
+    position['orbitn']=orbitnum
+    data['position'] = position	
     if return_xarray:
         import xarray as xr
         #ds = xr.Dataset( \
