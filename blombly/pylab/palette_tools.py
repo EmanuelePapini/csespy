@@ -236,3 +236,6 @@ def contrast_cmap(cmap,contrast=0.5):
     my_cmap[:,0:3] *= contrast 
     return ListedColormap(my_cmap)
 
+# Get the next color in the cycle
+def get_next_color(ax):
+    return next(ax._get_lines.prop_cycler)['color']

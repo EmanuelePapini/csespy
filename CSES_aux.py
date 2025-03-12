@@ -273,7 +273,13 @@ ORBIT_PLOT_TEMPLATES = {'ns':{'axes': [[0.1,0.1,0.4,0.8],[0.55,0.1,0.4,0.8]],\
                              'latrange': [[-90,90,30]],\
                              'lonrange': [[-180,180,30]],\
                              'basemap_kwargs': {'lon_0':0,'resolution':'l','round':False},\
-                             'pltkwargs':{'linestyle':'','marker':'.','markersize':0.5}}\
+                             'pltkwargs':{'linestyle':'','marker':'.','markersize':0.5}},\
+                   'default_lines':{'axes': [[0.1,0.1,0.8,0.8]],\
+                             'projection': ['cyl'],\
+                             'latrange': [[-90,90,30]],\
+                             'lonrange': [[-180,180,30]],\
+                             'basemap_kwargs': {'lon_0':0,'resolution':'l','round':False},\
+                             'pltkwargs':{'linestyle':'solid','linewidth':0.5}}\
                        }
 def plot_orbit(lat,lon, basemap = None, fig = None, ax = None,\
              axes = [[0.1,0.1,0.4,0.8],[0.55,0.1,0.4,0.8]],\
@@ -357,6 +363,7 @@ def plot_orbit(lat,lon, basemap = None, fig = None, ax = None,\
     """
     from mpl_toolkits.basemap import Basemap
     from .blombly import pylab as plt
+    from .blombly.pylab.palette_tools import get_next_color
     from copy import deepcopy
     pltkwargs = deepcopy(pltkwargs)
     if color is not None : pltkwargs['color'] = color
@@ -402,9 +409,27 @@ def plot_orbit(lat,lon, basemap = None, fig = None, ax = None,\
     else:
         plt.ioff()
     
+    def where_split_lon(xxx):
+        idx = np.where(np.abs(np.diff(xxx))> 90)[0]
+        if len(idx):
+            outs = np.zeros((np.size(idx)+1,2),dtype=int)
+            outs[:-1,1] = idx+1 
+            outs[-1,1] = np.size(xxx)
+            outs[1:,0] = idx+1 
+            return outs
+        else:
+            return [[0,np.size(xxx)]]
+
     #this is done to deal with a bug in Basemap
     latlon = False if mm[0].projection == 'cyl' else True
-    [imm.plot(lon,lat,latlon=latlon,**pltkwargs) for imm in mm]
+    nextcolor = get_next_color(ax[0])
+    plkaw = pltkwargs.copy()
+    if 'color' not in plkaw: plkaw['color'] = nextcolor
+    idx = where_split_lon(lon)
+    [[imm.plot(lon[i[0]:i[1]],lat[i[0]:i[1]],latlon=latlon,**plkaw) for i in idx] for imm in mm]
+    #else:
+    #    [imm.plot(lon,lat,latlon=latlon,**pltkwargs) for imm in mm]
+
     if show:
         plt.show()
     return fig,ax,tuple(mm)
@@ -539,6 +564,8 @@ def fix_lonlat(lons,lats,times):
     lon = remove_jumps(lon,np.array([-180,180]))
     split_coord = split_orbit(lon,lat,return_index = True)
     if len(split_coord[1]) > 1 : 
+        idx,otype = split_coord 
+        idx[-1]-=1
         mm = np.zeros(len(lon),dtype=bool)
         for i in range(len(otype)):
             if otype[i]==0:

@@ -77,7 +77,7 @@ class CSES():
 ##################### DATASET SELECTION TOOLS ##################################
 ################################################################################
     def select_data_to_load(self,orbitn = None, search_string = None, timespan = None,\
-                            latspan = None, lonspan = None, append = True):
+                            latspan = None, lonspan = None, append = True, orbit_database_ranges = None):
         """
         set the data selection method for loading the data (using CSES.load_CSES or other methods)
 
@@ -140,6 +140,9 @@ class CSES():
                 use_sel_db = True
             if lonspan is not None:
                 orbits = csdb.search_orbit_lon(lonspan, return_orbitn = True, use_selected_db = use_sel_db)
+                use_sel_db = True
+            if orbit_database_ranges is not None:
+                orbits = csdb.search_orbit(orbit_database_ranges, return_orbitn = True, use_selected_db = use_sel_db)
                 use_sel_db = True
 
             self.orbitn = list(orbits)
@@ -512,7 +515,7 @@ class CSES():
             instrument_no='5'
         if instrument == 'HEP':
             if instrument_no is None:
-                instrument_no=frequency
+                instrument_no = [i[0] for i  in CSES_DATA_TABLE[instrument].items() if i[1] == frequency][0]
             self.load_HEP(instrument_no = instrument_no, subset = subset,\
                 keep_verse_time = keep_verse_time, **kwargs)
             return
@@ -803,7 +806,7 @@ class CSES():
             nplots +=np.size(plot_coordinates)
 
 
-        fig,ax = plt.subplots(nplots,sharex=True, figsize=(8,2.5*len(datakeys)))
+        fig,ax = plt.subplots(nplots,sharex=True, figsize=(8,2.5*nplots))
         
         fig.subplots_adjust(hspace=0,right=0.8,left=0.1,top=0.93,bottom=0.12)
         if nplots == 1 : ax = [ax] 
@@ -1005,7 +1008,7 @@ class CSES():
             the packet size of EFD-02, stored in csespy.CSES_PACKETSIZE
         """
 
-        from scipy.signal import stft
+        from .blombly.analysis.spectra import stft
         if datakey not in self.data:
             msg.error('datakey '+datakey+' not found in self.data! Please load the desired data first.')
             return
@@ -1025,14 +1028,14 @@ class CSES():
 
         #extracting and manipulating the desired fields
         #ff = {i:df[i].values.reshape([nx//packetsize,packetsize]) for i in fieldkeys}
-        ff = {i:stft(df[i].values, fs = fs, window = window, \
-                        nperseg = packetsize, noverlap=0, boundary = None,padded = False) for i in fieldkeys}
+        ff = {i:stft(df[i].values, fs, window = window, nperseg = packetsize) for i in fieldkeys}
+        #ff = {i:stft(df[i].values, fs = fs, window = window, \
+        #                nperseg = packetsize, noverlap=0, boundary = None,padded = False) for i in fieldkeys}
         psd = {i:np.abs(ff[i][-1])**2 for i in ff}
         nu = ff[fieldkeys[0]][0]
         tt = df.index.values[::packetsize]
         dff = df[::packetsize].drop(columns=fieldkeys)
         self.data[datakey+'_P'] = {'psd':psd,'freq':nu,'time':tt,'position':dff}
-
 
 ######WRITING TO DATABASES MACHINERY######
     def save_data_to_h5(self,filepath,dataset_name,filename=None,mode='a',return_outputfilepath=False,track_origin=True,**kwargs):
@@ -1221,7 +1224,7 @@ class CSES():
     
 class CSES_database():
 
-    methods = {'pandas-hdf5':'load_pd_hdf5'}
+    methods = {'pandas-hdf5':'load_pd_hdf5','pandas-dataframe':'load_pd_dataframe'}
 
     def __init__(self,dbbuf = None, source = 'pandas-hdf5'):
         """
@@ -1241,18 +1244,27 @@ class CSES_database():
             'pandas': the buffer/file source is/contains a pandas dataframe
         """
 
+        self._loaded_ = False
         self.source = source
         if type(dbbuf) is str: self.dbfile = dbbuf
 
-        self.load_db(dbbuf,source)
+        self.check_buf(dbbuf)
+        print(self._loaded_)
+        self.load_db(dbbuf)
 
-    def load_db(self,dbbuf,source):
+    def check_buf(self,dbbuf):
+        import pandas as pd
+        if type(dbbuf) is pd.DataFrame:
+            self.source = 'pandas-dataframe'
+        elif isinstance(dbbuf, CSES_database):
+            self.__dict__ = dbbuf.__dict__.copy()
+    def load_db(self,dbbuf):
         """
         load database using desired buf/file and source.
         """
-
-        getattr(self,self.methods[source])(dbbuf)
-
+        if not self._loaded_:
+            getattr(self,self.methods[self.source])(dbbuf)
+            self._loaded_ = True
 
     def load_pd_hdf5(self,dbbuf):
         
@@ -1260,6 +1272,9 @@ class CSES_database():
         
         self.db = pd.read_hdf(dbbuf)
 
+    def load_pd_dataframe(self,dbbuf):
+
+        self.db = dbbuf
     def search_orbit(self,ranges, return_orbitn = True, use_selected_db = False): 
         """
         
@@ -1388,6 +1403,40 @@ class CSES_database():
 
         return self.sel_db
 
+    def search_orbit_side(self,whichside, return_db = False, return_orbitn = True, use_selected_db = False):
+        """
+        self explaining
+        
+
+        whichside: str
+            'night': select only orbits on the night side (ascending, orbitn[-1] = '1')
+            'day': select only orbits on the day side (ascending, orbitn[-1] = '0')
+            'both': does nothing 
+        return_db : bool
+            if True, returns the DataFrame with the selected orbit sides. self.sel_db is not updated
+        """
+
+        df = self.db if not use_selected_db else self.sel_db
+
+        if whichside == 'both':
+            if return_orbitn:
+                return np.unique(df.orbitn)
+            else:
+                self.sel_db = df
+                return 
+        side = '1' if whichside == 'night' else '0'
+        mask = [i[-1]==side for i in df.orbitn.values]
+        
+        if return_db:
+            return df[mask]
+        
+        self.sel_db = df[mask]
+
+        if return_orbitn: 
+            return np.unique(self.sel_db.orbitn)
+
+        return self.sel_db
+    
     def plot_orbit(self,df=None,y='lat',x='lon',basemap = None, fig = None, ax = None,\
         profile = 'default',overplot_continents = True,ion=True,show=True,\
         annotate_orbitn = True, color = None):
@@ -1423,6 +1472,11 @@ class CSES_database():
             if True, for each orbit, the orbitnumber is annotated at the lowermost (nightside)
             or uppermost (dayside) orbit point.
 
+        color : str
+            either a matplotlib valid color or 
+            "night-day": color night and day with two different colors (red and blue)
+            ("night-day",'col1',col2'): color night and day with two different colors, defined by col1 (night) and col2 (day)
+
         returns:
 
         fig,ax,mm : figure, axis, and basemap mm objects
@@ -1438,11 +1492,22 @@ class CSES_database():
         pltkwargs = ORBIT_PLOT_TEMPLATES[profile] if type(profile) is str else profile
         
         orbits = set(df.orbitn.values)
-
+        
         for iorbit in orbits:
             dff = df[df.orbitn.values == iorbit]
+            if color is not None:
+                if type(color) is str:
+                    if color == 'night-day': 
+                        col = 'red' if iorbit[-1] == '1' else 'dodgerblue'
+                if type(color) is tuple:
+                    if color[0] == 'night-day':
+                        col = color[1] if iorbit[-1] == '1' else color[2]
+                    else:
+                        col = None
+            else:
+                col = None
             fig,ax,basemap = plot_orbit(dff[y].values,dff[x].values, \
-                basemap = basemap, fig = fig, ax = ax,ion=False,show=False,color = color, **pltkwargs)
+                basemap = basemap, fig = fig, ax = ax,ion=False,show=False,color = col, **pltkwargs)
             if annotate_orbitn:
                 [axi.annotate(iorbit,[dff[x][0],dff[y][0]*1.1],fontsize=10) for axi in ax]
 
@@ -1457,3 +1522,25 @@ class CSES_database():
             plt.show()
 
         return fig,ax,basemap
+
+    def fix_lonlat(self,df = None, return_db = False):
+
+        if df is None:
+            if hasattr(self,'sel_db'):
+                df = self.sel_db
+            else:
+                df = self.db
+        else:
+            return_db = True
+        
+        orbits = set(df.orbitn.values)
+        
+        for iorbit in orbits:
+            dmask = df.orbitn.values == iorbit
+            dff = df[df.orbitn.values == iorbit]
+
+            lons,lats = fix_lonlat(dff.lon.values,dff.lat.values,dff.index.values)
+            df.loc[dmask,'lon'] = lons
+            df.loc[dmask,'lat'] = lats
+
+        if return_db : return df
