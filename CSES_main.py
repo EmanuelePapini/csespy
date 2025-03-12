@@ -883,6 +883,7 @@ class CSES():
                     if 'Proton' in i:
                         continue
                     ax.semilogy(xx,df[i].values,label=i,linewidth=1,color=cols[j%ncol])
+                ax.set_ylabel('Counts')
                 print(datakey)
             elif datakey == 'HEPP_L':
                 instrument = self.aux[datakey]['instrument']
@@ -890,6 +891,7 @@ class CSES():
                 toplot = [i[1] for i in CSES_FILE_TABLE[instrument][instr_no].items()]
                 for j,i in enumerate(toplot):                
                     ax.semilogy(xx,df[i].values,label=i,linewidth=1,color=cols[j%ncol])
+                ax.set_ylabel('Counts')
                 print(datakey)
             elif datakey == 'HEPP_H':
                 instrument = self.aux[datakey]['instrument']
@@ -899,6 +901,7 @@ class CSES():
                     if 'Proton' in i:
                         continue
                     ax.semilogy(xx,df[i].values,label=i,linewidth=1,color=cols[j%ncol])
+                ax.set_ylabel('Counts')
                 print(datakey)
             elif datakey == 'HEPP_X':
                 instrument = self.aux[datakey]['instrument']
@@ -908,6 +911,7 @@ class CSES():
                     if 'Proton' in i:
                         continue
                     ax.semilogy(xx,df[i].values,label=i,linewidth=1,color=cols[j%ncol])
+                ax.set_ylabel('Counts')
                 print(datakey)
             elif datakey == 'PAP_':
                 [ax.semilogy(xx,df[ikey],label=ikey) for ikey in ['nH+', 'nHe+', 'nO+']]
