@@ -440,7 +440,7 @@ class CSES():
                 del df
             else:
                 
-                self.data[datakey] = pd.concat([self.data[datakey],df]).sort_index() #self.data[datakey].append(df)
+                self.data[datakey] = pd.concat([self.data[datakey],df]).sort_index(inplace=True) #self.data[datakey].append(df)
 
             self.aux[datakey][infos['orbitn']]= aux
 
@@ -853,7 +853,7 @@ class CSES():
         
         orbits = list(set(dff.orbitn))
         orbits.sort()
-        for iorbit in orbits:
+        for i,iorbit in enumerate(orbits):
             mask = dff.orbitn == iorbit
             df = dff[mask]
             xx = xxx[mask]
@@ -911,6 +911,8 @@ class CSES():
                 print(datakey)
             elif datakey == 'PAP_':
                 [ax.semilogy(xx,df[ikey],label=ikey) for ikey in ['nH+', 'nHe+', 'nO+']]
+        
+            if i==0: ax.legend(loc='upper right',title=datakey)
             
         #ax.set_title(datakey,loc='left',y=1.0,pad=-14)
             
@@ -924,7 +926,6 @@ class CSES():
                 ax2.plot(yy,np.zeros(len(yy)),linestyle=None,linewidth = 0)
                 ax2.set_xlabel(secondary_xaxis)
             
-        ax.legend(loc='upper right',title=datakey)
         if xlabel is not None:
             ax[-1].set_xlabel(xlabel)
         return fig,ax
