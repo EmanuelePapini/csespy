@@ -554,7 +554,8 @@ def HEP_load(filename,path='./', instrument_no = '1', channel = 'all', energy_se
             else:
                 Count_Electron = np.sum(fil['Count_Electron'][...], axis = 1).flatten()
                 Count_Proton = np.sum(fil['Count_Proton'][...], axis = 1).flatten()
-        else:
+        # check if channel is an integer
+        elif type(channel) == int:
             print('Channel specified, summing over channel '+channel)
             if energy_selection_list is None:
                 print('No energy selection specified, summing over all energy bins')
@@ -574,7 +575,29 @@ def HEP_load(filename,path='./', instrument_no = '1', channel = 'all', energy_se
                 A412_new = np.sum(A412[:,condition_prot,:],axis = (1,2))
             Count_Electron = fil['Count_Electron'][:,int(channel)].flatten()
             Count_Proton = fil['Count_Proton'][:,int(channel)].flatten()
-        
+        elif type(channel) == list:
+            if energy_selection_list is None:
+                print('No energy selection specified, summing over all energy bins')
+                A411_new = np.sum(A411[:,:,:],axis = (1,2))
+                A412_new = np.sum(A412[:,:,:],axis = (1,2))
+            else:
+                print('Energy selection specified, summing over selected energy bins', energy_selection_list)
+                # derive boolean vector for energy selection with condition specified in energy_selection_list i.e. [['>10','<=100'],['>10','<=100']]
+                condition_ele = np.ones(electron_energy_table.shape[0],dtype = bool)
+                condition_prot = np.ones(proton_energy_table.shape[0],dtype = bool)
+                for cond in energy_selection_list[0]:
+                    condition_ele = condition_ele & eval('electron_energy_table'+cond)
+                for cond in energy_selection_list[1]:
+                    condition_prot = condition_prot & eval('proton_energy_table'+cond)
+                # select only the energy bins that satisfy the condition 
+                A411_new = np.sum(A411[:,condition_ele,:], axis = (1,2))
+                A412_new = np.sum(A412[:,condition_prot,:],axis = (1,2))
+            Count_Electron = np.zeros(len(A411))
+            Count_Proton = np.zeros((len(A411)))
+            for i in channel:
+                Count_Electron += fil['Count_Electron'][:,int(i)].flatten()
+                Count_Proton +=  fil['Count_Proton'][:,int(i)].flatten()
+            
         if energy_bin != None or pitch_bin != None:
             print('Energy and/or pitch bin specified, averaging over selected bins')
             if energy_bin != None and pitch_bin == None:
@@ -609,6 +632,18 @@ def HEP_load(filename,path='./', instrument_no = '1', channel = 'all', energy_se
     tx=Vtime
     tx = tx
     time=tx.flatten()     #verse_time in seconds
+    
+    idx = np.where(time<0)[0]
+    
+    if len(idx)>0:
+        for i in idx:
+            if i == 0:
+                time[i] = time[i+1]-1
+            elif i == len(time)-1:
+                time[i] = time[i-1]+1
+            else:
+                time[i] = (time[i-1]+time[i+1])/2
+
 
     ALT = ALT1.flatten()
     lat = lat1.flatten()
