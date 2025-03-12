@@ -440,7 +440,7 @@ class CSES():
                 del df
             else:
                 
-                self.data[datakey] = pd.concat([self.data[datakey],df]).sort_index(inplace=True) #self.data[datakey].append(df)
+                self.data[datakey] = pd.concat([self.data[datakey],df]).sort_index() #self.data[datakey].append(df)
 
             self.aux[datakey][infos['orbitn']]= aux
 
@@ -589,7 +589,7 @@ class CSES():
                         self.data[dsetname] = df.copy()
                         del df
                     else:
-                        self.data[dsetname] = pd.concat([self.data[dsetname],df]).sort_index()
+                        self.data[dsetname] = pd.concat([self.data[dsetname],df])
                     self.aux[dsetname][infos['orbitn']]= aux
                 
                 self.aux[dsetname]['instrument'] = instrument
