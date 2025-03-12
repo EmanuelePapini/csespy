@@ -438,7 +438,8 @@ class CSES():
                 self.data[datakey] = df.copy()
                 del df
             else:
-                self.data[datakey] = self.data[datakey].append(df)
+                
+                self.data[datakey] = pd.concat([self.data[datakey],df]).sort_index(inplace=True) #self.data[datakey].append(df)
 
             self.aux[datakey][infos['orbitn']]= aux
 
