@@ -372,17 +372,21 @@ def CSES_load_PSD(filename,path='./', return_xarray = False,
     time1=tx     #verse_time in seconds
     del tx
 
-    
-    psd = {i[:-2]:data[i] for i in data}
+    psd = {i[:-2]:CSES_CF[i][0]*(data[i]**CSES_CF[i][1]) for i in data}
     #data.update(pos1)
     data = {'psd':psd}
     data['time'] = time1.flatten()
     data['freq'] = freqs.flatten()
+    if data['freq'].shape[0] != ns:
+        data['freq'] = np.arange(ns) * CSES_SAMPLINGFREQS[info['Instrument']+'_'+info['DataProduct']]/ns
     index = pd.to_timedelta( data['time'] - data['time'][0],unit='sec') + utc
     data['time'] = index
     position = pd.DataFrame(pos,index=index)
     position['orbitn']=orbitnum
-    data['position'] = position	
+    data['position'] = position
+    for i in units:
+        if CSES_CF[i][1] > 1:
+            units[i] = '['+units[i].decode('utf-8')+']^'+str(CSES_CF[i][1])
     if return_xarray:
         import xarray as xr
         #ds = xr.Dataset( \

@@ -151,3 +151,8 @@ CSES_FILESYSTEM = {'EFD':'year/FREQUENCY/month',\
                    'PAP':'',\
                    'HEP':'year/month'}
 CSES_EXTENSIONS = ['.h5','.zarr.zip']
+
+#conversion factors for the various quantitities that are read: 'Bx_P':(a,b) means that 
+# Bx_P out = a*(Bx_P**b)
+CSES_CF = {'Bx_P':(1,1),'By_P':(1,1),'Bz_P':(1,1),\
+           'Ex_P':(1,2),'Ey_P':(1,2),'Ez_P':(1,2)}

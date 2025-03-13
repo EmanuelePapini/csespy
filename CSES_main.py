@@ -853,7 +853,7 @@ class CSES():
         
         orbits = list(set(dff.orbitn))
         orbits.sort()
-        for i,iorbit in enumerate(orbits):
+        for idorb,iorbit in enumerate(orbits):
             mask = dff.orbitn == iorbit
             df = dff[mask]
             xx = xxx[mask]
@@ -916,7 +916,8 @@ class CSES():
             elif datakey == 'PAP_':
                 [ax.semilogy(xx,df[ikey],label=ikey) for ikey in ['nH+', 'nHe+', 'nO+']]
         
-            if i==0: ax.legend(loc='upper right',title=datakey)
+            if idorb==0: 
+                ax.legend(loc='best',title=datakey)
             
         #ax.set_title(datakey,loc='left',y=1.0,pad=-14)
             
@@ -946,21 +947,22 @@ class CSES():
         df = self.data[datakey+'_P']
         xx = df['position'].index.values if xaxis == 'time' else df['position'][xaxis].values
 
-        if datakey not in self.aux: #in this case, spectra were loaded directly from the files
+        if datakey+'_P' in self.aux: #in this case, spectra were loaded directly from the files
             field_unit = self.aux[datakey+'_P'][self.orbitn]['units'][fieldkey+'_P']
+            units = '$\mathrm{' + (field_unit.decode('utf-8') if isinstance(field_unit, bytes) else field_unit) + r'}$'
         elif fieldkey in self.aux[datakey][self.orbitn]['units'].keys():
             field_unit = self.aux[datakey][self.orbitn]['units'][fieldkey]
-            units = '[' + (field_unit.decode('utf-8') if isinstance(field_unit, bytes) else field_unit) + r'$]^2/\mathrm{Hz}$'
+            units = '$[\mathrm{' + (field_unit.decode('utf-8') if isinstance(field_unit, bytes) else field_unit) + r'}]^2/\mathrm{Hz}$'
         elif fieldkey.split('_')[0] in self.aux[datakey][self.orbitn]['units'].keys():
             base_field_unit = self.aux[datakey][self.orbitn]['units'][fieldkey.split('_')[0]]
             units = '[' + (base_field_unit.decode('utf-8') if isinstance(base_field_unit, bytes) else base_field_unit) + r'$]^2/\mathrm{Hz}$'
         else:
             units = r'[?$]^2/\mathrm{Hz}$' 
-
+        units = units.replace("(", "{").replace(")", "}")
 
         if vmax is None : vmax = df['psd'][fieldkey].max()
         if vmin is None : vmin = np.percentile(df['psd'][fieldkey],5)
-        ims = ax.pcolormesh(xx,df['freq'],df['psd'][fieldkey],cmap=cmap,norm=LogNorm(vmin=vmin,vmax=vmax))
+        ims = ax.pcolormesh(xx,df['freq'],df['psd'][fieldkey].transpose(),cmap=cmap,norm=LogNorm(vmin=vmin,vmax=vmax))
         if plot_colorbar:
             epp.add_subplot_colorbar(fig,ax,ims,width=colorbar_width,\
                         label=units)
@@ -1040,7 +1042,7 @@ class CSES():
         ff = {i:stft(df[i].values, fs, window = window, nperseg = packetsize) for i in fieldkeys}
         #ff = {i:stft(df[i].values, fs = fs, window = window, \
         #                nperseg = packetsize, noverlap=0, boundary = None,padded = False) for i in fieldkeys}
-        psd = {i:np.abs(ff[i][-1])**2 for i in ff}
+        psd = {i:(np.abs(ff[i][-1])**2).transpose() for i in ff}
         nu = ff[fieldkeys[0]][0]
         tt = df.index.values[::packetsize]
         dff = df[::packetsize].drop(columns=fieldkeys)
