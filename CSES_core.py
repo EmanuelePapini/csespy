@@ -532,13 +532,14 @@ def HEP_load(filename,path='./', instrument_no = '1', channel = 'all', energy_se
     if instrument_no != '4' and instrument_no != '3':
         electron_energy_table = fil['Energy_Table_Electron'][...][0]
         proton_energy_table = fil['Energy_Table_Proton'][...][0]
-        
+        ebin = np.diff(electron_energy_table).mean() 
+        pbin = np.diff(proton_energy_table).mean() 
         if channel == 'all':
             print('No channel specified, summing over all channels')
             if energy_selection_list is None:
                 print('No energy selection specified, summing over all energy bins')
-                A411_new = np.sum(A411[:,:,:],axis = (1,2))
-                A412_new = np.sum(A412[:,:,:],axis = (1,2))
+                A411_new = np.sum(A411[:,:,:],axis = (1,2))*ebin
+                A412_new = np.sum(A412[:,:,:],axis = (1,2))*pbin
             else:
                 print('Energy selection specified, summing over selected energy bins', energy_selection_list)
                 # derive boolean vector for energy selection with condition specified in energy_selection_list i.e. [['>10','<=100'],['>10','<=100']]
@@ -550,8 +551,8 @@ def HEP_load(filename,path='./', instrument_no = '1', channel = 'all', energy_se
                     condition_prot = condition_prot & eval('proton_energy_table'+cond)
                 
                 # select only the energy bins that satisfy the condition 
-                A411_new = np.sum(A411[:,condition_ele,:], axis=(1,2))
-                A412_new = np.sum(A412[:,condition_prot,:], axis=(1,2))
+                A411_new = np.sum(A411[:,condition_ele,:], axis=(1,2))*ebin
+                A412_new = np.sum(A412[:,condition_prot,:], axis=(1,2))*pbin
             if instrument_no == '2':
                 Count_Electron = fil['Count_Electron'][...]
                 Count_Proton = fil['Count_Proton'][...]
@@ -563,8 +564,8 @@ def HEP_load(filename,path='./', instrument_no = '1', channel = 'all', energy_se
             print('Channel specified, summing over channel '+channel)
             if energy_selection_list is None:
                 print('No energy selection specified, summing over all energy bins')
-                A411_new = np.sum(A411[:,:,:],axis = (1,2))
-                A412_new = np.sum(A412[:,:,:],axis = (1,2))
+                A411_new = np.sum(A411[:,:,:],axis = (1,2))*ebin
+                A412_new = np.sum(A412[:,:,:],axis = (1,2))*pbin
             else:
                 print('Energy selection specified, summing over selected energy bins', energy_selection_list)
                 # derive boolean vector for energy selection with condition specified in energy_selection_list i.e. [['>10','<=100'],['>10','<=100']]
@@ -575,15 +576,15 @@ def HEP_load(filename,path='./', instrument_no = '1', channel = 'all', energy_se
                 for cond in energy_selection_list[1]:
                     condition_prot = condition_prot & eval('proton_energy_table'+cond)
                 # select only the energy bins that satisfy the condition 
-                A411_new = np.sum(A411[:,condition_ele,:], axis = (1,2))
-                A412_new = np.sum(A412[:,condition_prot,:],axis = (1,2))
+                A411_new = np.sum(A411[:,condition_ele,:], axis = (1,2))*ebin
+                A412_new = np.sum(A412[:,condition_prot,:],axis = (1,2))*pbin
             Count_Electron = fil['Count_Electron'][:,int(channel)].flatten()
             Count_Proton = fil['Count_Proton'][:,int(channel)].flatten()
         elif type(channel) == list:
             if energy_selection_list is None:
                 print('No energy selection specified, summing over all energy bins')
-                A411_new = np.sum(A411[:,:,:],axis = (1,2))
-                A412_new = np.sum(A412[:,:,:],axis = (1,2))
+                A411_new = np.sum(A411[:,:,:],axis = (1,2))*ebin
+                A412_new = np.sum(A412[:,:,:],axis = (1,2))*pbin
             else:
                 print('Energy selection specified, summing over selected energy bins', energy_selection_list)
                 # derive boolean vector for energy selection with condition specified in energy_selection_list i.e. [['>10','<=100'],['>10','<=100']]
@@ -594,8 +595,8 @@ def HEP_load(filename,path='./', instrument_no = '1', channel = 'all', energy_se
                 for cond in energy_selection_list[1]:
                     condition_prot = condition_prot & eval('proton_energy_table'+cond)
                 # select only the energy bins that satisfy the condition 
-                A411_new = np.sum(A411[:,condition_ele,:], axis = (1,2))
-                A412_new = np.sum(A412[:,condition_prot,:],axis = (1,2))
+                A411_new = np.sum(A411[:,condition_ele,:], axis = (1,2))*ebin
+                A412_new = np.sum(A412[:,condition_prot,:],axis = (1,2))*pbin
             Count_Electron = np.zeros(len(A411))
             Count_Proton = np.zeros((len(A411)))
             for i in channel:
@@ -606,12 +607,12 @@ def HEP_load(filename,path='./', instrument_no = '1', channel = 'all', energy_se
             print('Energy and/or pitch bin specified, averaging over selected bins')
             if energy_bin != None and pitch_bin == None:
                 print('Energy bin specified, summing over pitch bin '+str(energy_bin))
-                A411_new = np.sum(A411[:,energy_bin,:], axis = 1)
-                A412_new = np.sum(A412[:,energy_bin,:], axis = 1)
+                A411_new = np.sum(A411[:,energy_bin,:], axis = 1)*ebin
+                A412_new = np.sum(A412[:,energy_bin,:], axis = 1)*pbin
             elif energy_bin == None and pitch_bin != None:
                 print('Pitch bin specified, summing over energy bin '+str(pitch_bin))
-                A411_new = np.sum(A411[:,:,pitch_bin], axis = 1)
-                A412_new = np.sum(A412[:,:,pitch_bin], axis = 1)
+                A411_new = np.sum(A411[:,:,pitch_bin], axis = 1)*ebin
+                A412_new = np.sum(A412[:,:,pitch_bin], axis = 1)*pbin
             else:
                 print('Energy and pitch bin specified')
                 A411_new = A411[:,energy_bin,pitch_bin]

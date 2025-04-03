@@ -810,7 +810,7 @@ class CSES():
 
         fig,ax = plt.subplots(nplots,sharex=True, figsize=(8,2.5*nplots))
         
-        fig.subplots_adjust(hspace=0,right=0.8,left=0.1,top=0.93,bottom=0.12)
+        fig.subplots_adjust(hspace=0,right=0.8,left=0.1,top=0.95,bottom=0.10)
         if nplots == 1 : ax = [ax] 
         for i,ikey in enumerate(datakeys):
             if i == 0:
@@ -843,7 +843,15 @@ class CSES():
             ax[-1].tick_params(axis='x',rotation=45)
         return fig,ax
 
-    def plot_payload(self,datakey,xaxis='time',secondary_xaxis=None,fig=None,ax=None,xlabel=None):
+    def plot_payload(self,datakeyvars,xaxis='time',secondary_xaxis=None,fig=None,ax=None,xlabel=None):
+        
+
+        if type(datakeyvars) is str: 
+            datakey = datakeyvars
+            keytoplot = None
+        else:
+            datakey = datakeyvars[0]
+            keytoplot = datakeyvars[1]
         
         from .blombly import pylab as plt
         cols = plt.rcParams['axes.prop_cycle'].by_key()['color'] #colors
@@ -859,7 +867,7 @@ class CSES():
             xx = xxx[mask]
             if datakey == 'LAP_50mm':
                 ax.semilogy(xx,df['ne'],label=r'$n_e$',color=cols[0])
-                ax.set_ylabel(r'$n_e \quad (m^{-3})$')
+                ax.set_ylabel(r'$\mathrm{n_e \quad [m^{-3}]}$')
                 print(datakey)
             elif datakey in ['EFD_ULF','EFD_ELF','EFD_VLF']:
                 ax.plot(xx,np.sqrt(df['Ex']**2+df['Ey']**2+df['Ez']**2),label='|E|',linewidth=1,color='black')
@@ -878,7 +886,8 @@ class CSES():
             elif datakey == 'HEPD':
                 instrument = self.aux[datakey]['instrument']
                 instr_no = self.aux[datakey]['instrument_no']
-                toplot = [[i[1] for i in CSES_FILE_TABLE[instrument][instr_no].items()][0]]
+                
+                toplot = [[i[1] for i in CSES_FILE_TABLE[instrument][instr_no].items()][0]] if keytoplot is None else keytoplot
                 for j,i in enumerate(toplot):
                     #if 'Electron' in i:
                     #    continue
@@ -888,15 +897,15 @@ class CSES():
             elif datakey == 'HEPP_L':
                 instrument = self.aux[datakey]['instrument']
                 instr_no = self.aux[datakey]['instrument_no']
-                toplot = [i[1] for i in CSES_FILE_TABLE[instrument][instr_no].items()]
+                toplot = [i[1] for i in CSES_FILE_TABLE[instrument][instr_no].items()] if keytoplot is None else keytoplot
                 for j,i in enumerate(toplot):                
                     ax.semilogy(xx,df[i].values,label=i,linewidth=1,color=cols[j%ncol])
-                ax.set_ylabel('Counts')
+                ax.set_ylabel(toplot[0].split('_')[0])
                 print(datakey)
             elif datakey == 'HEPP_H':
                 instrument = self.aux[datakey]['instrument']
                 instr_no = self.aux[datakey]['instrument_no']
-                toplot = [i[1] for i in CSES_FILE_TABLE[instrument][instr_no].items()]
+                toplot = [i[1] for i in CSES_FILE_TABLE[instrument][instr_no].items()] if keytoplot is None else keytoplot
                 for j,i in enumerate(toplot):
                     #if 'Electron' in i:
                     #    continue
@@ -906,7 +915,7 @@ class CSES():
             elif datakey == 'HEPP_X':
                 instrument = self.aux[datakey]['instrument']
                 instr_no = self.aux[datakey]['instrument_no']
-                toplot = [i[1] for i in CSES_FILE_TABLE[instrument][instr_no].items()]
+                toplot = [i[1] for i in CSES_FILE_TABLE[instrument][instr_no].items()] if keytoplot is None else keytoplot
                 for j,i in enumerate(toplot):
                     #if 'Electron' in i:
                     #    continue
