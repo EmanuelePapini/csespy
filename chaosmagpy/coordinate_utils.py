@@ -62,8 +62,8 @@ MAG : Magnetic coordinate system (centered dipole, orthogonal)
 import numpy as np
 import os
 from math import factorial
-from chaosmagpy.model_utils import legendre_poly
-from chaosmagpy.config_utils import basicConfig
+from .model_utils import legendre_poly
+from .config_utils import basicConfig
 
 ROOT = os.path.abspath(os.path.dirname(__file__))
 

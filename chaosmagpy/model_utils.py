@@ -20,7 +20,7 @@ field models in general.
 
 import numpy as np
 import warnings
-from chaosmagpy.config_utils import basicConfig
+from .config_utils import basicConfig
 from scipy.interpolate import BSpline, PPoly
 from numba import njit
 
