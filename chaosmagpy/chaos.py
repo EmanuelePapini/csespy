@@ -27,14 +27,14 @@ import warnings
 import scipy.interpolate as sip
 import hdf5storage as hdf
 import h5py
-import .chaosmagpy.coordinate_utils as cu
-import .chaosmagpy.model_utils as mu
-import .chaosmagpy.data_utils as du
+from . import coordinate_utils as cu
+from . import model_utils as mu
+from . import data_utils as du
 import matplotlib.pyplot as plt
 from datetime import datetime
 from timeit import default_timer as timer
-from .chaosmagpy.config_utils import basicConfig
-from .chaosmagpy.plot_utils import (defaultkeys, plot_power_spectrum,
+from .config_utils import basicConfig
+from .plot_utils import (defaultkeys, plot_power_spectrum,
                                    plot_timeseries, plot_maps)
 
 

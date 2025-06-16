@@ -16,7 +16,7 @@ import matplotlib.pyplot as plt
 import matplotlib.ticker as ticker
 import matplotlib.dates as mdates
 import warnings
-from chaosmagpy.config_utils import basicConfig
+from .config_utils import basicConfig
 from datetime import datetime, timedelta
 from matplotlib.colors import LinearSegmentedColormap
 
