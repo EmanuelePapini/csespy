@@ -78,7 +78,8 @@ class CSES():
 ##################### DATASET SELECTION TOOLS ##################################
 ################################################################################
     def select_data_to_load(self,orbitn = None, search_string = None, timespan = None,\
-                            latspan = None, lonspan = None, append = True, orbit_database_ranges = None):
+                            latspan = None, lonspan = None, append = True,\
+                            side = None, orbit_database_ranges = None):
         """
         set the data selection method for loading the data (using CSES.load_CSES or other methods)
 
@@ -111,6 +112,7 @@ class CSES():
         self.lonspan = lonspan
         self.orbit_database_ranges = orbit_database_ranges
         self.append_data = append
+        self.side = side
 
         if not append:
             self.files = AttrDict()
@@ -145,7 +147,10 @@ class CSES():
             if orbit_database_ranges is not None:
                 orbits = csdb.search_orbit(orbit_database_ranges, return_orbitn = True, use_selected_db = use_sel_db)
                 use_sel_db = True
-
+            if side != 'both' or side is not None:
+                orbits = csdb.search_orbit_side(side, return_orbitn = True, use_selected_db = use_sel_db)
+                use_sel_db = True
+                
             self.orbitn = list(orbits)
 
             if len(self.orbitn) == 0 :
@@ -572,8 +577,16 @@ class CSES():
                         keep_verse_time = keep_verse_time, **kwargs)
             
                 if subset is not None:
+                    subset = sorted(subset, key=len, reverse=True) #sort by length to avoid problems with subset conditions
                     for Cond in subset:
-                       df = df[Cond[1](df[Cond[0]],Cond[2])] 
+                        if len(Cond) == 4:
+                            psize = CSES_PACKETSIZE[dsetname]
+                            maskd = Cond[1](df[Cond[0]].values[::psize],Cond[2]) 
+                            mask = np.zeros(df.shape[0],dtype=bool).reshape(df.shape[0]//psize,psize)
+                            mask[maskd,:] = True
+                            df = df[mask.flatten()]
+                        else:
+                            df = df[Cond[1](df[Cond[0]],Cond[2])] 
 
                 if get_PSD:
                     dsetname += '_P'
@@ -645,7 +658,7 @@ class CSES():
         df = self.data[datakey]
         t1,t2,t3=tags
         if not E_rotated:
-            print('Derotating fields...')
+            print('Derotating '+datakey+' '+str(tags)+'...')
             #1-removing jumps by derotating artificially
             if 'gaps_mask' in df:
                 EE = derotate_field(df[t1].values,df[t2].values,df[t3].values,nskip=nskip,\
@@ -958,10 +971,10 @@ class CSES():
 
         if datakey+'_P' in self.aux: #in this case, spectra were loaded directly from the files
             field_unit = self.aux[datakey+'_P'][self.orbitn]['units'][fieldkey+'_P']
-            units = '$\mathrm{' + (field_unit.decode('utf-8') if isinstance(field_unit, bytes) else field_unit) + r'}$'
+            units = r'$\mathrm{' + (field_unit.decode('utf-8') if isinstance(field_unit, bytes) else field_unit) + r'}$'
         elif fieldkey in self.aux[datakey][self.orbitn]['units'].keys():
             field_unit = self.aux[datakey][self.orbitn]['units'][fieldkey]
-            units = '$[\mathrm{' + (field_unit.decode('utf-8') if isinstance(field_unit, bytes) else field_unit) + r'}]^2/\mathrm{Hz}$'
+            units = r'$[\mathrm{' + (field_unit.decode('utf-8') if isinstance(field_unit, bytes) else field_unit) + r'}]^2/\mathrm{Hz}$'
         elif fieldkey.split('_')[0] in self.aux[datakey][self.orbitn]['units'].keys():
             base_field_unit = self.aux[datakey][self.orbitn]['units'][fieldkey.split('_')[0]]
             units = '[' + (base_field_unit.decode('utf-8') if isinstance(base_field_unit, bytes) else base_field_unit) + r'$]^2/\mathrm{Hz}$'
@@ -1010,7 +1023,8 @@ class CSES():
 
         self._ancillary_['interpolate'][inst1+'2'+inst2] = tags
 
-    def get_spectrogram(self,datakey,fieldkeys,packetsize = None,window='hann'):
+    def get_spectrogram(self,datakey,fieldkeys,packetsize = None,\
+        method = 'stft', allow_shrinking = True,  **kwargs ):
         """
         Calculate Spectrograms (STFT PSD) from the desired instrument_frequency
         previouly loaded in self.data on the selected keys/fields,
@@ -1020,15 +1034,23 @@ class CSES():
         ----------
         datakey : str
             key of self.data containing the pandas.Dataframe with the field keys
-            of which one want to compute the STFT PSD
+            of which one want to compute the PSD
         fieldkeys: list of str
             keys of which one wants to compute the spectrogram
-        packetsize : None or int
+        packetsize : None or int (used if STFT is selected)
             size of the STFT chunk. Default is None, which is equivalent to
             the packet size of EFD-02, stored in csespy.CSES_PACKETSIZE
+        allow_shrinking : bool
+            if True, then the STFT will be computed on the whole data and
+            if the length of the data is not a multiple of packetsize, the data will be
+            shrinked by discarding the last points.
+            If False, then an error is raised if the length of the data is not
+            a multiple of packetsize.
+        method : 
+        **kwargs : 
+            optional keyword arguments passed to stft or wavelet transform function
+            (see blombly.analysis.spectra)
         """
-
-        from .blombly.analysis.spectra import stft
         if datakey not in self.data:
             msg.error('datakey '+datakey+' not found in self.data! Please load the desired data first.')
             return
@@ -1043,18 +1065,28 @@ class CSES():
         if packetsize is None:
             packetsize = CSES_PACKETSIZE[datakey]
         if nx// packetsize != nx/ packetsize:
-            msg.error('wrong input packetsize! Returning')
-            return
+            if allow_shrinking:
+                nx = nx - (nx % packetsize)
+            else:
+                msg.error('wrong input packetsize! Returning')
+                return
+
+        if method == 'stft':
+            from .blombly.analysis.spectra import stft as trans
+            if 'window' not in kwargs : kwargs['window']='hann'
+            if 'nperseg' not in kwargs : kwargs['nperseg'] = packetsize
+        if method == 'cwt':
+            from .blombly.analysis.spectra import cwt as trans
 
         #extracting and manipulating the desired fields
         #ff = {i:df[i].values.reshape([nx//packetsize,packetsize]) for i in fieldkeys}
-        ff = {i:stft(df[i].values, fs, window = window, nperseg = packetsize) for i in fieldkeys}
+        ff = {i:trans(df[i].values[:nx], fs, **kwargs) for i in fieldkeys}
         #ff = {i:stft(df[i].values, fs = fs, window = window, \
         #                nperseg = packetsize, noverlap=0, boundary = None,padded = False) for i in fieldkeys}
         psd = {i:(np.abs(ff[i][-1])**2).transpose() for i in ff}
         nu = ff[fieldkeys[0]][0]
-        tt = df.index.values[::packetsize]
-        dff = df[::packetsize].drop(columns=fieldkeys)
+        tt = df.index.values[:nx:packetsize]
+        dff = df[:nx:packetsize].drop(columns=fieldkeys)
         self.data[datakey+'_P'] = {'psd':psd,'freq':nu,'time':tt,'position':dff}
 
 ######WRITING TO DATABASES MACHINERY######
@@ -1381,6 +1413,30 @@ class CSES_database():
             return self.sel_db
 
         return np.unique(self.sel_db.orbitn)
+    
+    #def search_orbit_side(self,side, return_orbit = True, use_selected_db = False):
+    #    """
+    #    find all available orbits in given temporal range
+    #    """
+
+    #    df = self.db if not use_selected_db else self.sel_db
+
+    #    if self.sel_db.size == 0 : return self.sel_db
+
+    #    if side is not None and side != 'both':        
+    #        ND = [i[-1] for i in self.sel_db.orbitn] 
+    #        if side.upper() == 'D' or side.lower() == 'night':
+    #            mask = [i == '0' for i in ND]
+    #        if side.upper() == 'N' or side.lower() == 'night':
+    #            mask = [i == '1' for i in ND]
+    #        
+    #        self.sel_db = self.sel_db[mask]
+
+    #    if not return_orbitn:
+    #        return self.sel_db
+
+    #    return np.unique(self.sel_db.orbitn)
+
 
     def search_orbit_latlontimespan(self,lat,lon,timespan, return_orbitn = True, use_selected_db = False):
         """

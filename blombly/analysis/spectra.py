@@ -37,3 +37,55 @@ def stft(y,fs,window='hann',nperseg=256):
     stft/=nperseg
     return freqs,times,stft.transpose()
 
+def wavelet_transform(*args,**kwargs):
+    return cwt(*args,**kwargs)
+
+def cwt(y, fs, wavelet='cmor1.5-1.0', nscales=64, fmin=1, fmax=None,return_dict=False):
+    """
+    Computes the Continuous Wavelet Transform (CWT) of the signal.
+
+    Parameters
+    ----------
+    y : array_like
+        Input signal.
+    fs : float
+        Sampling frequency.
+    wavelet : str
+        Wavelet to use (must be complex-valued). Default is 'cmor1.5-1.0'.
+    nscales : int
+        Number of frequency scales to use.
+    fmin : float
+        Minimum frequency to analyze.
+    fmax : float or None
+        Maximum frequency. If None, it is set to fs / 2.
+
+    Returns
+    -------
+    freqs : ndarray
+        Array of frequencies (Hz).
+    times : ndarray
+        Array of time points (s).
+    coef : 2D ndarray
+        Wavelet coefficients with shape (nscales, len(y)).
+    """
+    import pywt
+    y = np.array(y)
+    if fmax is None:
+        fmax = fs / 2
+
+    # Frequency range (log-spaced)
+    freqs = np.logspace(np.log10(fmin), np.log10(fmax), num=nscales)
+    # Convert frequencies to scales using scale = fc / (freq * dt)
+    dt = 1 / fs
+    wavelet_obj = pywt.ContinuousWavelet(wavelet)
+    fc = pywt.central_frequency(wavelet_obj)  # center frequency of the wavelet
+    scales = fc / (freqs * dt)
+
+    # Perform CWT
+    coef, _ = pywt.cwt(y, scales, wavelet, sampling_period=dt)
+
+    times = np.arange(len(y)) / fs
+    if return_dict:
+        return {'freq':freqs, 'time':times, 'coef':coef, 'scale':scales}
+
+    return freqs, times, coef

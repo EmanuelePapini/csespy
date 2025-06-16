@@ -238,4 +238,13 @@ def contrast_cmap(cmap,contrast=0.5):
 
 # Get the next color in the cycle
 def get_next_color(ax):
+    with str.split(mpl.__version__).('.') as k: 
+        i,j,k = k
+        if int(i)>= 4:
+            return ax._get_lines.get_next_color()
+        elif int(i) == 3 and int(j)> 8:
+            return ax._get_lines.get_next_color()
+        elif int(i) == 3 and int(j)== 8 and int(k) >=4:
+            return ax._get_lines.get_next_color()
+    
     return next(ax._get_lines.prop_cycler)['color']
