@@ -147,11 +147,11 @@ class CSES():
             if orbit_database_ranges is not None:
                 orbits = csdb.search_orbit(orbit_database_ranges, return_orbitn = True, use_selected_db = use_sel_db)
                 use_sel_db = True
-            if side != 'both' or side is not None:
+            if side != 'both' and side is not None:
                 orbits = csdb.search_orbit_side(side, return_orbitn = True, use_selected_db = use_sel_db)
                 use_sel_db = True
                 
-            self.orbitn = list(orbits)
+            self.orbitn = orbits.tolist()
 
             if len(self.orbitn) == 0 :
                 msg.warning('Orbit(s) satisfying lon/lat/time constraint NOT FOUND!')
@@ -1327,7 +1327,9 @@ class CSES_database():
     def load_pd_dataframe(self,dbbuf):
 
         self.db = dbbuf
-    def search_orbit(self,ranges, return_orbitn = True, use_selected_db = False): 
+    def search_orbit(self,ranges = None, orbitn = None, timespan = None,\
+                     latspan = None, lonspan = None, side = None,\
+                     return_orbitn = True, use_selected_db = False): 
         """
         
         This is a generic method to select a subset of orbits fulfilling the conditions set in ranges (see below).
@@ -1349,10 +1351,30 @@ class CSES_database():
         
         df = self.db if not use_selected_db else self.sel_db
         
-        for Cond in ranges:
-           df = df[Cond[1](df[Cond[0]],Cond[2])] 
+        seldb = False
+        if ranges is not None:
+            for Cond in ranges:
+                df = df[Cond[1](df[Cond[0]],Cond[2])] 
+            seldb = True
+            self.sel_db = df
 
-        self.sel_db = df
+        if orbitn is not None:
+            df = self.search_orbit_orbitn(orbitn,use_selected_db = seldb, return_orbitn = False)
+            seldb = True
+        if timespan is not None:
+            df = self.search_orbit_timespan(timespan,use_selected_db = seldb, return_orbitn = False)
+            seldb = True
+        if latspan is not None:
+            df = self.search_orbit_lat(latspan,use_selected_db = seldb, return_orbitn = False)
+            seldb = True
+        if lonspan is not None:
+            df = self.search_orbit_lon(lonspan,use_selected_db = seldb, return_orbitn = False)
+            seldb = True
+        if side != 'both' and side is not None:
+            df = self.search_orbit_side(side,use_selected_db = seldb, return_orbitn = False)
+            seldb = True
+
+        #self.sel_db = df
 
         #if df.size == 0 : return None
 
