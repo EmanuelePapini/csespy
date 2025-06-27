@@ -1327,7 +1327,7 @@ class CSES_database():
     def load_pd_dataframe(self,dbbuf):
 
         self.db = dbbuf
-    def search_orbit(self,ranges = None, orbitn = None, timespan = None,\
+    def search_orbit(self,orbit_database_ranges = None, orbitn = None, timespan = None,\
                      latspan = None, lonspan = None, side = None,\
                      return_orbitn = True, use_selected_db = False): 
         """
@@ -1336,7 +1336,7 @@ class CSES_database():
 
         parameters
         ----------
-        ranges = 3-elements tuple or tuple/list of 3-elements tuples with the following structures
+        orbit_database_ranges = 3-elements tuple or tuple/list of 3-elements tuples with the following structures
             (('key', boolean_function, comparing value),)
 
             for example: self.search_orbit([('lat',numpy.greater,44),('lat',numpy.less,48),('lon',numpy.greater,10),('lon',numpy.less,15)]) 
@@ -1349,6 +1349,8 @@ class CSES_database():
         input_db : None or pandas dataframe
         """
         
+        ranges = orbit_database_ranges
+
         df = self.db if not use_selected_db else self.sel_db
         
         seldb = False
