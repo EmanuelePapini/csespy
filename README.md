@@ -30,7 +30,8 @@ Files in this repos are named accordingly to their purpose.
 * <ins>CSES_core.py</ins> : Core routines/functions used to read the data.
 * <ins>CSES_aux.py</ins> : Contains all auxiliary function for reading/manipulating data (e.g. filename parsing, naming convention, date conversion, reference frame conversion,...).
 * <ins>CSES_raw.py</ins> : Routines to load the .h5 files "as it is" in their original format (RAW) without any manipulation (for advanced use and/or debugging).
-* <ins>CSES_init.py</ins> : contains few simple instructions to initialize the environment. This requires (in its actual state) editing depending on the machine and/or where data are stored.
+* <ins>CSES_params.py</ins> : Contains the relevant parameters to properly read the files from the CSES mission.
+* <ins>CSES_init.py</ins> : contains few simple instructions to initialize the environment. This requires (in its actual state) editing of the file depending on the machine and/or where data are stored.
 
 In addition, the folder blombly contains a collection of routines directly taken from EP personal python library (named blombly) that are used in csespy.
 
