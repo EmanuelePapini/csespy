@@ -967,16 +967,17 @@ class CSES():
 
         fig,ax = plt.get_figure(fig,ax,axes=[0.1,0.1,0.7,0.7])
         df = self.data[datakey+'_P']
+        orbitn = str(df['position'].orbitn.values[0]).zfill(6)
         xx = df['position'].index.values if xaxis == 'time' else df['position'][xaxis].values
 
         if datakey+'_P' in self.aux: #in this case, spectra were loaded directly from the files
-            field_unit = self.aux[datakey+'_P'][self.orbitn]['units'][fieldkey+'_P']
+            field_unit = self.aux[datakey+'_P'][orbitn]['units'][fieldkey+'_P']
             units = r'$\mathrm{' + (field_unit.decode('utf-8') if isinstance(field_unit, bytes) else field_unit) + r'}$'
-        elif fieldkey in self.aux[datakey][self.orbitn]['units'].keys():
-            field_unit = self.aux[datakey][self.orbitn]['units'][fieldkey]
+        elif fieldkey in self.aux[datakey][orbitn]['units'].keys():
+            field_unit = self.aux[datakey][orbitn]['units'][fieldkey]
             units = r'$[\mathrm{' + (field_unit.decode('utf-8') if isinstance(field_unit, bytes) else field_unit) + r'}]^2/\mathrm{Hz}$'
-        elif fieldkey.split('_')[0] in self.aux[datakey][self.orbitn]['units'].keys():
-            base_field_unit = self.aux[datakey][self.orbitn]['units'][fieldkey.split('_')[0]]
+        elif fieldkey.split('_')[0] in self.aux[datakey][orbitn]['units'].keys():
+            base_field_unit = self.aux[datakey][orbitn]['units'][fieldkey.split('_')[0]]
             units = '[' + (base_field_unit.decode('utf-8') if isinstance(base_field_unit, bytes) else base_field_unit) + r'$]^2/\mathrm{Hz}$'
         else:
             units = r'[?$]^2/\mathrm{Hz}$' 
