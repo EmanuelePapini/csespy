@@ -24,6 +24,8 @@
 from .CSES_aux import *
 from .CSES_raw import *
 
+from .blombly.tools import arrays
+
 def CSES_load(filename,path='./', return_pandas = False,
             with_mag_coords = False,keep_verse_time = True, fill_missing=None):
     """
@@ -84,7 +86,6 @@ def CSES_load(filename,path='./', return_pandas = False,
     """
     
     import h5py
-    from .blombly.tools import arrays
     from .blombly.tools.objects import dict_to_recarray
     import pandas as pd
     from datetime import timedelta
@@ -323,7 +324,7 @@ def CSES_load_PSD(filename,path='./', return_xarray = False,
     
     import h5py
     from numpy import interp as interp1
-    from .blombly.tools import arrays
+    #from .blombly.tools import arrays
     from .blombly.tools.objects import dict_to_recarray
     import pandas as pd
     from datetime import timedelta
@@ -434,7 +435,7 @@ def EFD_load_ELF_PSD(filename, path='./', with_mag_coords = False):
     cut_last_interval = True
     import h5py
     from numpy import interp as interp1
-    from .blombly.tools import arrays
+    #from .blombly.tools import arrays
     fil = h5py.File(path+filename,'r')
     orbitnum = int(fil.attrs['ORBITNUM'][0])
     B1 = fil['A121_W'].attrs['units'][0]
@@ -876,7 +877,7 @@ def EFD_load_ELF(filename, path='./', cut_last_interval = True,\
     #cut_last_interval = True
     import h5py
     from numpy import interp as interp1
-    from .blombly.tools import arrays
+    #from .blombly.tools import arrays
     fil = h5py.File(path+filename,'r')
     orbitnum = int(fil.attrs['ORBITNUM'][0])
     B1 = fil['A121_W'].attrs['units'][0]
@@ -1127,7 +1128,7 @@ def get_spacecraft_speed(df,ref_frame='ecef',as_output = True,\
 ################################################################################
 ####################         AUXILIARY FUNCTIONS             ###################
 ################################################################################
-def get_CHAOSmag(df,as_output = True,ref_frame='ecef',chaosfile=None):
+def get_CHAOSmag(df,as_output = True,ref_frame='ecef',chaosfile=None,memory_friendly = True,chunk_size=65536):
     """
     Compute magnetic field from CHAOS model on the desired orbit
     
@@ -1138,7 +1139,7 @@ def get_CHAOSmag(df,as_output = True,ref_frame='ecef',chaosfile=None):
 
     if chaosfile is None:
         import os
-        chaosfile = os.path.dirname(__file__)+'/CHAOS-7.14.mat'
+        chaosfile = os.path.dirname(__file__)+'/CHAOS-8.2.mat'
         
 
     time = chaos.data_utils.mjd2000(df.index.to_pydatetime()) #28 seconds
@@ -1151,7 +1152,18 @@ def get_CHAOSmag(df,as_output = True,ref_frame='ecef',chaosfile=None):
     model = chaos.load_CHAOS_matfile(chaosfile)
 
 
-    Br,Bthta,Bphi=model.synth_values_tdep(time,radius,colat,lon)
+    if memory_friendly:
+        stend = arrays.start_end(df.shape[0],int(df.shape[0]//chunk_size))
+        Br = np.zeros(df.shape[0])
+        Bthta = np.zeros(df.shape[0])
+        Bphi = np.zeros(df.shape[0])
+        for istart,iend in stend:
+            tB1,tB2,tB3=model.synth_values_tdep(time[istart:iend],radius[istart:iend],colat[istart:iend],lon[istart:iend])
+            Br[istart:iend] = tB1
+            Bthta[istart:iend] = tB2
+            Bphi[istart:iend] = tB3
+    else:
+        Br,Bthta,Bphi=model.synth_values_tdep(time,radius,colat,lon)
 
     if ref_frame.lower() == 'ecef' or ref_frame.lower() == 'wgs84': 
 
