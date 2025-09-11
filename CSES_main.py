@@ -50,7 +50,7 @@ class CSES():
         I am now rewriting the class to add reading HPM and SCM data as well
     """
 
-    def __init__(self, path='./',search_string = None,orbitn=None,timespan=None,unstructured_path=False,\
+    def __init__(self, path='./',search_string = None,orbitn=None,timespan=None,unstructured_path=False, ignore_structure = False,\
                  orbit_database_buf = None, database_source = 'pandas-hdf5'):
 
 
@@ -63,7 +63,8 @@ class CSES():
         self.timespan = None
         self._ancillary_={}
         self._unstructured_path_ = unstructured_path
-        if not unstructured_path: self.check_path()
+        self._ignore_structure_ = ignore_structure
+        if not unstructured_path and not ignore_structure: self.check_path()
 
         if orbit_database_buf is not None:
             self.load_orbitdb(orbit_database_buf,database_source)
@@ -316,13 +317,14 @@ class CSES():
        
         files = None
         unstruct_path = self._unstructured_path_
-        
+        ignore_structure = self._ignore_structure_
+         
         if instrument_no is not None : 
             frequency = CSES_DATA_TABLE[instrument][instrument_no]
         else:
            instrument_no = get_dictkey_from_value(CSES_DATA_TABLE[instrument],frequency)[0]
 
-        if unstruct_path:
+        if unstruct_path or ignore_structure:
             ppath = self.path
         else:
             fs_struct = CSES_FILESYSTEM[instrument]
@@ -340,12 +342,12 @@ class CSES():
         filespaths = glob(ppath)
 
         if orbitn is None:
-            files = [(i,ipath) for ipath in filespaths for i in find_file(ipath,search_string)]
+            files = [(i,ipath) for ipath in filespaths for i in find_file(ipath,search_string, recursive = ignore_structure)]
             files = [(i,ipath) for i,ipath in files if \
                 parse_CSES_filename(i)['Instrument'] == instrument and\
                 parse_CSES_filename(i)['InstrumentNum'] == instrument_no]
         else:
-            files = [(i,ipath) for ipath in filespaths for i in find_file(ipath,orbitn)]
+            files = [(i,ipath) for ipath in filespaths for i in find_file(ipath,orbitn, recursive = ignore_structure)]
             files = [(i,ipath) for i,ipath in files if \
                 parse_CSES_filename(i)['orbitn'] == orbitn and\
                 parse_CSES_filename(i)['Instrument'] == instrument and\
