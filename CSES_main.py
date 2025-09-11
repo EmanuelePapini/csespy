@@ -513,11 +513,11 @@ class CSES():
         import pandas as pd
         from glob import glob
 
-        CSX = SPACECRAFT[self.spacecraft]
+        CSX = self._P
         print('loading '+datakey+' data...')
 
-        instrument = CSX[datakey]['instrument']
-        instrument_no = CSX[datakey]['InstrumentNo']
+        instrument = CSX['CSES_DATAKEYS'][datakey]['instrument']
+        instrument_no = CSX['CSES_DATAKEYS'][datakey]['InstrumentNo']
         if instrument == 'HEP':
             self.load_HEP(instrument_no = instrument_no, subset = subset,\
                 keep_verse_time = keep_verse_time, **kwargs)

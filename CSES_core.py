@@ -100,7 +100,7 @@ def CSES_load(filename,path='./', return_pandas = False,
         return finterp(x)
 
     info = parse_CSES_filename(filename)
-    fldtags = CSX['CSES_FILE_TABLE'][info['Instrument']][info['InstrumentNum']]
+    fldtags = CSX['CSES_FILE_TABLE'][info['Instrument']][info['InstrumentNo']]
     
     # check extension
     if info['extension'] == '.h5':

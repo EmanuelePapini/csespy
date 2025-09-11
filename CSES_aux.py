@@ -199,7 +199,7 @@ def parse_CSES_filename(filename):
         out['band'] = CSX['CSES_DATA_TABLE'][out['Instrument']][out['InstrumentNo']]
         out['frequency'] = CSX['CSES_DATA_TABLE'][out['Instrument']][out['InstrumentNo']]
        
-        out['datakey'] = [ikey for ikey,item  in CSX['CSES_DATAKEYS'] \
+        out['datakey'] = [ikey for ikey,item  in CSX['CSES_DATAKEYS'].items() \
                 if item['instrument'] == out['Instrument'] if item['InstrumentNo'] == out['InstrumentNo']][0]
  
     elif len(filename) == 69:
