@@ -342,12 +342,14 @@ class CSES():
         filespaths = glob(ppath)
 
         if orbitn is None:
-            files = [(i,ipath) for ipath in filespaths for i in find_file(ipath,search_string, recursive = ignore_structure)]
+            #files = [(i,ipath) for ipath in filespaths for i in find_file(ipath,search_string, recursive = ignore_structure)]
+            files = [(i,ipath) for srcpath in filespaths for i,ipath in find_file(srcpath,orbitn, recursive = ignore_structure)]
             files = [(i,ipath) for i,ipath in files if \
                 parse_CSES_filename(i)['Instrument'] == instrument and\
                 parse_CSES_filename(i)['InstrumentNum'] == instrument_no]
         else:
-            files = [(i,ipath) for ipath in filespaths for i in find_file(ipath,orbitn, recursive = ignore_structure)]
+            files = [(i,ipath) for srcpath in filespaths for i,ipath in find_file(srcpath,orbitn, recursive = ignore_structure)]
+            #files = [(i,ipath) for i,ipath in find_file(ipath,orbitn, recursive = ignore_structure)]
             files = [(i,ipath) for i,ipath in files if \
                 parse_CSES_filename(i)['orbitn'] == orbitn and\
                 parse_CSES_filename(i)['Instrument'] == instrument and\
