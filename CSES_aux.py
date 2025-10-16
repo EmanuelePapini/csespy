@@ -26,11 +26,13 @@ from datetime import datetime,timedelta,date
 from glob import glob
 from .CSES_params import *
 
-def get_datakey(instrument,frequency):
-
-    if instrument != 'HEP': return instrument+'_'+frequency
-
-    return instrument+frequency
+#def get_datakey(instrument,frequency):
+#    """
+#    Should be deprecated and deleted in future releases
+#    """
+#    if instrument != 'HEP': return instrument+'_'+frequency
+#
+#    return instrument+frequency
 
 def versetime_to_utc(versetime,t0=(2009,1,1)):
     """
@@ -176,11 +178,12 @@ def parse_CSES_filename(filename):
     if len(filename) == 66 or len(filename) == 72:
         out['Satellite'] = fl_list[0]+fl_list[1]
         out['Instrument'] = fl_list[2]
+        CSX = SPACECRAFT[out['Satellite']]
         try:
-            out['DataProduct'] = CSES_DATA_TABLE[fl_list[2]][fl_list[3]]
+            out['DataProduct'] = CSX['CSES_DATA_TABLE'][fl_list[2]][fl_list[3]]
         except:
             out['DataProduct'] = 'Unknown' 
-        out['InstrumentNum'] = fl_list[3]
+        out['InstrumentNo'] = fl_list[3]
         out['DataLevel'] = fl_list[4]
         out['orbitn'] = fl_list[6]
         out['year'] = fl_list[7][0:4]
@@ -192,9 +195,17 @@ def parse_CSES_filename(filename):
         out['t_end'] = datetime(int(fl_list[9][0:4]),int(fl_list[9][4:6]),int(fl_list[9][6:8]),\
                             int(fl_list[10][0:2]),int(fl_list[10][2:4]),int(fl_list[10][4:6]))
         out['extension'] = fl_list[-1][3:]
+       
+        out['band'] = CSX['CSES_DATA_TABLE'][out['Instrument']][out['InstrumentNo']]
+        out['frequency'] = CSX['CSES_DATA_TABLE'][out['Instrument']][out['InstrumentNo']]
+       
+        out['datakey'] = [ikey for ikey,item  in CSX['CSES_DATAKEYS'] \
+                if item['instrument'] == out['Instrument'] if item['InstrumentNo'] == out['InstrumentNo']][0]
+ 
     elif len(filename) == 69:
         out['Satellite'] = fl_list[0]+'_01'
         out['Instrument'] = fl_list[1]
+        out['InstrumentNo'] = fl_list[2]
         out['DataProduct'] = fl_list[2]
         out['DataLevel'] = fl_list[-2]
         out['orbitn'] = fl_list[3]
@@ -207,6 +218,37 @@ def parse_CSES_filename(filename):
         out['t_end'] = datetime(int(fl_list[6][0:4]),int(fl_list[6][4:6]),int(fl_list[6][6:8]),\
                             int(fl_list[7][0:2]),int(fl_list[7][2:4]),int(fl_list[7][4:6]))
         out['extension'] = fl_list[-1][3:]
+        out['datakey'] = [ikey for ikey,item  in CSX['CSES_DATAKEYS'] \
+                if item['instrument'] == out['Instrument'] if item['InstrumentNo'] == out['InstrumentNo']][0]
+    else:
+        out = AttrDict()
+        fl_list = filename.split('_')
+        out['Satellite'] = fl_list[0]+fl_list[1]
+        out['Instrument'] = fl_list[2]
+        out['InstrumentNo'] = fl_list[3]
+        out['DataLevel'] = fl_list[4]
+        out['unknown'] = fl_list[5]
+        out['orbitn'] = fl_list[6]
+        out['year'] = fl_list[7][0:4]
+        out['month'] = fl_list[7][4:6]
+        out['day'] = fl_list[7][6:8]
+        out['time'] = fl_list[8][0:2]+':'+fl_list[8][2:4]+':'+fl_list[8][4:6]
+        out['t_start'] = datetime(int( out['year']),int(out['month']),int(out['day']),\
+                            int(fl_list[8][0:2]),int(fl_list[8][2:4]),int(fl_list[8][4:6]))
+        out['t_end'] = datetime(int(fl_list[9][0:4]),int(fl_list[9][4:6]),int(fl_list[9][6:8]),\
+                            int(fl_list[10][0:2]),int(fl_list[10][2:4]),int(fl_list[10][4:6]))
+        if out['Instrument'] == 'EFD':
+            out['type'] = 'waveform' if fl_list[11] == '000' else 'fft'
+        else:
+            out['type'] = ''
+        out['sofware_version'] = fl_list[12]
+        out['unknown2'] = fl_list[-1][:-3]
+        out['extension'] = fl_list[-1][-3:]
+        out['band'] = CSX['CSES_DATA_TABLE'][out['Instrument']][out['InstrumentNo']]
+        out['frequency'] = CSX['CSES_DATA_TABLE'][out['Instrument']][out['InstrumentNo']]
+        out['datakey'] = out['Instrument']+'_'+out['band']
+        if out['type'] == 'fft' : out['datakey'] +='_P'
+
     return out
 
 

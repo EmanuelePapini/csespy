@@ -150,7 +150,7 @@ def start_end(x,nparts,use='index'):
 
     stend =np.zeros([nparts,2],dtype=int)
 
-    nout = len(x)
+    nout = np.size(x) if type(x) is not int else x
 
     if use == 'index':
 

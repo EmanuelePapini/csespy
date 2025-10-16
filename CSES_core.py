@@ -24,8 +24,10 @@
 from .CSES_aux import *
 from .CSES_raw import *
 
+from .blombly.tools import arrays
+
 def CSES_load(filename,path='./', return_pandas = False,
-            with_mag_coords = False,keep_verse_time = True, fill_missing=None):
+            with_mag_coords = False,keep_verse_time = True, fill_missing=None,CSX=None):
     """
     Generic method to read any CSES DataProduct, info to read properly the hdf5 file are 
     saved in CSES_DATASETS in CSES_aux
@@ -84,20 +86,21 @@ def CSES_load(filename,path='./', return_pandas = False,
     """
     
     import h5py
-    from .blombly.tools import arrays
     from .blombly.tools.objects import dict_to_recarray
     import pandas as pd
     from datetime import timedelta
     #from numpy import interp as interp1
     from scipy.interpolate import interp1d #as interp1
-   
+
+    if CSX is None:
+        raise ValueError("CSX parameter not specified. Please provide a valid spacecraft key (e.g. CSX = SPACECRAFT['CSES01'])")
 
     def interp1(x,xp,fp):#*args,**kwargs):
         finterp=interp1d(xp,fp,fill_value='extrapolate')
         return finterp(x)
 
     info = parse_CSES_filename(filename)
-    fldtags = CSES_FILE_TABLE[info['Instrument']][info['InstrumentNum']]
+    fldtags = CSX['CSES_FILE_TABLE'][info['Instrument']][info['InstrumentNum']]
     
     # check extension
     if info['extension'] == '.h5':
@@ -114,7 +117,7 @@ def CSES_load(filename,path='./', return_pandas = False,
         try:
             units = {fldtags[i]:[fil[i].attrs[j][0] for j in fil[i].attrs.keys()][0] for i in fldtags}
         except:
-            fldtags = CSES_DATASETS
+            fldtags = CSX['CSES_DATASETS']
             try:
                 units = {fldtags[i]:fil[i].attrs['units'][0] for i in fldtags if i in fil}
             except:
@@ -122,7 +125,7 @@ def CSES_load(filename,path='./', return_pandas = False,
                             for i in fldtags if i in fil}
             fldtags = {i:fldtags[i] for i in fldtags if i in fil}
     data =  {fldtags[i]:fil[i][...] for i in fldtags}
-    pos = {CSES_POSITION[i]:fil[i][...] for i in CSES_POSITION if i in fil}
+    pos = {CSX['CSES_POSITION'][i]:fil[i][...] for i in CSX['CSES_POSITION']if i in fil}
 
     ms, ns = dshape = data[[fldtags[i] for i in fldtags][0]].shape
 
@@ -156,7 +159,7 @@ def CSES_load(filename,path='./', return_pandas = False,
     del tx
 
     packet_size  = ns
-    dtrate = 1/CSES_SAMPLINGFREQS[info['Instrument']+'_'+info['DataProduct']]
+    dtrate = 1/CSX['CSES_SAMPLINGFREQS'][info['Instrument']+'_'+info['DataProduct']]
     do_interp = dshape != time1.shape
 
     time1 = time1.flatten()
@@ -272,7 +275,7 @@ def CSES_load(filename,path='./', return_pandas = False,
     return res, {'ORBITNUM':orbitnum,'units':units ,'UTC':utc, 'verse_zero_utc':vt0_utc, 'verse_time':utc-vt0_utc}
 
 def CSES_load_PSD(filename,path='./', return_xarray = False,
-            with_mag_coords = False,keep_verse_time = True, fill_missing=None):
+            with_mag_coords = False,keep_verse_time = True, fill_missing=None,CSX=None):
     """
     Generic method to read any CSES DataProduct PSD, info to read properly the 
     hdf5 file are  saved in CSES_DATASETS in CSES_aux
@@ -325,15 +328,17 @@ def CSES_load_PSD(filename,path='./', return_xarray = False,
     
     import h5py
     from numpy import interp as interp1
-    from .blombly.tools import arrays
+    #from .blombly.tools import arrays
     from .blombly.tools.objects import dict_to_recarray
     import pandas as pd
     from datetime import timedelta
     
+    if CSX is None:
+        raise ValueError("CSX parameter not specified. Please provide a valid spacecraft key (e.g. CSX = SPACECRAFT['CSES01'])")
     get_PSD = True
     info = parse_CSES_filename(filename)
     fil = h5py.File(path+filename,'r')
-    fldtags = {i:CSES_DATASETS[i] for i in fil.keys() if i in CSES_DATASETS} 
+    fldtags = {i:CSX['CSES_DATASETS'][i] for i in fil.keys() if i in CSX['CSES_DATASETS']} 
     #if get_PSD:
     fldtags = {i:fldtags[i] for i in fldtags if i[-2:] == '_P'}
     freqs = fil['FREQ'][...].flatten()
@@ -348,7 +353,7 @@ def CSES_load_PSD(filename,path='./', return_xarray = False,
                             for i in fldtags if i in fil}
         fldtags = {i:fldtags[i] for i in fldtags if i in fil}
     data =  {fldtags[i]:fil[i][...] for i in fldtags}
-    pos = {CSES_POSITION[i]:fil[i][...].flatten() for i in CSES_POSITION}
+    pos = {CSX['CSES_POSITION'][i]:fil[i][...].flatten() for i in CSX['CSES_POSITION']}
 
     ms, ns = dshape = data[[fldtags[i] for i in fldtags][0]].shape
 
@@ -374,21 +379,21 @@ def CSES_load_PSD(filename,path='./', return_xarray = False,
     time1=tx     #verse_time in seconds
     del tx
 
-    psd = {i[:-2]:CSES_CF[i][0]*(data[i]**CSES_CF[i][1]) for i in data}
+    psd = {i[:-2]:CSX['CSES_CF'][i][0]*(data[i]**CSX['CSES_CF'][i][1]) for i in data}
     #data.update(pos1)
     data = {'psd':psd}
     data['time'] = time1.flatten()
     data['freq'] = freqs.flatten()
     if data['freq'].shape[0] != ns:
-        data['freq'] = np.arange(ns) * CSES_SAMPLINGFREQS[info['Instrument']+'_'+info['DataProduct']]/ns
+        data['freq'] = np.arange(ns) * CSX['CSES_SAMPLINGFREQS'][info['Instrument']+'_'+info['DataProduct']]/ns
     index = pd.to_timedelta( data['time'] - data['time'][0],unit='sec') + utc
     data['time'] = index
     position = pd.DataFrame(pos,index=index)
     position['orbitn']=orbitnum
     data['position'] = position
     for i in units:
-        if CSES_CF[i][1] > 1:
-            units[i] = '['+units[i].decode('utf-8')+']^'+str(CSES_CF[i][1])
+        if CSX['CSES_CF'][i][1] > 1:
+            units[i] = '['+units[i].decode('utf-8')+']^'+str(CSX['CSES_CF'][i][1])
     if return_xarray:
         import xarray as xr
         #ds = xr.Dataset( \
@@ -399,103 +404,103 @@ def CSES_load_PSD(filename,path='./', return_xarray = False,
 
 
 
-def EFD_load_ELF_PSD(filename, path='./', with_mag_coords = False):
-    """
-    Load EFD-ELF PSD data from h5 file specfied by the path.
-    Filename conventions should be according to the following example:
-        
-        'CSES_01_EFD_2_L02_A1_031190_20180826_095004_20180826_102510_000.h5'
-
-    This is a python implementation of the matlab code EFD_carica_dati_ELF_v1.m
-    
-    Parameters
-    ----------
-    filename : str
-            string containing the name of the file
-    path : str (optional)
-        string contatining the filepath. default is current working directory
-    cut_last_interval : bool (optional)
-        FOR THE TIME BEING THIS OPTION IS BEING SWITCHED OFF, DUE TO UNCERTAINTIES
-        ON HOW TO INTERPOLATE THE LAST 2048 ELEMENTS
-        if True, then removes the last 2048 points, since it is not sure what 
-        is the time associated to them (don't know why, ask the matlab guy)
-
-    Output: (res, aux) (tuple)
-    ------
-        res : numpy.recarray 
-            contains electric field data and coordinate data
-        aux : dict
-            contains ancillary data with the following keywords:
-            {'ORBITNUM':int,
-             'units':'V/m',
-             'UTC':utc time of first datapoint, 
-             'verse_time': VERSE time of first datapoint,
-             'verse_zero_utc': utc time of the zero VERSE time (i.e, 2009/1/1) }
-    """
-    dtrate = 1/5000 #samplerate is 5kHz
-    cut_last_interval = True
-    import h5py
-    from numpy import interp as interp1
-    from .blombly.tools import arrays
-    fil = h5py.File(path+filename,'r')
-    orbitnum = int(fil.attrs['ORBITNUM'][0])
-    B1 = fil['A121_W'].attrs['units'][0]
-    s2=b'V/m';
-
-    Ex1 = fil['A121_P'][...]
-    Ey1 = fil['A122_P'][...]
-    Ez1 = fil['A123_P'][...]
-    lat1 = fil['GEO_LAT'][...]
-    lon1 = fil['GEO_LON'][...]
-    ALT1 = fil['ALTITUDE'][...]
-    Wmodee = fil['WORKMODE'][...]
-    Vtime = fil['VERSE_TIME'][...]
-    Utime = fil['UTC_TIME'][...]
-    if with_mag_coords:
-        mlat1 = fil['MAG_LAT'][...]
-        mlon1 = fil['MAG_LON'][...]
-   
-    ms, ns = Ex1.shape
-    #convert from CSES date (VERSE_TIME) to standard date
-    vt0_utc, utc = datenum(2009,1,1,utc = str(Utime[0][0]))    #CSES initial time
-
-    tx=Vtime
-    tx = tx/1000
-    time=tx.flatten()     #verse_time in seconds
-    
-    ALT = ALT1.flatten()
-    lat = lat1.flatten()
-    lon = lon1.flatten()
-    if with_mag_coords:
-        mlat = mlat1.flatten()
-        mlon = mlon1.flatten()
-
-    if 'FREQ' in fil.keys():
-        freqs = fil['FREQ'][...].flatten()
-    else:
-        freqs = np.arange(1024.)/1024*2500.
-    fil.close()
-    
-    names = ['Ex','Ey','Ez','alt','lat','lon','time','mag_lat','mag_lon']
-
-    res = {}
-    res['time'] = time
-    res['alt'] = ALT
-    res['lat'] = lat
-    res['lon'] = lon
-    if with_mag_coords:
-        res['mag_lat'] = mlat
-        res['mag_lon'] = mlon
-    res['Ex'] = list(Ex1)
-    res['Ey'] = list(Ey1)
-    res['Ez'] = list(Ez1)
-
-    return res, {'ORBITNUM':orbitnum,'units':s2,'UTC':utc, 'verse_zero_utc':vt0_utc, 'verse_time':utc-vt0_utc,'FREQ':freqs}
+#TO DELETE
+#def EFD_load_ELF_PSD(filename, path='./', with_mag_coords = False):
+#    """
+#    Load EFD-ELF PSD data from h5 file specfied by the path.
+#    Filename conventions should be according to the following example:
+#        
+#        'CSES_01_EFD_2_L02_A1_031190_20180826_095004_20180826_102510_000.h5'
+#
+#    This is a python implementation of the matlab code EFD_carica_dati_ELF_v1.m
+#    
+#    Parameters
+#    ----------
+#    filename : str
+#            string containing the name of the file
+#    path : str (optional)
+#        string contatining the filepath. default is current working directory
+#    cut_last_interval : bool (optional)
+#        FOR THE TIME BEING THIS OPTION IS BEING SWITCHED OFF, DUE TO UNCERTAINTIES
+#        ON HOW TO INTERPOLATE THE LAST 2048 ELEMENTS
+#        if True, then removes the last 2048 points, since it is not sure what 
+#        is the time associated to them (don't know why, ask the matlab guy)
+#
+#    Output: (res, aux) (tuple)
+#    ------
+#        res : numpy.recarray 
+#            contains electric field data and coordinate data
+#        aux : dict
+#            contains ancillary data with the following keywords:
+#            {'ORBITNUM':int,
+#             'units':'V/m',
+#             'UTC':utc time of first datapoint, 
+#             'verse_time': VERSE time of first datapoint,
+#             'verse_zero_utc': utc time of the zero VERSE time (i.e, 2009/1/1) }
+#    """
+#    dtrate = 1/5000 #samplerate is 5kHz
+#    cut_last_interval = True
+#    import h5py
+#    from numpy import interp as interp1
+#    #from .blombly.tools import arrays
+#    fil = h5py.File(path+filename,'r')
+#    orbitnum = int(fil.attrs['ORBITNUM'][0])
+#    B1 = fil['A121_W'].attrs['units'][0]
+#    s2=b'V/m';
+#
+#    Ex1 = fil['A121_P'][...]
+#    Ey1 = fil['A122_P'][...]
+#    Ez1 = fil['A123_P'][...]
+#    lat1 = fil['GEO_LAT'][...]
+#    lon1 = fil['GEO_LON'][...]
+#    ALT1 = fil['ALTITUDE'][...]
+#    Wmodee = fil['WORKMODE'][...]
+#    Vtime = fil['VERSE_TIME'][...]
+#    Utime = fil['UTC_TIME'][...]
+#    if with_mag_coords:
+#        mlat1 = fil['MAG_LAT'][...]
+#        mlon1 = fil['MAG_LON'][...]
+#   
+#    ms, ns = Ex1.shape
+#    #convert from CSES date (VERSE_TIME) to standard date
+#    vt0_utc, utc = datenum(2009,1,1,utc = str(Utime[0][0]))    #CSES initial time
+#
+#    tx=Vtime
+#    tx = tx/1000
+#    time=tx.flatten()     #verse_time in seconds
+#    
+#    ALT = ALT1.flatten()
+#    lat = lat1.flatten()
+#    lon = lon1.flatten()
+#    if with_mag_coords:
+#        mlat = mlat1.flatten()
+#        mlon = mlon1.flatten()
+#
+#    if 'FREQ' in fil.keys():
+#        freqs = fil['FREQ'][...].flatten()
+#    else:
+#        freqs = np.arange(1024.)/1024*2500.
+#    fil.close()
+#    
+#    names = ['Ex','Ey','Ez','alt','lat','lon','time','mag_lat','mag_lon']
+#
+#    res = {}
+#    res['time'] = time
+#    res['alt'] = ALT
+#    res['lat'] = lat
+#    res['lon'] = lon
+#    if with_mag_coords:
+#        res['mag_lat'] = mlat
+#        res['mag_lon'] = mlon
+#    res['Ex'] = list(Ex1)
+#    res['Ey'] = list(Ey1)
+#    res['Ez'] = list(Ez1)
+#
+#    return res, {'ORBITNUM':orbitnum,'units':s2,'UTC':utc, 'verse_zero_utc':vt0_utc, 'verse_time':utc-vt0_utc,'FREQ':freqs}
 
 
 def HEP_load(filename,path='./', instrument_no = '1', channel = 'all', energy_selection_list = None, energy_bin = None, pitch_bin = None, with_mag_coords=False, time_from_samplerate = True, fill_missing = None):
     import h5py
-    from numpy import interp as interp1
 
     if filename[-3:] == '.h5':
         fil = h5py.File(path+filename,'r')
@@ -824,207 +829,210 @@ def fill_missing_times(xx,xp,jumps,packet_size,dt,fill_missing):
 
     return xout
 
-def EFD_load_ELF(filename, path='./', cut_last_interval = True,\
-                         with_mag_coords = False, fill_missing = None):
-    """
-    Load EFD-ELF data from h5 file specfied by the path.
-    Filename conventions should be according to the following example:
-        
-        'CSES_01_EFD_2_L02_A1_031190_20180826_095004_20180826_102510_000.h5'
-
-    data are loaded into a pandas dataframe. Time is taken by the VERSE_TIME variable
-    present in the h5 file, but sampling rate is used to calculate dt, due to truncation
-    error introduced in the data (it is an integer number in milliseconds but dt=409.6 ms)
-    
-
-    Parameters
-    ----------
-    filename : str
-            string containing the name of the file
-    path : str (optional)
-        string contatining the filepath. default is current working directory
-    cut_last_interval : bool (optional)
-        FOR THE TIME BEING THIS OPTION IS BEING SWITCHED OFF, DUE TO UNCERTAINTIES
-        ON HOW TO INTERPOLATE THE LAST 2048 ELEMENTS
-        if True, then removes the last 2048 points, since it is not sure what 
-        is the time associated to them (don't know why, ask the matlab guy)
-
-    time_from_samplerate : bool
-        if true, uses sampling time to calculate the array of times
-    fill_missing : str or None or np.nan or float
-        Determines filling method for Electric Field
-        if set to float, fill gaps with desired value
-        None: it does not fill any temporal gap/missing packets
-        'zero'or 0 : fills gaps with zeroes.
-        'nan' or np.nan : fills gaps with NaNs
-        'linear': TO IMPLEMENT fits the gaps with a linear function between the two points
-        'raised stats': TO IMPLEMENT:
-                filling done with a half cosine between the two points filled with 
-                fluctuations reproducing the same statistics of nearby data
-
-    Output: (res, aux) (tuple)
-    ------
-        res : numpy.recarray 
-            contains electric field data and coordinate data
-        aux : dict
-            contains ancillary data with the following keywords:
-            {'ORBITNUM':int,
-             'units':'V/m',
-             'UTC':utc time of first datapoint, 
-             'verse_time': VERSE time of first datapoint,
-             'verse_zero_utc': utc time of the zero VERSE time (i.e, 2009/1/1) }
-    """
-    dtrate = 1/CSES_SAMPLINGFREQS['EFD_ELF'] #samplerate is 5kHz
-    #cut_last_interval = True
-    import h5py
-    from numpy import interp as interp1
-    from .blombly.tools import arrays
-    fil = h5py.File(path+filename,'r')
-    orbitnum = int(fil.attrs['ORBITNUM'][0])
-    B1 = fil['A121_W'].attrs['units'][0]
-    s2=b'V/m';
-
-    Ex1 = fil['A121_W'][...]
-    Ey1 = fil['A122_W'][...]
-    Ez1 = fil['A123_W'][...]
-        
-    lat1 = fil['GEO_LAT'][...]
-    lon1 = fil['GEO_LON'][...]
-    ALT1 = fil['ALTITUDE'][...]
-    Wmodee = fil['WORKMODE'][...]
-    Vtime = fil['VERSE_TIME'][...]
-    Utime = fil['UTC_TIME'][...]
-    if with_mag_coords:
-        mlat1 = fil['MAG_LAT'][...]
-        mlon1 = fil['MAG_LON'][...]
-   
-    ms, ns = Ex1.shape
-    packet_size  = ns
-    #convert from CSES date (VERSE_TIME) to standard date
-    vt0_utc, utc = datenum(2009,1,1,utc = str(Utime[0][0]))    #CSES initial time
-
-    tx=Vtime
-    Vtime0 = tx[0][0] #VERSE_TIME a t=0 in milliseconds
-    tx -=Vtime0
-    tx = tx/1000
-    time1=tx     #verse_time in seconds
-    
-    time1 = time1.flatten()
-    time = np.zeros(Ex1.shape)
-    
-    #finding missing packages positions (time jumps)
-    jumps = np.where(np.diff(time1)>1)[0]
-  
-    #filling the time array
-    ij0=0
-    for ij in jumps:
-        time[ij0:ij+1,:] = time1[ij0] +dtrate*np.arange((ij+1-ij0)*ns).reshape((ij+1-ij0,ns))
-        ij0 = ij+1
-    #last chunk
-    if ij0<ms: 
-        time[ij0:,:] = time1[ij0] +dtrate*np.arange((ms-ij0)*ns).reshape((ms-ij0,ns))
-
-    t_old = time1.copy()
-    if fill_missing is not None:
-        #calculating gap in terms of number of packets missing
-        dtjumps = np.diff(time1)[jumps] 
-        npacks = np.rint(dtjumps/(packet_size*dtrate)).astype(int)-1
-        #filling with linear interpolation
-        t_new, mask_old = add_packets(time,jumps,npacks,dtrate)
-    else:
-        t_new = time.copy()
-        mask_old = np.ones(ms,dtype = bool)
-
-    msnew, ns = t_new.shape
-    t_new = t_new.flatten() 
-    #because Vtime has a precision of 1ms (i.e. 1kHz) and the sampling rate is 5kHz,
-    #it happens that some delta_t is negative between the packets.
-    #a quick fix is to simply shift by 5kHz the whole time array in those points
-    neg_t = np.where(np.diff(t_new)<0)[0]
-    if np.size(neg_t)>0:
-        for it in neg_t:
-            dt = t_new[it+1] -t_new[it]
-            t_new[it+1:] += -dt + dtrate
-    
-    t_old = t_new.reshape((msnew,ns))[mask_old,0]
-    t_new = t_new.flatten()
-    #interpolate altitude DOUBLE INTERPOLATION BECAUSE WE READJUSTED THE ORIGINAL TIMES
-    #i.e., t_old != time1. THIS IS BECAUSE we dont know how exactly coordinates in 
-    #L2 data have been calculated
-    #ON A SECOND THOUGHT, probably need only direct linear interpolation
-    ALT = interp1(t_new,t_old,interp1(t_old,time1.flatten(),ALT1.flatten()))
-    #interpolate latitude 
-    lat = interp1(t_new,t_old,interp1(t_old,time1.flatten(),lat1.flatten()))
-    #interpolate longitude 
-    lon = arrays.interp1_jumps(t_old,time1.flatten(),lon1.flatten(),np.array([-180,180]))
-    lon = arrays.interp1_jumps(t_new,t_old,lon,np.array([-180,180]))
-    if with_mag_coords:
-        mlat = interp1(t_new,t_old,interp1(t_old,time1.flatten(),mlat1.flatten()))
-        mlon = arrays.interp1_jumps(t_old,time1.flatten(),mlon1.flatten(),np.array([-180,180]))
-        mlon = arrays.interp1_jumps(t_new,t_old,mlon,np.array([-180,180]))
-
-    Ex = np.zeros((msnew,ns)); Ex[mask_old] = Ex1
-    Ey = np.zeros((msnew,ns)); Ey[mask_old] = Ey1
-    Ez = np.zeros((msnew,ns)); Ez[mask_old] = Ez1
-   
-    if fill_missing is not None:
-        if type(fill_missing) is not str:
-            Ex[~mask_old] = fill_missing
-            Ey[~mask_old] = fill_missing
-            Ez[~mask_old] = fill_missing
-        elif fill_missing == 'zero':
-            Ex[~mask_old] = 0
-            Ey[~mask_old] = 0
-            Ez[~mask_old] = 0
-        elif fill_missing == 'nan':
-            Ex[~mask_old] = np.nan
-            Ey[~mask_old] = np.nan
-            Ez[~mask_old] = np.nan
-        elif fill_missing == 'linear':
-            Ex=interp1(t_new,t_new.reshape((msnew,ns))[mask_old].flatten(),Ex1.flatten())
-            Ey=interp1(t_new,t_new.reshape((msnew,ns))[mask_old].flatten(),Ey1.flatten())
-            Ez=interp1(t_new,t_new.reshape((msnew,ns))[mask_old].flatten(),Ez1.flatten())
-    Ex = Ex.flatten()
-    Ey = Ey.flatten()
-    Ez = Ez.flatten()
-        
-    #check that units are [V/m]
-    if B1 != s2:               
-        Ex /=1000
-        Ey /=1000
-        Ez /=1000
-    
-    fil.close()
-    
-    #formatting the output
-    names = ['Ex','Ey','Ez','alt','lat','lon','time','mag_lat','mag_lon'] 
-    dtypes = [(i,Ex1.dtype.type) for i in names]
-    if fill_missing is not None:
-        names.append('gaps_mask')
-        dtypes.append(('gaps_mask',np.bool))
-
-    res = np.recarray(Ex.shape,dtype=dtypes)
-    res['time'] = t_new #+ Vtime0
-    res['alt'] = ALT
-    res['lat'] = lat
-    res['lon'] = lon
-    res['Ex'] = Ex
-    res['Ey'] = Ey
-    res['Ez'] = Ez
-    
-    if with_mag_coords:
-        res['mag_lat'] = mlat
-        res['mag_lon'] = mlon
-    
-    if fill_missing is not None:
-        mm = np.zeros(res['Ex'].shape,dtype = bool).reshape((msnew,ns))
-        for i,j in enumerate(mask_old): mm[i]=j
-        res['gaps_mask'] = ~mm.flatten()
-    
-    if cut_last_interval:
-        res = np.delete(res,range(-ns,0))
-    
-    return res, {'ORBITNUM':orbitnum,'units':s2,'UTC':utc, 'verse_zero_utc':vt0_utc, 'verse_time':utc-vt0_utc}
+#TO DELETE
+#def EFD_load_ELF(filename, path='./', cut_last_interval = True,\
+#                         with_mag_coords = False, fill_missing = None,CSX = None):
+#    """
+#    Load EFD-ELF data from h5 file specfied by the path.
+#    Filename conventions should be according to the following example:
+#        
+#        'CSES_01_EFD_2_L02_A1_031190_20180826_095004_20180826_102510_000.h5'
+#
+#    data are loaded into a pandas dataframe. Time is taken by the VERSE_TIME variable
+#    present in the h5 file, but sampling rate is used to calculate dt, due to truncation
+#    error introduced in the data (it is an integer number in milliseconds but dt=409.6 ms)
+#    
+#
+#    Parameters
+#    ----------
+#    filename : str
+#            string containing the name of the file
+#    path : str (optional)
+#        string contatining the filepath. default is current working directory
+#    cut_last_interval : bool (optional)
+#        FOR THE TIME BEING THIS OPTION IS BEING SWITCHED OFF, DUE TO UNCERTAINTIES
+#        ON HOW TO INTERPOLATE THE LAST 2048 ELEMENTS
+#        if True, then removes the last 2048 points, since it is not sure what 
+#        is the time associated to them (don't know why, ask the matlab guy)
+#
+#    time_from_samplerate : bool
+#        if true, uses sampling time to calculate the array of times
+#    fill_missing : str or None or np.nan or float
+#        Determines filling method for Electric Field
+#        if set to float, fill gaps with desired value
+#        None: it does not fill any temporal gap/missing packets
+#        'zero'or 0 : fills gaps with zeroes.
+#        'nan' or np.nan : fills gaps with NaNs
+#        'linear': TO IMPLEMENT fits the gaps with a linear function between the two points
+#        'raised stats': TO IMPLEMENT:
+#                filling done with a half cosine between the two points filled with 
+#                fluctuations reproducing the same statistics of nearby data
+#
+#    Output: (res, aux) (tuple)
+#    ------
+#        res : numpy.recarray 
+#            contains electric field data and coordinate data
+#        aux : dict
+#            contains ancillary data with the following keywords:
+#            {'ORBITNUM':int,
+#             'units':'V/m',
+#             'UTC':utc time of first datapoint, 
+#             'verse_time': VERSE time of first datapoint,
+#             'verse_zero_utc': utc time of the zero VERSE time (i.e, 2009/1/1) }
+#    """
+#    if CSX is None:
+#        raise ValueError("CSX parameter not specified. Please provide a valid spacecraft key (e.g. CSX = SPACECRAFT['CSES01'])")
+#    dtrate = 1/CSX['CSES_SAMPLINGFREQS']['EFD_ELF'] #samplerate is 5kHz
+#    #cut_last_interval = True
+#    import h5py
+#    from numpy import interp as interp1
+#    #from .blombly.tools import arrays
+#    fil = h5py.File(path+filename,'r')
+#    orbitnum = int(fil.attrs['ORBITNUM'][0])
+#    B1 = fil['A121_W'].attrs['units'][0]
+#    s2=b'V/m';
+#
+#    Ex1 = fil['A121_W'][...]
+#    Ey1 = fil['A122_W'][...]
+#    Ez1 = fil['A123_W'][...]
+#        
+#    lat1 = fil['GEO_LAT'][...]
+#    lon1 = fil['GEO_LON'][...]
+#    ALT1 = fil['ALTITUDE'][...]
+#    Wmodee = fil['WORKMODE'][...]
+#    Vtime = fil['VERSE_TIME'][...]
+#    Utime = fil['UTC_TIME'][...]
+#    if with_mag_coords:
+#        mlat1 = fil['MAG_LAT'][...]
+#        mlon1 = fil['MAG_LON'][...]
+#   
+#    ms, ns = Ex1.shape
+#    packet_size  = ns
+#    #convert from CSES date (VERSE_TIME) to standard date
+#    vt0_utc, utc = datenum(2009,1,1,utc = str(Utime[0][0]))    #CSES initial time
+#
+#    tx=Vtime
+#    Vtime0 = tx[0][0] #VERSE_TIME a t=0 in milliseconds
+#    tx -=Vtime0
+#    tx = tx/1000
+#    time1=tx     #verse_time in seconds
+#    
+#    time1 = time1.flatten()
+#    time = np.zeros(Ex1.shape)
+#    
+#    #finding missing packages positions (time jumps)
+#    jumps = np.where(np.diff(time1)>1)[0]
+#  
+#    #filling the time array
+#    ij0=0
+#    for ij in jumps:
+#        time[ij0:ij+1,:] = time1[ij0] +dtrate*np.arange((ij+1-ij0)*ns).reshape((ij+1-ij0,ns))
+#        ij0 = ij+1
+#    #last chunk
+#    if ij0<ms: 
+#        time[ij0:,:] = time1[ij0] +dtrate*np.arange((ms-ij0)*ns).reshape((ms-ij0,ns))
+#
+#    t_old = time1.copy()
+#    if fill_missing is not None:
+#        #calculating gap in terms of number of packets missing
+#        dtjumps = np.diff(time1)[jumps] 
+#        npacks = np.rint(dtjumps/(packet_size*dtrate)).astype(int)-1
+#        #filling with linear interpolation
+#        t_new, mask_old = add_packets(time,jumps,npacks,dtrate)
+#    else:
+#        t_new = time.copy()
+#        mask_old = np.ones(ms,dtype = bool)
+#
+#    msnew, ns = t_new.shape
+#    t_new = t_new.flatten() 
+#    #because Vtime has a precision of 1ms (i.e. 1kHz) and the sampling rate is 5kHz,
+#    #it happens that some delta_t is negative between the packets.
+#    #a quick fix is to simply shift by 5kHz the whole time array in those points
+#    neg_t = np.where(np.diff(t_new)<0)[0]
+#    if np.size(neg_t)>0:
+#        for it in neg_t:
+#            dt = t_new[it+1] -t_new[it]
+#            t_new[it+1:] += -dt + dtrate
+#    
+#    t_old = t_new.reshape((msnew,ns))[mask_old,0]
+#    t_new = t_new.flatten()
+#    #interpolate altitude DOUBLE INTERPOLATION BECAUSE WE READJUSTED THE ORIGINAL TIMES
+#    #i.e., t_old != time1. THIS IS BECAUSE we dont know how exactly coordinates in 
+#    #L2 data have been calculated
+#    #ON A SECOND THOUGHT, probably need only direct linear interpolation
+#    ALT = interp1(t_new,t_old,interp1(t_old,time1.flatten(),ALT1.flatten()))
+#    #interpolate latitude 
+#    lat = interp1(t_new,t_old,interp1(t_old,time1.flatten(),lat1.flatten()))
+#    #interpolate longitude 
+#    lon = arrays.interp1_jumps(t_old,time1.flatten(),lon1.flatten(),np.array([-180,180]))
+#    lon = arrays.interp1_jumps(t_new,t_old,lon,np.array([-180,180]))
+#    if with_mag_coords:
+#        mlat = interp1(t_new,t_old,interp1(t_old,time1.flatten(),mlat1.flatten()))
+#        mlon = arrays.interp1_jumps(t_old,time1.flatten(),mlon1.flatten(),np.array([-180,180]))
+#        mlon = arrays.interp1_jumps(t_new,t_old,mlon,np.array([-180,180]))
+#
+#    Ex = np.zeros((msnew,ns)); Ex[mask_old] = Ex1
+#    Ey = np.zeros((msnew,ns)); Ey[mask_old] = Ey1
+#    Ez = np.zeros((msnew,ns)); Ez[mask_old] = Ez1
+#   
+#    if fill_missing is not None:
+#        if type(fill_missing) is not str:
+#            Ex[~mask_old] = fill_missing
+#            Ey[~mask_old] = fill_missing
+#            Ez[~mask_old] = fill_missing
+#        elif fill_missing == 'zero':
+#            Ex[~mask_old] = 0
+#            Ey[~mask_old] = 0
+#            Ez[~mask_old] = 0
+#        elif fill_missing == 'nan':
+#            Ex[~mask_old] = np.nan
+#            Ey[~mask_old] = np.nan
+#            Ez[~mask_old] = np.nan
+#        elif fill_missing == 'linear':
+#            Ex=interp1(t_new,t_new.reshape((msnew,ns))[mask_old].flatten(),Ex1.flatten())
+#            Ey=interp1(t_new,t_new.reshape((msnew,ns))[mask_old].flatten(),Ey1.flatten())
+#            Ez=interp1(t_new,t_new.reshape((msnew,ns))[mask_old].flatten(),Ez1.flatten())
+#    Ex = Ex.flatten()
+#    Ey = Ey.flatten()
+#    Ez = Ez.flatten()
+#        
+#    #check that units are [V/m]
+#    if B1 != s2:               
+#        Ex /=1000
+#        Ey /=1000
+#        Ez /=1000
+#    
+#    fil.close()
+#    
+#    #formatting the output
+#    names = ['Ex','Ey','Ez','alt','lat','lon','time','mag_lat','mag_lon'] 
+#    dtypes = [(i,Ex1.dtype.type) for i in names]
+#    if fill_missing is not None:
+#        names.append('gaps_mask')
+#        dtypes.append(('gaps_mask',np.bool))
+#
+#    res = np.recarray(Ex.shape,dtype=dtypes)
+#    res['time'] = t_new #+ Vtime0
+#    res['alt'] = ALT
+#    res['lat'] = lat
+#    res['lon'] = lon
+#    res['Ex'] = Ex
+#    res['Ey'] = Ey
+#    res['Ez'] = Ez
+#    
+#    if with_mag_coords:
+#        res['mag_lat'] = mlat
+#        res['mag_lon'] = mlon
+#    
+#    if fill_missing is not None:
+#        mm = np.zeros(res['Ex'].shape,dtype = bool).reshape((msnew,ns))
+#        for i,j in enumerate(mask_old): mm[i]=j
+#        res['gaps_mask'] = ~mm.flatten()
+#    
+#    if cut_last_interval:
+#        res = np.delete(res,range(-ns,0))
+#    
+#    return res, {'ORBITNUM':orbitnum,'units':s2,'UTC':utc, 'verse_zero_utc':vt0_utc, 'verse_time':utc-vt0_utc}
 
 
 def add_packets(xbig,jumps,npacks,dt,fill_missing = 'sampling'):
@@ -1129,7 +1137,7 @@ def get_spacecraft_speed(df,ref_frame='ecef',as_output = True,\
 ################################################################################
 ####################         AUXILIARY FUNCTIONS             ###################
 ################################################################################
-def get_CHAOSmag(df,as_output = True,ref_frame='ecef',chaosfile=None):
+def get_CHAOSmag(df,as_output = True,ref_frame='ecef',chaosfile=None,memory_friendly = True,chunk_size=65536):
     """
     Compute magnetic field from CHAOS model on the desired orbit
     
@@ -1140,7 +1148,7 @@ def get_CHAOSmag(df,as_output = True,ref_frame='ecef',chaosfile=None):
 
     if chaosfile is None:
         import os
-        chaosfile = os.path.dirname(__file__)+'/CHAOS-7.14.mat'
+        chaosfile = os.path.dirname(__file__)+'/CHAOS-8.2.mat'
         
 
     time = chaos.data_utils.mjd2000(df.index.to_pydatetime()) #28 seconds
@@ -1153,7 +1161,18 @@ def get_CHAOSmag(df,as_output = True,ref_frame='ecef',chaosfile=None):
     model = chaos.load_CHAOS_matfile(chaosfile)
 
 
-    Br,Bthta,Bphi=model.synth_values_tdep(time,radius,colat,lon)
+    if memory_friendly:
+        stend = arrays.start_end(df.shape[0],int(df.shape[0]//chunk_size))
+        Br = np.zeros(df.shape[0])
+        Bthta = np.zeros(df.shape[0])
+        Bphi = np.zeros(df.shape[0])
+        for istart,iend in stend:
+            tB1,tB2,tB3=model.synth_values_tdep(time[istart:iend],radius[istart:iend],colat[istart:iend],lon[istart:iend])
+            Br[istart:iend] = tB1
+            Bthta[istart:iend] = tB2
+            Bphi[istart:iend] = tB3
+    else:
+        Br,Bthta,Bphi=model.synth_values_tdep(time,radius,colat,lon)
 
     if ref_frame.lower() == 'ecef' or ref_frame.lower() == 'wgs84': 
 
