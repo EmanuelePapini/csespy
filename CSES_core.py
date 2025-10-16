@@ -235,6 +235,7 @@ def CSES_load(filename,path='./', return_pandas = False,
 
         elif fill_missing == 'linear':
             data1 = {i:interp1(t_new,t_new.reshape((msnew,ns))[mask_old].flatten(),data[i].flatten()) for i in data}
+        
         elif callable(fill_missing):
             data1 = {i:fill_missing(t_new,t_new.reshape((msnew,ns))[mask_old].flatten(),data[i].flatten()) for i in data}
         
