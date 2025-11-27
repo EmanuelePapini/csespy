@@ -52,7 +52,7 @@ class CSES():
     """
 
     def __init__(self, path='./',search_string = None,orbitn=None,timespan=None,unstructured_path=False, ignore_structure = False,\
-                 orbit_database_buf = None, database_source = 'pandas-hdf5'):
+                 spacecraft = 'CSES01', orbit_database_buf = None, database_source = 'pandas-hdf5'):
 
 
         self.spacecraft = spacecraft
@@ -349,11 +349,11 @@ class CSES():
         filespaths = glob(ppath)
 
         if orbitn is None:
-            files = [(i,ipath) for srcpath in filespaths for i,ipath in find_file(srcpath,orbitn, recursive = ignore_structure)]
+            files = [(i,ipath) for srcpath in filespaths for ipath,i in find_file(srcpath,orbitn, recursive = ignore_structure)]
             #files = [(i,ipath) for ipath in filespaths for i in find_file(ipath,search_string)]
             files = [(i,ipath) for i,ipath in files if parse_CSES_filename(i)['datakey'] == datakey]
         else:
-            files = [(i,ipath) for srcpath in filespaths for i,ipath in find_file(srcpath,orbitn, recursive = ignore_structure)]
+            files = [(i,ipath) for srcpath in filespaths for ipath,i in find_file(srcpath,orbitn, recursive = ignore_structure)]
             #files = [(i,ipath) for i,ipath in find_file(ipath,orbitn, recursive = ignore_structure)]
             files = [(i,ipath) for i,ipath in files if \
                 parse_CSES_filename(i)['orbitn'] == orbitn and\
