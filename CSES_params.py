@@ -7,26 +7,49 @@
 # Date: 17/04/2024
 #
 """
-
+from .blombly.tools.objects import AttrDict
 #Dictionary containing the bands corresponding to the id number 
 #on the CSES filename. See file naming convention for CSES-01
 # Dict structure:
 # instrument_key:{id:bandname}
 # e.g. the id number for the ULF band of the EFD instrument is 1, then
 # we have that CSES_DATA_TABLE['EFD']['1'] == 'ULF'
-CSES_DATA_TABLE = {'EFD':{'1':'ULF','2':'ELF','3':'VLF','4':'HF'},\
+CS1 = {}
+
+CS1['CSES_DATA_TABLE'] = {'EFD':{'1':'ULF','2':'ELF','3':'VLF','4':'HF'},\
                    'HPM':{'1':'FGM1','2':'FGM2','3':'CDSM','5':'FGM1Hz'},\
                    'SCM':{'1':'ULF','2':'ELF','3':'VLF'},\
                    'LAP':{'1':'50mm', '2':'10mm'},\
                    'PAP':{'0':''}, \
                    'HEP':{'1':'P_L','2':'P_H','3':'D','4':'P_X'}}
 
+CS1['CSES_DATAKEYS'] = {
+               'EFD_ULF':dict(instrument='EFD',InstrumentNo='1',band='ULF'),\
+               'EFD_ELF':dict(instrument='EFD',InstrumentNo='2',band='ELF'),\
+               'EFD_VLF':dict(instrument='EFD',InstrumentNo='3',band='VLF'),\
+               'EFD_HF': dict(instrument='EFD',InstrumentNo='4',band='HF'),\
+               'SCM_ULF':dict(instrument='SCM',InstrumentNo='1',band='ULF'),\
+               'SCM_ELF':dict(instrument='SCM',InstrumentNo='2',band='ELF'),\
+               'SCM_VLF':dict(instrument='SCM',InstrumentNo='3',band='VLF'),\
+               'HPM_FGM1':  dict(instrument='HPM',InstrumentNo='1',band=None),\
+               'HPM_FGM3':  dict(instrument='HPM',InstrumentNo='2',band=None),\
+               'HPM_CDSM':  dict(instrument='HPM',InstrumentNo='3',band=None),\
+               'HPM_FGM1Hz':dict(instrument='HPM',InstrumentNo='5',band=None),\
+               'LAP_50mm':  dict(instrument='LAP',InstrumentNo='1',band=None),\
+               'LAP_10mm':  dict(instrument='LAP',InstrumentNo='2',band=None),\
+               'PAP':  dict(instrument='PAP',InstrumentNo='0',band=None),\
+               'HEPP_L':  dict(instrument='HEP',InstrumentNo='1',band=None),\
+               'HEPP_H':  dict(instrument='HEP',InstrumentNo='2',band=None),\
+               'HEPD':    dict(instrument='HEP',InstrumentNo='3',band=None),\
+               'HEPP_X':  dict(instrument='HEP',InstrumentNo='4',band=None)\
+                   }
+
 #Dictionary of the name translations for the fields contained in the 
 #HDF5 output files of CSES-01. 
 #N.B. THIS IS STILL KEPT HERE FOR LEGACY. 
 #     IT'S USE IS DEPRECATED SINCE CSES_DATASETS 
 #     CONTAINS THE SAME INFORMATION
-CSES_FILE_TABLE = {'EFD':{\
+CS1['CSES_FILE_TABLE'] = {'EFD':{\
                        '1':{'A111_W':'Ex',\
                             'A112_W':'Ey',\
                             'A113_W':'Ez'
@@ -91,7 +114,7 @@ CSES_FILE_TABLE = {'EFD':{\
                         }
                    }
 
-CSES_POSITION = {'ALTITUDE':'alt',\
+CS1['CSES_POSITION'] = {'ALTITUDE':'alt',\
                  'GEO_LAT':'lat',\
                  'GEO_LON':'lon',\
                  'MAG_LAT':'mag_lat',\
@@ -101,7 +124,7 @@ CSES_POSITION = {'ALTITUDE':'alt',\
 # the hdf5 files to their corresponding physical name
 # e.g. A121_W is the waveform of Ex in ELF band
 # while A121_P is the spectrogram, translated as Ex_P
-CSES_DATASETS = {'A111_P':'Ex_P','A111_W':'Ex',\
+CS1['CSES_DATASETS'] = {'A111_P':'Ex_P','A111_W':'Ex',\
                  'A112_P':'Ey_P','A112_W':'Ey',\
                  'A113_P':'Ez_P','A113_W':'Ez',\
                  'A121_P':'Ex_P','A121_W':'Ex',\
@@ -136,23 +159,26 @@ CSES_DATASETS = {'A111_P':'Ex_P','A111_W':'Ex',\
                  'A333':'vz'}
 
 #SAMPLING FREQUENCIES OF VARIOUS INSTRUMENTS, TO BE USED WHEN READING DATA
-CSES_SAMPLINGFREQS = {'EFD_ULF':125.,'EFD_ELF':5000.,'EFD_VLF':50000.,\
+CS1['CSES_SAMPLINGFREQS'] = {'EFD_ULF':125.,'EFD_ELF':5000.,'EFD_VLF':50000.,\
                       'SCM_ULF':1024.,'SCM_ELF':10240.,'SCM_VLF':51200.,'LAP_50mm':1/3,'PAP_':1.,\
                       'HPM_FGM1Hz':1.,'HEP':1.}
 
-CSES_PACKETSIZE = {'EFD_ULF':256,'EFD_ELF':2048,'EFD_VLF':2048,'EFD_HF':2048,\
+CS1['CSES_PACKETSIZE'] = {'EFD_ULF':256,'EFD_ELF':2048,'EFD_VLF':2048,'EFD_HF':2048,\
                    'SCM_ULF':4096,'SCM_ELF':4096,'SCM_VLF':4096,'LAP_50mm':1,'PAP_':1,\
                    'HPM_FGM1Hz':1,'HEP':1}
 
-CSES_FILESYSTEM = {'EFD':'year/FREQUENCY/month',\
+CS1['CSES_FILESYSTEM'] = {'EFD':'year/FREQUENCY/month',\
                    'HPM':'year/month',\
                    'LAP':'year/month',\
                    'SCM':'year/FREQUENCY/month',\
                    'PAP':'',\
                    'HEP':'year/month'}
-CSES_EXTENSIONS = ['.h5','.zarr.zip']
 
 #conversion factors for the various quantitities that are read: 'Bx_P':(a,b) means that 
 # Bx_P out = a*(Bx_P**b)
-CSES_CF = {'Bx_P':(1,1),'By_P':(1,1),'Bz_P':(1,1),\
+CS1['CSES_CF'] = {'Bx_P':(1,1),'By_P':(1,1),'Bz_P':(1,1),\
            'Ex_P':(1,2),'Ey_P':(1,2),'Ez_P':(1,2)}
+
+
+SPACECRAFT = {'CSES01':AttrDict(CS1)}
+CSES_EXTENSIONS = ['.h5','.zarr.zip']
