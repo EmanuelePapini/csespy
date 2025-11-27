@@ -21,10 +21,10 @@
 #
 
 import numpy as np
-import os
 from datetime import datetime,timedelta,date
 from glob import glob
 from .CSES_params import *
+from .blombly.io import io_tools as iot
 
 #def get_datakey(instrument,frequency):
 #    """
@@ -252,15 +252,34 @@ def parse_CSES_filename(filename):
     return out
 
 
-def find_file(path,search_string ='',extension = CSES_EXTENSIONS):
+#def find_file(path,search_string ='',extension = CSES_EXTENSIONS, recursive = False):
+#    """
+#    find all files with a given extension whose name contains the search_string in the path and return them into a list
+#    """
+#    #print(path+'*'+search_string+'*'+extension)
+#    if type(extension) is str:
+#        return [i[len(path):] for i in  glob(path+'*'+search_string+'*'+extension) if is_valid_CSES_filename(i[len(path):])] 
+#    return list(np.concatenate([[i[len(path):] for i in  glob(path+'*'+search_string+'*'+iext) if \
+#                                 is_valid_CSES_filename(i[len(path):])] for iext in extension]))
+
+def find_file(path,search_string ='',extension = CSES_EXTENSIONS, recursive = False):
     """
     find all files with a given extension whose name contains the search_string in the path and return them into a list
     """
     #print(path+'*'+search_string+'*'+extension)
     if type(extension) is str:
-        return [i[len(path):] for i in  glob(path+'*'+search_string+'*'+extension) if is_valid_CSES_filename(i[len(path):])] 
-    return list(np.concatenate([[i[len(path):] for i in  glob(path+'*'+search_string+'*'+iext) if \
-                                 is_valid_CSES_filename(i[len(path):])] for iext in extension]))
+        fullfiles = [iot.split_path(i) for i in \
+            iot.search_file(path,search_string,extension=extension, recursive = recursive)[-1]\
+                if is_valid_CSES_filename(iot.split_path(i)[-1])]
+    else:
+        fullfiles = []
+        for iext in extension:
+            fullfiles.append([iot.split_path(i) for i in \
+            iot.search_file(path,search_string,extension=iext, recursive = recursive)[-1]\
+                if is_valid_CSES_filename(iot.split_path(i)[-1])])
+        fullfiles = [item for sublist in fullfiles for item in sublist]
+    return fullfiles 
+
 
 def is_valid_CSES_filename(filname,thorough = False):
     """Check whether a given input string is a valid CSES filename"""
