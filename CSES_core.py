@@ -390,7 +390,7 @@ def CSES_load_PSD(filename,path='./', return_xarray = False,
     index = pd.to_timedelta( data['time'] - data['time'][0],unit='sec') + utc
     data['time'] = index
     position = pd.DataFrame(pos,index=index)
-    position['orbitn']=orbitnum
+    position['orbitn']=info['orbitn']#orbitnum
     data['position'] = position
     for i in units:
         if CSX['CSES_CF'][i][1] > 1:
