@@ -349,7 +349,7 @@ class CSES():
         filespaths = glob(ppath)
 
         if orbitn is None:
-            files = [(i,ipath) for srcpath in filespaths for ipath,i in find_file(srcpath,orbitn, recursive = ignore_structure)]
+            files = [(i,ipath) for srcpath in filespaths for ipath,i in find_file(srcpath,search_string, recursive = ignore_structure)]
             #files = [(i,ipath) for ipath in filespaths for i in find_file(ipath,search_string)]
             files = [(i,ipath) for i,ipath in files if parse_CSES_filename(i)['datakey'] == datakey]
         else:
@@ -1459,7 +1459,7 @@ class CSES_database():
             else:
                 msg.warning('spacecraft key not found in database! skipping spacecraft selection!')
         
-        self.sel_db = df[mask]
+        self.sel_db = df
         
         if self.sel_db.size == 0 : return self.sel_db
 
