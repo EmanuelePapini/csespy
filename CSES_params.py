@@ -17,7 +17,7 @@ from .blombly.tools.objects import AttrDict
 CS1 = {}
 
 CS1['CSES_DATA_TABLE'] = {'EFD':{'1':'ULF','2':'ELF','3':'VLF','4':'HF'},\
-                   'HPM':{'1':'FGM1','2':'FGM2','3':'CDSM','5':'FGM1Hz'},\
+                   'HPM':{'1':'FGM1','2':'FGM2','3':'CDSM','5':'FGM1Hz','6':'CDSM1Hz'},\
                    'SCM':{'1':'ULF','2':'ELF','3':'VLF'},\
                    'LAP':{'1':'50mm', '2':'10mm'},\
                    'PAP':{'0':''}, \
@@ -35,6 +35,7 @@ CS1['CSES_DATAKEYS'] = {
                'HPM_FGM3':  dict(instrument='HPM',InstrumentNo='2',band=None),\
                'HPM_CDSM':  dict(instrument='HPM',InstrumentNo='3',band=None),\
                'HPM_FGM1Hz':dict(instrument='HPM',InstrumentNo='5',band=None),\
+               'HPM_CDSM1Hz':dict(instrument='HPM',InstrumentNo='6',band=None),\
                'LAP_50mm':  dict(instrument='LAP',InstrumentNo='1',band=None),\
                'LAP_10mm':  dict(instrument='LAP',InstrumentNo='2',band=None),\
                'PAP':  dict(instrument='PAP',InstrumentNo='0',band=None),\
@@ -82,6 +83,7 @@ CS1['CSES_FILE_TABLE'] = {'EFD':{\
                             'A222':'By',\
                             'A223':'Bz'\
                            },\
+                       '6':{'A211':'B'},\
                          },\
                    'PAP':{\
                        '0':{'A313':'nH+',\
@@ -142,6 +144,7 @@ CS1['CSES_DATASETS'] = {'A111_P':'Ex_P','A111_W':'Ex',\
                  'A251_P':'Bx_P','A251_W':'Bx',\
                  'A252_P':'By_P','A252_W':'By',\
                  'A253_P':'Bz_P','A253_W':'Bz',\
+                 'A211':'B',\
                  'A221':'Bx',\
                  'A222':'By',\
                  'A223':'Bz',\
@@ -161,11 +164,11 @@ CS1['CSES_DATASETS'] = {'A111_P':'Ex_P','A111_W':'Ex',\
 #SAMPLING FREQUENCIES OF VARIOUS INSTRUMENTS, TO BE USED WHEN READING DATA
 CS1['CSES_SAMPLINGFREQS'] = {'EFD_ULF':125.,'EFD_ELF':5000.,'EFD_VLF':50000.,\
                       'SCM_ULF':1024.,'SCM_ELF':10240.,'SCM_VLF':51200.,'LAP_50mm':1/3,'PAP_':1.,\
-                      'HPM_FGM1Hz':1.,'HEP':1.}
+                      'HPM_FGM1Hz':1.,'HPM_CDSM1Hz':1.,'HEP':1.}
 
 CS1['CSES_PACKETSIZE'] = {'EFD_ULF':256,'EFD_ELF':2048,'EFD_VLF':2048,'EFD_HF':2048,\
                    'SCM_ULF':4096,'SCM_ELF':4096,'SCM_VLF':4096,'LAP_50mm':1,'PAP_':1,\
-                   'HPM_FGM1Hz':1,'HEP':1}
+                   'HPM_FGM1Hz':1,'HPM_CDSM1Hz':1,'HEP':1}
 
 CS1['CSES_FILESYSTEM'] = {'EFD':'year/FREQUENCY/month',\
                    'HPM':'year/month',\

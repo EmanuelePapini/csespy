@@ -54,10 +54,17 @@ class CSES():
     def __init__(self, path='./',search_string = None,orbitn=None,timespan=None,unstructured_path=False, ignore_structure = False,\
                  spacecraft = 'CSES01', orbit_database_buf = None, database_source = 'pandas-hdf5'):
 
-
+        from pathlib import Path
         self.spacecraft = spacecraft
         self._P = deepcopy(SPACECRAFT[spacecraft])
         self.path = path
+        self._path = Path(path)
+        if self._path.exists() is False:
+            msg.error('Provided path does not exist: '+path)
+            raise FileNotFoundError('Provided path does not exist: '+path)
+        elif self._path.is_dir() is False:
+            msg.error('Provided path is not a directory: '+path)
+            raise FileNotFoundError('Provided path is not a directory: '+path)
         self.files = AttrDict()
         #self.files['input'] = None #THIS IS DEPRECATED AND HAS TO BE REMOVED
         self.search_string = search_string
@@ -171,14 +178,14 @@ class CSES():
     def find_available_files(self,search_string ='',orbitn=None,timespan=None,**kwargs):
         outs = {}
 
-        CSES_DATA_TABLE = self._P['CSES_DATA_TABLE']
+        CSES_DATA_TABLE = self._P['CSES_DATAKEYS']
         spacecraft = self.spacecraft
         #if spacecraft is None: spacecraft = ['CSES-01','CSES-02']
-        for instr in CSES_DATA_TABLE:
-            outs[instr]={}
-            for ino in CSES_DATA_TABLE[instr]:
-                ifreq = CSES_DATA_TABLE[instr][ino]
-                outs[instr][ifreq] = self.search_file(search_string = search_string, orbitn= orbitn, \
+        for datakey in CSES_DATA_TABLE:
+            #outs[instr]={}
+            #for ino in CSES_DATA_TABLE[instr]:
+            #    ifreq = CSES_DATA_TABLE[instr][ino]
+            outs[datakey] = self.search_file(datakey,search_string = search_string, orbitn= orbitn, \
                     timespan = timespan,**kwargs)
         return outs
 
@@ -274,7 +281,8 @@ class CSES():
         """
         from glob import glob
         try:
-            self.instruments = [i[len(self.path):] for i in glob(self.path+'*')] 
+            self.instruments = [i.name for i in self._path.iterdir() if i.is_dir()] 
+            #self.instruments = [i[len(self.path):] for i in glob(self.path+'*')] 
         except:
             print('WARNING: the provided folder is not a CSES folder. Reading data will likely fail!')
 
@@ -331,17 +339,18 @@ class CSES():
         
         ignore_structure = self._ignore_structure_
         
+        ppath = str(self._path)+'/'
         if unstruct_path or ignore_structure:
-            ppath = self.path
+            continue
         else:
             fs_struct = CSES_FILESYSTEM[instrument]
 
-            ppath = self.path+instrument+'/'
+            ppath = ppath+instrument+'/'
 
             for ipath in fs_struct.split('/'):
-                if ipath == 'band':
+                if ipath == 'band' or ipath == 'frequency':
                     ppath += band.lower()+'/'
-                elif ipath == 'BAND':
+                elif ipath == 'BAND' or ipath == 'FREQUENCY':
                     ppath += band.upper()+'/'
                 else:
                     ppath += '*/'
@@ -856,7 +865,7 @@ class CSES():
             ax[-1].tick_params(axis='x',rotation=45)
         return fig,ax
 
-    def plot_payload(self,datakeyvars,xaxis='time',secondary_xaxis=None,fig=None,ax=None,xlabel=None):
+    def plot_payload(self,datakeyvars,xaxis='time',secondary_xaxis=None,fig=None,ax=None,xlabel=None, unwrap_xrange = None):
         
 
         CSX = self._P
@@ -879,6 +888,8 @@ class CSES():
             mask = dff.orbitn == iorbit
             df = dff[mask]
             xx = xxx[mask]
+            if unwrap_xrange is not None:
+                xx = arrays.remove_jumps(xx,unwrap_xrange)
             if datakey == 'LAP_50mm':
                 ax.semilogy(xx,df['ne'],label=r'$n_e$',color=cols[0])
                 ax.set_ylabel(r'$\mathrm{n_e \quad [m^{-3}]}$')
@@ -1289,8 +1300,9 @@ class CSES():
             xnew = inst.index.values.astype(float) - xx[0]
             xx-=xx[0]
             fld['mag_lat'] = interp1(xx,mlat,bounds_error=False,fill_value='extrapolate')(xnew)
-            fld['mag_lon'] = interp1(xx,mlon,bounds_error=False,fill_value='extrapolate')(xnew)
-            fld['mlt'] = interp1(xx,mlt,bounds_error=False,fill_value='extrapolate')(xnew)
+            fld['mag_lon'] = arrays.interp1_jumps(xnew,xx,mlon,[-180,180])
+            fld['mlt'] = arrays.interp1_jumps(xnew,xx,mlt,[0,24])
+            #fld['mlt'] = interp1(xx,mlt,bounds_error=False,fill_value='extrapolate')(xnew)
             #fld['mag_lon'] = interp1(fld['lat'],lat,mlon) 
             #fld['mlt'] = interp1(fld['lat'],lat,mlt) 
 
