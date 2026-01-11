@@ -108,7 +108,13 @@ def CSES_load(filename,path='./', return_pandas = False,
         orbitnum = int(fil.attrs['ORBITNUM'][0])
     elif info['extension'] == '.zarr.zip':
         import zarr
-        fil = zarr.open(path+filename)
+        try:
+            fil = zarr.open(path+filename,mode='r')
+        except:
+            from zarr.storage import ZipStore
+            store = ZipStore(path+filename,mode='r')
+            fil = zarr.open(store,mode='r')
+        #fil = zarr.open(path+filename)
         orbitnum = int(fil.attrs['ORBITNUM'])
 
     try:
