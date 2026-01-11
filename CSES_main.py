@@ -340,8 +340,8 @@ class CSES():
         ignore_structure = self._ignore_structure_
         
         ppath = str(self._path)+'/'
-        if unstruct_path or ignore_structure:
-            continue
+        if not unstruct_path or ignore_structure:
+           pass 
         else:
             fs_struct = CSES_FILESYSTEM[instrument]
 
