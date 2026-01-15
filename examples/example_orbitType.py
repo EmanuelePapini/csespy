@@ -1,13 +1,14 @@
 import csespy_dev as csespy
 from datetime import datetime, timezone
 import pandas as pd
+import numpy as np
 
 #path to the CSES orbit database
 odbfile = '/storage/gpfs_data/limadou/dagiorda/csespy_dev/examples/aux/CSES01_orbitdb.h5'
 
 #date span (Jan to Apr 2019)
 t0 = datetime(2019, 1, 1, tzinfo=timezone.utc)
-t1 = datetime(2019, 4, 30, tzinfo=timezone.utc)
+t1 = datetime(2020, 4, 30, tzinfo=timezone.utc)
  
 #initialize CSES_database object
 odb = csespy.CSES_database(dbbuf = odbfile)
@@ -18,7 +19,7 @@ print(f"DB time range: {db.index.min()} -> {db.index.max()}")
 print(f"DB rows: {len(db):,} | orbits: {db['orbitn'].nunique():,}")
  
 #restrict to desired date span
-odb.search_orbit_timespan((t0,t1))
+# odb.search_orbit_timespan((t0,t1))
  
 #plot orbits
 fig,ax,mm=odb.plot_orbit(profile='default_lines',\
@@ -103,3 +104,29 @@ mapping_dict = dict(zip(dblabeled.orbitn.values, dblabeled.OrbitType.values))
 #the label -1 to orbits in case of error.
 #The DataFrame containing the database of the orbits is in ``odb.db''.
 odb.db['OrbitType'] = odb.db['orbitn'].map(mapping_dict).fillna(-1).astype(int)
+
+day_or_night='night' #set to: 'day' to plot dayside orbits
+#select orbits of interest
+odb.search_orbit_timespan((t0,t1))
+odb.search_orbit_side(day_or_night,use_selected_db = True)
+#Select plotting profile
+prof=csespy.ORBIT_PLOT_TEMPLATES['default_lines'].copy()
+#select which parallel and meridian to overplot
+prof['latrange'] = [[55,75,5]]
+prof['lonrange'] = [[0,40,5]]
+#make the plot
+figs=odb.plot_orbit(profile=prof,\
+annotate_orbitn=False,color='night-day',ion=True)
+figs[1][0].set_ylim([55,75])
+figs[1][0].set_xlim([0,40])
+#label axes
+figs[0].text(0.5,0.01,'Geographic Longitude',horizontalalignment='center')
+figs[0].text(0.03,0.5,'Geographic Latitude',\
+verticalalignment='center',rotation='vertical')
+#extract OrbitType labels
+orbit_type = list(set(odb.sel_db.OrbitType))
+#annotate labels into the plot at orbit location
+ilon = 0 if day_or_night=='day' else -1
+for itype in orbit_type:
+   dff = odb.sel_db[odb.sel_db.OrbitType == itype]
+   figs[1][0].annotate(itype,[dff['lon'][ilon], 66],fontsize=14)

@@ -215,7 +215,7 @@ def make_time_index(time_arr, t_start, t_end, n_fallback):
 # ----------------------------
 # Extract GEO from one file
 # ----------------------------
-def extract_geo_track(path: str, spacecraft="CSES01", step=1):
+def extract_geo_track(path: str, spacecraft="CSES01"):
     """
     Returns DataFrame with index=Time and columns: lat, lon, alt, orbitn, spacecraft
     """
@@ -285,13 +285,6 @@ def extract_geo_track(path: str, spacecraft="CSES01", step=1):
             time_arr = _to_1d(time_d[:])[:n] if time_d is not None else None
             idx = make_time_index(time_arr, t_start, t_end, n_fallback=n)
 
-        # decimate
-        if step > 1:
-            lat = lat[::step]
-            lon = lon[::step]
-            alt = alt[::step]
-            idx = idx[::step]
-
         df = pd.DataFrame(
             {
                 "lat": lat,
@@ -333,7 +326,6 @@ def scan_files(root_dir: str, include_h5=False):
 def build_orbitdb_from_folder(
     root_dir: str,
     out_h5: str,
-    step=1,
     include_h5=False,
     spacecraft="CSES01",
     key="orbitdb",
@@ -346,7 +338,7 @@ def build_orbitdb_from_folder(
 
     for i, fpath in enumerate(files, 1):
         try:
-            df = extract_geo_track(fpath, spacecraft=spacecraft, step=step)
+            df = extract_geo_track(fpath, spacecraft=spacecraft)
             tracks.append(df)
             ok += 1
         except Exception as e:
@@ -357,6 +349,8 @@ def build_orbitdb_from_folder(
             print(f"[PROGRESS] ok={ok} bad={bad}")
             print(fpath)
             # break
+        if ok > 1000:
+            break
 
     if not tracks:
         raise RuntimeError("No tracks extracted; nothing to save.")
@@ -372,17 +366,14 @@ def build_orbitdb_from_folder(
 
 
 if __name__ == "__main__":
-    # Example for your storage tree
+
+    # here one can set the input folder(s) and output HDF5 file
     ROOT_DIR = "/storage/gpfs_data/limadou/data/cses_data/CSES01/EFD_ULF/*/*/"
     OUT_H5   = "CSES01_orbitdb.h5"
-
-    # step: 1 keeps all geo points; 5 or 10 makes the DB much smaller (often still fine for selection)
-    STEP = 1
 
     build_orbitdb_from_folder(
         root_dir=ROOT_DIR,
         out_h5=OUT_H5,
-        step=STEP,
         include_h5=False,   # set True if you also want to scan .h5 files
         spacecraft="CSES01",
         key="orbitdb",
