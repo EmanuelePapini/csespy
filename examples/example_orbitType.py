@@ -20,7 +20,9 @@ print(f"DB rows: {len(db):,} | orbits: {db['orbitn'].nunique():,}")
  
 #restrict to desired date span
 # odb.search_orbit_timespan((t0,t1))
- 
+# odb.search_orbit_lat([-27,-25.49],use_selected_db = True)
+# odb.search_orbit_lon([-10,60],use_selected_db = True)
+
 #plot orbits
 fig,ax,mm=odb.plot_orbit(profile='default_lines',\
    annotate_orbitn=False,color='night-day',ion=True)
@@ -33,7 +35,7 @@ if fig is not None:
 else:
    print("No orbits found in the selected timespan.")
 
-
+exit()
 #there are 76 ascending and 76 descending orbit types.
 ntype = 76
 #restrict to the equator

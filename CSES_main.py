@@ -1340,6 +1340,9 @@ class CSES_database():
         
         self.load_db(dbbuf)
 
+        # Default selection is the full database.
+        self.sel_db = self.db
+
     def check_buf(self,dbbuf):
         import pandas as pd
         if type(dbbuf) is pd.DataFrame:
@@ -1619,7 +1622,13 @@ class CSES_database():
     
     def plot_orbit(self,df=None,y='lat',x='lon',basemap = None, fig = None, ax = None,\
         profile = 'default',overplot_continents = True,ion=True,show=True,\
-        annotate_orbitn = True, color = None):
+        annotate_orbitn = True, color = None,
+        unwrap_lon=True,
+        break_on_time_gap=True,
+        time_gap_factor=10.0,
+        time_gap_min_seconds=60.0,
+        break_on_speed=True,
+        max_deg_per_sec=1.0):
         """
         Plot the orbits present in df  in the worldmap, using CSES_aux.plot_orbit
 
@@ -1657,6 +1666,9 @@ class CSES_database():
             "night-day": color night and day with two different colors (red and blue)
             ("night-day",'col1',col2'): color night and day with two different colors, defined by col1 (night) and col2 (day)
 
+        unwrap_lon : bool
+            if True, unwrap longitudes to avoid visual jumps at 0/360 during plotting
+
         returns:
 
         fig,ax,mm : figure, axis, and basemap mm objects
@@ -1673,8 +1685,38 @@ class CSES_database():
         
         orbits = set(df.orbitn.values)
         
+        def _to_seconds(delta_values: np.ndarray) -> np.ndarray:
+            """Convert a timedelta-like array to float seconds when possible."""
+            try:
+                if np.issubdtype(delta_values.dtype, np.timedelta64):
+                    return delta_values.astype('timedelta64[ns]').astype(np.float64) / 1e9
+            except Exception:
+                pass
+            try:
+                return delta_values.astype(np.float64)
+            except Exception:
+                return np.full(delta_values.shape, np.nan, dtype=float)
+
+        def _segment_bounds(n: int, break_after: np.ndarray):
+            """Return (start, end) segments. break_after[i]=True breaks between i and i+1."""
+            if n <= 0:
+                return []
+            if break_after.size != max(n - 1, 0):
+                return [(0, n)]
+            cut_idx = np.where(break_after)[0]
+            if cut_idx.size == 0:
+                return [(0, n)]
+            starts = np.concatenate(([0], cut_idx + 1))
+            ends = np.concatenate((cut_idx + 1, [n]))
+            return [(int(s), int(e)) for s, e in zip(starts, ends) if e - s >= 2]
+
         for iorbit in orbits:
             dff = df[df.orbitn.values == iorbit]
+            # Ensure a consistent trajectory order (prevents spurious straight chords)
+            try:
+                dff = dff.sort_index()
+            except Exception:
+                pass
             if color is not None:
                 if type(color) is str:
                     if color == 'night-day': 
@@ -1686,13 +1728,58 @@ class CSES_database():
                         col = None
             else:
                 col = None
-            fig,ax,basemap = plot_orbit(dff[y].values,dff[x].values, \
-                basemap = basemap, fig = fig, ax = ax,ion=False,show=False,color = col, **pltkwargs)
+            if unwrap_lon and x == 'lon':
+                lon_plot = np.rad2deg(
+                    np.unwrap(np.deg2rad(dff[x].values), discont=np.deg2rad(180))
+                )
+                if len(lon_plot) > 0:
+                    shift = 360 * np.round(np.nanmedian(lon_plot) / 360)
+                    lon_plot = lon_plot - shift
+            else:
+                lon_plot = dff[x].values
+
+            # Break the line when points are separated by large time gaps or impossible jumps.
+            lat_plot = dff[y].values
+            npts = len(lat_plot)
+            break_after = np.zeros(max(npts - 1, 0), dtype=bool)
+            if npts >= 2:
+                if break_on_time_gap:
+                    try:
+                        dt = _to_seconds(np.diff(dff.index.values))
+                        med = np.nanmedian(dt[(dt > 0) & np.isfinite(dt)])
+                        if np.isfinite(med) and med > 0:
+                            gap = (dt > max(time_gap_min_seconds, time_gap_factor * med))
+                            break_after |= np.nan_to_num(gap, nan=False)
+                    except Exception:
+                        pass
+
+                if break_on_speed:
+                    try:
+                        dt = _to_seconds(np.diff(dff.index.values))
+                        dlon = np.abs(np.diff(lon_plot.astype(float)))
+                        dlat = np.abs(np.diff(lat_plot.astype(float)))
+                        with np.errstate(divide='ignore', invalid='ignore'):
+                            rate = np.nanmax(np.vstack([dlon / dt, dlat / dt]), axis=0)
+                        spd = (rate > max_deg_per_sec) & np.isfinite(rate)
+                        break_after |= np.nan_to_num(spd, nan=False)
+                    except Exception:
+                        pass
+
+            segments = _segment_bounds(npts, break_after)
+            if not segments:
+                segments = [(0, npts)]
+            for (s, e) in segments:
+                fig,ax,basemap = plot_orbit(lat_plot[s:e], lon_plot[s:e], \
+                    basemap = basemap, fig = fig, ax = ax,ion=False,show=False,color = col, **pltkwargs)
             if annotate_orbitn:
                 [axi.annotate(iorbit,[dff[x][0],dff[y][0]*1.1],fontsize=10) for axi in ax]
 
-        if overplot_continents:
-            [imm.fillcontinents() for imm in basemap]
+        if overplot_continents and basemap is not None:
+            try:
+                for imm in basemap:
+                    imm.fillcontinents()
+            except TypeError:
+                basemap.fillcontinents()
             #[imm.drawlsmask() for imm in basemap]
         if ion:
            plt.ion()

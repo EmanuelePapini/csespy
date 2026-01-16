@@ -160,6 +160,11 @@ def _to_1d(x):
         x = x[:, 0]
     return x.reshape(-1)
 
+def normalize_lon(lon):
+    """Normalize longitude to [-180, 180]."""
+    lon = np.asarray(lon, dtype=float)
+    return ((lon + 180.0) % 360.0) - 180.0
+
 def make_time_index(time_arr, t_start, t_end, n_fallback):
     """
     Build a pandas DatetimeIndex in UTC.
@@ -253,6 +258,7 @@ def extract_geo_track(path: str, spacecraft="CSES01"):
 
             n = min(len(lat), len(lon), len(alt))
             lat, lon, alt = lat[:n], lon[:n], alt[:n]
+            lon = normalize_lon(lon)
 
             time_arr = _to_1d(time_a[:])[:n] if time_a is not None else None
             idx = make_time_index(time_arr, t_start, t_end, n_fallback=n)
@@ -281,6 +287,7 @@ def extract_geo_track(path: str, spacecraft="CSES01"):
 
             n = min(len(lat), len(lon), len(alt))
             lat, lon, alt = lat[:n], lon[:n], alt[:n]
+            lon = normalize_lon(lon)
 
             time_arr = _to_1d(time_d[:])[:n] if time_d is not None else None
             idx = make_time_index(time_arr, t_start, t_end, n_fallback=n)
@@ -299,7 +306,6 @@ def extract_geo_track(path: str, spacecraft="CSES01"):
 
     finally:
         closer()
-
 
 # ----------------------------
 # Folder scan + build DB
