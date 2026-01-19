@@ -355,8 +355,8 @@ def build_orbitdb_from_folder(
             print(f"[PROGRESS] ok={ok} bad={bad}")
             print(fpath)
             # break
-        if ok > 1000:
-            break
+#        if ok > 100:
+#            break
 
     if not tracks:
         raise RuntimeError("No tracks extracted; nothing to save.")
