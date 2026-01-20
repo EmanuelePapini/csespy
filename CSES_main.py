@@ -340,9 +340,7 @@ class CSES():
         ignore_structure = self._ignore_structure_
         
         ppath = str(self._path)+'/'
-        if not unstruct_path or ignore_structure:
-           pass 
-        else:
+        if not unstruct_path and not ignore_structure:
             fs_struct = CSES_FILESYSTEM[instrument]
 
             ppath = ppath+instrument+'/'
@@ -757,7 +755,8 @@ class CSES():
             [ax.plot(hd[hd.orbitn==i][xaxis],hd[hd.orbitn==i].Bz,color='blue') for i in set(hd.orbitn)]
         ax.set_xlabel(xaxis)
 
-    def plot_orbit(self,datakey,y='lat',x='lon',basemap = None, fig = None, ax = None,profile = 'default',overplot_continents = True,ion=True,show=True):
+    def plot_orbit(self,datakey,y='lat',x='lon', fig = None, ax = None,profile = 'default',\
+                   overplot_continents = True,ion=True,show=True):
         """
         Plot the orbit of the loaded instrument_frequency on the worldmap, using CSES_aux.plot_orbit
 
@@ -795,12 +794,9 @@ class CSES():
 
         pltkwargs = ORBIT_PLOT_TEMPLATES[profile] if type(profile) is str else profile
         
-        fig,ax,mm = plot_orbit(df[y].values,df[x].values, basemap = basemap, fig = fig, ax = ax,ion=ion,show=show,**pltkwargs)
+        fig,ax = plot_orbit(df[y].values,df[x].values, fig = fig, ax = ax,ion=ion,show=show,**pltkwargs)
 
-        if overplot_continents:
-            [imm.fillcontinents() for imm in mm]
-            #[imm.drawlsmask() for imm in mm]
-        return fig,ax,mm
+        return fig,ax
 
 
     def plot_payloads(self,datakeys,xaxis = 'time', xlabel=None,\
