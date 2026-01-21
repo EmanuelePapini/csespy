@@ -4,11 +4,11 @@ log = ./createOrbitDB.log
 output = ./createOrbitDB.out
 error = ./createOrbitDB.err
 transfer_input_files = ./createOrbitDB_CNAF.py
-transfer_output_files = CSES01_orbitdb.h5
+transfer_output_files = 
 
 #+JobFlavour = "tomorrow"
-+JobFlavour = "espresso"
-on_exit_remove = (ExitBySignal == False) && (ExitCode == 0) || (ExitCode == 11)
++JobFlavour = "workday"
+on_exit_remove = (ExitBySignal == False) && (ExitCode == 0)
 max_retries = 5
 requirements = Machine =!= LastRemoteHost
 

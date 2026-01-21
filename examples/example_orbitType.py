@@ -4,15 +4,17 @@ import pandas as pd
 import numpy as np
 
 #path to the CSES orbit database
-odbfile = '/storage/gpfs_data/limadou/dagiorda/csespy_dev/examples/aux/CSES01_orbitdb.h5'
+#odbfile = '/storage/gpfs_data/limadou/dagiorda/csespy_dev/examples/aux/CSES01_orbitdb_1k.h5'
+#odbfile = '~epapini/csespy_dev_shared/cses_orbit_db_mergedLfix.h5'
+odbfile = '/home/LIMADOU/epapini/csespy_dev_shared/cses_orbit_db_mergedLfix.h5'
 
 #date span (Jan to Apr 2019)
 t0 = datetime(2019, 1, 1, tzinfo=timezone.utc)
-t1 = datetime(2020, 4, 30, tzinfo=timezone.utc)
+t1 = datetime(2019, 1, 30, tzinfo=timezone.utc)
  
 #initialize CSES_database object
 odb = csespy.CSES_database(dbbuf = odbfile)
-
+#exit()
 #quick DB coverage info
 db = odb.db
 print(f"DB time range: {db.index.min()} -> {db.index.max()}")
@@ -24,8 +26,7 @@ print(f"DB rows: {len(db):,} | orbits: {db['orbitn'].nunique():,}")
 # odb.search_orbit_lon([-10,60],use_selected_db = True)
 
 #plot orbits
-fig,ax,mm=odb.plot_orbit(profile='default_lines',\
-   annotate_orbitn=False,color='night-day',ion=True)
+fig,ax,mm=odb.plot_orbit(profile='default',annotate_orbitn=False,color='night-day',ion=True)
 
 #label axes (only if a figure was created)
 if fig is not None:
@@ -35,7 +36,7 @@ if fig is not None:
 else:
    print("No orbits found in the selected timespan.")
 
-exit()
+#exit()
 #there are 76 ascending and 76 descending orbit types.
 ntype = 76
 #restrict to the equator
