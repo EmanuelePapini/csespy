@@ -25,6 +25,12 @@ from datetime import datetime,timedelta,date
 from glob import glob
 from .CSES_params import *
 from .blombly.io import io_tools as iot
+from .blombly import pylab as plt
+#from .blombly.pylab.palette_tools import get_next_color
+#from copy import deepcopy
+import cartopy.crs as ccrs
+import cartopy.feature as cfeature
+import matplotlib.path as mpath
 
 #def get_datakey(instrument,frequency):
 #    """
@@ -323,177 +329,264 @@ def get_dictkey_from_value(dic,value):
 #PAYLOAD_PLOT_TEMPLATES = \
 #    {'LAP_50mm':{'yscale':'log'},\
 #dictionary of several default orbital plot templates to be used
+
+ORBIT_PROJECTIONS = {'spstere':ccrs.SouthPolarStereo(true_scale_latitude=-71),\
+               'npstere':ccrs.NorthPolarStereo(true_scale_latitude=71),\
+               'platecarree':ccrs.PlateCarree()}
+
 ORBIT_PLOT_TEMPLATES = {'ns':{'axes': [[0.1,0.1,0.4,0.8],[0.55,0.1,0.4,0.8]],\
                              'projection': ['spstere','npstere'],\
                              'latrange': [[-90,0,15],[0,90,15]],\
                              'lonrange': [[-180,180,30],[-180,180,30]],\
-                             'basemap_kwargs': {'lon_0':0,'resolution':'l','round':True,'boundinglat':0},\
                              },\
                    'default':{'axes': [[0.1,0.1,0.8,0.8]],\
-                             'projection': ['cyl'],\
+                             'projection': ['platecarree'],\
                              'latrange': [[-90,90,30]],\
                              'lonrange': [[-180,180,30]],\
-                             'basemap_kwargs': {'lon_0':0,'resolution':'l','round':False},\
                              'pltkwargs':{'linestyle':'','marker':'.','markersize':0.5}},\
                    'default_lines':{'axes': [[0.1,0.1,0.8,0.8]],\
-                             'projection': ['cyl'],\
+                             'projection': ['platecarree'],\
                              'latrange': [[-90,90,30]],\
                              'lonrange': [[-180,180,30]],\
-                             'basemap_kwargs': {'lon_0':0,'resolution':'l','round':False},\
                              'pltkwargs':{'linestyle':'solid','linewidth':0.5}}\
                        }
-def plot_orbit(lat,lon, basemap = None, fig = None, ax = None,\
-             axes = [[0.1,0.1,0.4,0.8],[0.55,0.1,0.4,0.8]],\
-             projection = ['spstere','npstere'],\
-             latrange = [[-90,0,15],[0,90,15]],\
-             lonrange = [[-180,180,30],[-180,180,30]],\
-             color = None, basemap_kwargs = None,pltkwargs={},ion=True,show=True):
-   
-    """
-    PURPOSE:
-        plot desired orbit defined by lat and lon on the worldmap, using Basemap
 
-    parameters
+def plot_orbit( lat, lon, projection = ['platecarree'], ax=None, fig=None, 
+                axes = [[0.1,0.1,0.8,0.8]],\
+             latrange = [[-90,90,30]],\
+             lonrange = [[-180,180,30]],\
+             ion = True, show=True, which_coords = 'geo',pltkwargs={}):
+    """
+    Plot the orbit on a global map using three different projections:
+        1) PlateCarree
+        2) South Pole stereographic
+        3) North Pole stereographic
+    and two time series:
+        4) Altitude vs time
+        5) Latitude vs time
+    Parameters
     ----------
-
-    lat : 1D array-like of size N (float)
-        array of latitudes of the orbit.
-    
-    lon : 1D array-like of size N (float)
-        array of longitudes of the orbit.
-
-    basemap : None or Basemap object (optional)
-        if not None, then the input basemap is used.
-
-    fig : None or figure object (optional)
-        if not None, then input figure is used
-        (used if basemap and ax are None).
-
-    ax : None or list of axis objects (optional)
-        if not None, then input axes are used
-        (used if basemap is None).
-
-    axes : list of length== 4 lists 
-        list of coordinates location of the desired axes in  the figure 
-        (used if ax and basemap are None).
-
-    projection : list of str
-        list of desired projections to be used on the desired basemap
-        (used if basemap is None).
-
-    latrange : list of length == 3 lists
-        desired latitudinal range and interval over which to draw parallels.
-
-    lonrange : list of length == 3 lists
-        desired longitudinal range and interval over which to draw meridians.
-    
-    Personal notes for  plotting/contouring continents and/or oceans
-    using the output basemap object
-   
-    source : https://jakevdp.github.io/PythonDataScienceHandbook/04.13-geographic-data-with-basemap.html
-
-    drawlsmask() : draw continents in gray and leave oceans
-    
-    bluemarble(): Project NASA's blue marble image onto the map
-    shadedrelief(): Project a shaded relief image onto the map
-    etopo(): Draw an etopo relief image onto the map
-    warpimage(): Project a user-provided image onto the map
-
-    Other features
-      Physical boundaries and bodies of water
-
-        drawcoastlines(): Draw continental coast lines
-        drawlsmask(): Draw a mask between the land and sea, for use with projecting images on one or the other
-        drawmapboundary(): Draw the map boundary, including the fill color for oceans.
-        drawrivers(): Draw rivers on the map
-        fillcontinents(): Fill the continents with a given color; optionally fill lakes with another color
-        
-      Political boundaries
-        
-        drawcountries(): Draw country boundaries
-        drawstates(): Draw US state boundaries
-        drawcounties(): Draw US county boundaries
-        
-      Map features
-        
-        drawgreatcircle(): Draw a great circle between two points
-        drawparallels(): Draw lines of constant latitude
-        drawmeridians(): Draw lines of constant longitude
-        drawmapscale(): Draw a linear scale on the map
-
-    """
-    from mpl_toolkits.basemap import Basemap
-    from .blombly import pylab as plt
-    from .blombly.pylab.palette_tools import get_next_color
-    from copy import deepcopy
-    pltkwargs = deepcopy(pltkwargs)
-    if color is not None : pltkwargs['color'] = color
-    #axtitle = ('GEO. SOUTHERN HEMISPHERE','GEO. NORTHERN HEMISPHERE') if not aacgm else \
-    #          ('MAG. SOUTHERN HEMISPHERE','MAG. NORTHERN HEMISPHERE')
-    
-    def Basemap_kwargs(proj,kwargs,i):
-        if kwargs is None:
-            bkwargs={'lon_0':0,'resolution':'l','round':False}
-
-        #if any([proj == ii for ii in ['npstere','spstere','nplaea','splaea','npaeqd','spaeqd'])]):
-        #    bkwargs['boundinglat'] = 
+    df : pandas.DataFrame
+        DataFrame containing the orbit data with columns 'lat', 'lon', and 'alt'.
+    ax : list of matplotlib.axes._subplots.AxesSubplot, optional
+        List of 5 axes to plot on. If None, new axes will be created.
+    fig : matplotlib.figure.Figure, optional
+        Figure to plot on. If None, a new figure will be created.
+    ion : bool, optional
+        If True, enable interactive mode. Default is True.
+    tight_layout : bool, optional
+        If True, apply tight layout to the figure. Default is True.
+    which_coords : str, optional
+        Coordinate system of the input data. Options are 'geo' for geographic (default) or 'mag' for magnetic,
+        or 'both' to plot both.
+    Returns
+    -------
+    fig : matplotlib.figure.Figure
+        The figure containing the plots.
+    ax : list of matplotlib.axes._subplots.AxesSubplot
+        List of 5 axes containing the subplots.
+    """ 
+    #from matplotlib.gridspec import GridSpec
+    kwargs = pltkwargs.copy() 
+    plt.ion() if ion else plt.ioff()
+    _PROJ = ORBIT_PROJECTIONS
+    lons = lon
+    if np.abs(np.max(np.diff(lons))) > 180:
+        if np.max(np.abs(lons)) > 181:
+            lons[lons>180]-=360
         else:
-            bkwargs = kwargs
-        return bkwargs
-    if basemap is None:
-        if ax is None:
-            if fig is None:
-                fig = plt.figure(figsize=(10,5))
-            ax = [fig.add_axes(iax) for iax in axes]   
-        
-        mm=[]
-        for i,axi in enumerate(ax):
-            latra = latrange[i]
-            lonra = lonrange[i]
-            bkwargs = Basemap_kwargs(projection[i],basemap_kwargs,i)
-            mm.append(Basemap(ax = axi, projection =projection[i],**bkwargs))
-            mm[-1].drawparallels(np.arange(latra[0],latra[1],latra[2]))#,labels=[1,0,0,0])
-            mm[-1].drawmeridians(np.arange(lonra[0],lonra[1],lonra[2]))#,labels=[0,0,0,1])
+            lons[lons<0]+=360
+    if ax is not None:
+        fig = ax.get_figure()
+    if fig is None:
+        # Create the figure and define a 2-row layout
+        fig = plt.figure(figsize=(10,5))
+        ax = [fig.add_axes(iax,projection=_PROJ[iproj]) for iax,iproj in zip(axes,projection)]   
 
-        #ms.shadedrelief() 
-            for i,ipar in enumerate(np.arange(latra[0],latra[1]+latra[2],latra[2])):
-                xx=lonra[0] - (lonra[1]-lonra[0])/0.9*0.04
-                axi.annotate(str(ipar),xy=mm[-1](xx,ipar),xycoords='data',annotation_clip = False,va='center',ha='left')
-            for i,ipar in enumerate(np.arange(lonra[0],lonra[1]+lonra[2],lonra[2])):
-                yy=latra[0] - (latra[1]-latra[0])/0.9*0.02
-                axi.annotate(str(ipar),xy=mm[-1](ipar,yy),xycoords='data',annotation_clip = False,va='top',ha='center')
-    else: mm = basemap
+        [axi.set_extent([lonrange[i][0],lonrange[i][1],latrange[i][0],latrange[i][1]], crs=ccrs.PlateCarree())\
+          for i,axi in enumerate(ax)]
+        # Top: PlateCarree orbit plot
+        if which_coords !='mag': [axi.add_feature(cfeature.LAND, facecolor='lightgray') for axi in ax]
+        #ax1.add_feature(cfeature.COASTLINE)
 
-    #PLOTTING
-    if ion:
-        plt.ion() 
-    else:
-        plt.ioff()
+        #
+        for i,iproj in enumerate(projection):
+            if iproj in ['spstere','npstere']:
+                # Create a circular boundary
+                theta = np.linspace(0, 2*np.pi, 100)
+                center = [0.5, 0.5]  # center of the axes
+                radius = 0.5         # radius of the circle
+                verts = np.vstack([np.sin(theta), np.cos(theta)]).T * radius + center
+                circle = mpath.Path(verts)
+
+                # Apply the circular boundary
+                ax[i].set_boundary(circle, transform=ax[i].transAxes)
+
+
+        #ax2.gridlines(draw_labels=True,ylocs=[-85,-75,-65])
+        #ax3.gridlines(draw_labels=True,ylocs=[65,75,85])
+        [axi.gridlines(draw_labels=True) for axi in ax]
     
-    def where_split_lon(xxx):
-        idx = np.where(np.abs(np.diff(xxx))> 90)[0]
-        if len(idx):
-            outs = np.zeros((np.size(idx)+1,2),dtype=int)
-            outs[:-1,1] = idx+1 
-            outs[-1,1] = np.size(xxx)
-            outs[1:,0] = idx+1 
-            return outs
-        else:
-            return [[0,np.size(xxx)]]
-
-    #this is done to deal with a bug in Basemap
-    latlon = False if mm[0].projection == 'cyl' else True
-    nextcolor = get_next_color(ax[0])
-    plkaw = pltkwargs.copy()
-    if 'color' not in plkaw: plkaw['color'] = nextcolor
-    idx = where_split_lon(lon)
-    [[imm.plot(lon[i[0]:i[1]],lat[i[0]:i[1]],latlon=latlon,**plkaw) for i in idx] for imm in mm]
-    #else:
-    #    [imm.plot(lon,lat,latlon=latlon,**pltkwargs) for imm in mm]
-
+    
+        
+    [axi.plot(lons,lat,transform=ccrs.PlateCarree(),**kwargs) for axi in ax]
     if show:
         plt.show()
-    return fig,ax,tuple(mm)
+    return fig, ax
+
+
+#def plot_orbit(lat,lon, basemap = None, fig = None, ax = None,\
+#             axes = [[0.1,0.1,0.4,0.8],[0.55,0.1,0.4,0.8]],\
+#             projection = ['spstere','npstere'],\
+#             latrange = [[-90,0,15],[0,90,15]],\
+#             lonrange = [[-180,180,30],[-180,180,30]],\
+#             color = None, basemap_kwargs = None,pltkwargs={},ion=True,show=True):
+#   
+#    """
+#    PURPOSE:
+#        plot desired orbit defined by lat and lon on the worldmap, using Basemap
+#
+#    parameters
+#    ----------
+#
+#    lat : 1D array-like of size N (float)
+#        array of latitudes of the orbit.
+#    
+#    lon : 1D array-like of size N (float)
+#        array of longitudes of the orbit.
+#
+#    basemap : None or Basemap object (optional)
+#        if not None, then the input basemap is used.
+#
+#    fig : None or figure object (optional)
+#        if not None, then input figure is used
+#        (used if basemap and ax are None).
+#
+#    ax : None or list of axis objects (optional)
+#        if not None, then input axes are used
+#        (used if basemap is None).
+#
+#    axes : list of length== 4 lists 
+#        list of coordinates location of the desired axes in  the figure 
+#        (used if ax and basemap are None).
+#
+#    projection : list of str
+#        list of desired projections to be used on the desired basemap
+#        (used if basemap is None).
+#
+#    latrange : list of length == 3 lists
+#        desired latitudinal range and interval over which to draw parallels.
+#
+#    lonrange : list of length == 3 lists
+#        desired longitudinal range and interval over which to draw meridians.
+#    
+#    Personal notes for  plotting/contouring continents and/or oceans
+#    using the output basemap object
+#   
+#    source : https://jakevdp.github.io/PythonDataScienceHandbook/04.13-geographic-data-with-basemap.html
+#
+#    drawlsmask() : draw continents in gray and leave oceans
+#    
+#    bluemarble(): Project NASA's blue marble image onto the map
+#    shadedrelief(): Project a shaded relief image onto the map
+#    etopo(): Draw an etopo relief image onto the map
+#    warpimage(): Project a user-provided image onto the map
+#
+#    Other features
+#      Physical boundaries and bodies of water
+#
+#        drawcoastlines(): Draw continental coast lines
+#        drawlsmask(): Draw a mask between the land and sea, for use with projecting images on one or the other
+#        drawmapboundary(): Draw the map boundary, including the fill color for oceans.
+#        drawrivers(): Draw rivers on the map
+#        fillcontinents(): Fill the continents with a given color; optionally fill lakes with another color
+#        
+#      Political boundaries
+#        
+#        drawcountries(): Draw country boundaries
+#        drawstates(): Draw US state boundaries
+#        drawcounties(): Draw US county boundaries
+#        
+#      Map features
+#        
+#        drawgreatcircle(): Draw a great circle between two points
+#        drawparallels(): Draw lines of constant latitude
+#        drawmeridians(): Draw lines of constant longitude
+#        drawmapscale(): Draw a linear scale on the map
+#
+#    """
+#    from mpl_toolkits.basemap import Basemap
+#    from .blombly import pylab as plt
+#    from .blombly.pylab.palette_tools import get_next_color
+#    from copy import deepcopy
+#    pltkwargs = deepcopy(pltkwargs)
+#    if color is not None : pltkwargs['color'] = color
+#    #axtitle = ('GEO. SOUTHERN HEMISPHERE','GEO. NORTHERN HEMISPHERE') if not aacgm else \
+#    #          ('MAG. SOUTHERN HEMISPHERE','MAG. NORTHERN HEMISPHERE')
+#    
+#    def Basemap_kwargs(proj,kwargs,i):
+#        if kwargs is None:
+#            bkwargs={'lon_0':0,'resolution':'l','round':False}
+#
+#        #if any([proj == ii for ii in ['npstere','spstere','nplaea','splaea','npaeqd','spaeqd'])]):
+#        #    bkwargs['boundinglat'] = 
+#        else:
+#            bkwargs = kwargs
+#        return bkwargs
+#    if basemap is None:
+#        if ax is None:
+#            if fig is None:
+#                fig = plt.figure(figsize=(10,5))
+#            ax = [fig.add_axes(iax) for iax in axes]   
+#        
+#        mm=[]
+#        for i,axi in enumerate(ax):
+#            latra = latrange[i]
+#            lonra = lonrange[i]
+#            bkwargs = Basemap_kwargs(projection[i],basemap_kwargs,i)
+#            mm.append(Basemap(ax = axi, projection =projection[i],**bkwargs))
+#            mm[-1].drawparallels(np.arange(latra[0],latra[1],latra[2]))#,labels=[1,0,0,0])
+#            mm[-1].drawmeridians(np.arange(lonra[0],lonra[1],lonra[2]))#,labels=[0,0,0,1])
+#
+#        #ms.shadedrelief() 
+#            for i,ipar in enumerate(np.arange(latra[0],latra[1]+latra[2],latra[2])):
+#                xx=lonra[0] - (lonra[1]-lonra[0])/0.9*0.04
+#                axi.annotate(str(ipar),xy=mm[-1](xx,ipar),xycoords='data',annotation_clip = False,va='center',ha='left')
+#            for i,ipar in enumerate(np.arange(lonra[0],lonra[1]+lonra[2],lonra[2])):
+#                yy=latra[0] - (latra[1]-latra[0])/0.9*0.02
+#                axi.annotate(str(ipar),xy=mm[-1](ipar,yy),xycoords='data',annotation_clip = False,va='top',ha='center')
+#    else: mm = basemap
+#
+#    #PLOTTING
+#    if ion:
+#        plt.ion() 
+#    else:
+#        plt.ioff()
+#    
+#    def where_split_lon(xxx):
+#        idx = np.where(np.abs(np.diff(xxx))> 90)[0]
+#        if len(idx):
+#            outs = np.zeros((np.size(idx)+1,2),dtype=int)
+#            outs[:-1,1] = idx+1 
+#            outs[-1,1] = np.size(xxx)
+#            outs[1:,0] = idx+1 
+#            return outs
+#        else:
+#            return [[0,np.size(xxx)]]
+#
+#    #this is done to deal with a bug in Basemap
+#    latlon = False if mm[0].projection == 'cyl' else True
+#    nextcolor = get_next_color(ax[0])
+#    plkaw = pltkwargs.copy()
+#    if 'color' not in plkaw: plkaw['color'] = nextcolor
+#    idx = where_split_lon(lon)
+#    [[imm.plot(lon[i[0]:i[1]],lat[i[0]:i[1]],latlon=latlon,**plkaw) for i in idx] for imm in mm]
+#    #else:
+#    #    [imm.plot(lon,lat,latlon=latlon,**pltkwargs) for imm in mm]
+#
+#    if show:
+#        plt.show()
+#    return fig,ax,tuple(mm)
    
 def fif_lowfilter(flds,MM,returnIMCs=False):
     """
