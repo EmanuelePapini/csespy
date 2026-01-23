@@ -91,32 +91,53 @@ class CSES():
     def select_data_to_load(self,orbitn = None, search_string = None, timespan = None,\
                             latspan = None, lonspan = None, append = True,\
                             side = None, orbit_database_ranges = None):
+        
+        
         """
-        set the data selection method for loading the data (using CSES.load_CSES or other methods)
-
-        Data selections are mutually exclusive and ordered in priority
+        Set the data selection method for loading data (using CSES.load_CSES or other methods).
+        Data selections are mutually exclusive and ordered by priority:
+        1) orbitn
+        2) search_string
+        3) timespan, latspan, lonspan
         
-        1) orbitn; 2) search_string; 3) timespan , latspan, lonspan
-
-        parameters
+        Parameters
         ----------
-        spacecraft : str
-            spacecraft name (default is 'CSES-01', allowed values are 'CSES-01', 'CSES-02')
-        orbitn : str or list of str
-            orbit number(s) of CSES to be loaded.
-        search_string : str
-            string that is contained in the filename that one wants to load
-        timespan : tuple 
-            either a tuple of datetime of len == 2 or a tuple of len ==3 with two datetime
-            and a string specifying day 'D', night 'N' side or both ''
-            
-            The two datetime specify the desired time interval to be loaded 
-        latspan : 2-elements arraylike
-            latitudinal range of the desired orbit
-        lonspan : 2-elements arraylike
-            longitudinal range of the desired orbit
         
-        WARNING: both latspan and lonspan require an orbit database to be loaded. If not so, an error will be thrown.
+        orbitn : str or list of str, optional
+            Semi-orbit number(s) of CSES to be loaded.
+        search_string : str, optional
+            String contained in the filename to load.
+        timespan : tuple, optional
+            Tuple of either:
+            - Two datetime objects specifying the desired time interval
+            - Three elements: two datetime objects and a string ('D' for day, 'N' for night, '' for both)
+        latspan : array-like, 2 elements, optional
+            Latitudinal range of the desired orbit.
+        lonspan : array-like, 2 elements, optional
+            Longitudinal range of the desired orbit.
+        append : bool, optional
+            Whether to append data to existing data. Default is True.
+            If False, clears existing data and ancillary information.
+        side : str, optional
+            Day/night side specification ('D', 'N', or 'both').
+        orbit_database_ranges : array-like, optional
+            Custom orbit database ranges for searching.
+        
+        Returns
+        -------
+        None
+            Sets internal search parameters and modifies object state.
+        
+        Raises
+        ------
+        Warning
+            If latspan or lonspan are used without an orbit database loaded.
+        
+        Notes
+        -----
+        - latspan and lonspan require an orbit database to be loaded.
+        - When using an orbit database, if no orbits satisfy the constraints, a warning is issued.
+        - When append=False, existing data, auxiliary data, and files are cleared.
         """
         spacecraft = self.spacecraft
         self.search_string = search_string
@@ -127,6 +148,17 @@ class CSES():
         self.orbit_database_ranges = orbit_database_ranges
         self.append_data = append
         self.side = side
+        self._search_params = {
+            'orbitn': orbitn,
+            'search_string': search_string,
+            'timespan': timespan,
+            'latspan': latspan,
+            'lonspan': lonspan,
+            'orbit_database_ranges': orbit_database_ranges,
+            'side': side,
+            'spacecraft': spacecraft,
+            'append_data': append
+        }
 
         if not append:
             self.files = AttrDict()
@@ -469,53 +501,6 @@ class CSES():
             self.aux[datakey]['frequency'] = frequency
             self.aux[datakey]['instrument_no'] = instrument_no
 
-    def load_HPM(self, **kwargs):
-        """
-        This method is kept for legacy reasons. Now is simply a wrapper that calls
-        
-        CSES.load_CSES('HPM_FGM1Hz')
-        load HPM data from files matching the string and put them into a pandas dataframe
-        
-        Optional arguments:
-            subset = 3-elements tuple or tuple/list of 3-elements tuples with the following structures
-                (('key', boolean_function, comparing value),)
-
-                for example: self.load_HPM(subset = [('lat',numpy.greater,44)]) will select 
-                a subset of the timeseries that fullfill the condition "latitude > 44".
-
-        """
-        
-        self.load_CSES('HPM_FGM1Hz',**kwargs)
-
-
-    def load_EFD_ELF(self, versetime_to_datetime = False, **kwargs):
-        """
-        This method is kept for legacy reasons. Now is simply a wrapper that calls
-        CSES.load_CSES(instrument='EFD',frequency='ELF')
-        
-        load EFD ELF files and put it into a pandas dataframe
-        
-
-        Optional arguments:
-            subset = 3-elements tuple or tuple/list of 3-elements tuples with the following structures
-                (('key', boolean_function, comparing value),)
-
-                for example: self.load_EFD(subset = [('lat',numpy.greater,44)]) will select a subset of the timeseries
-                that fullfill the condition "latitude > 44".
-
-        """
-        self.load_CSES('EFD_ELF',**kwargs)
-        df = self.data['EFD_ELF']
-        if versetime_to_datetime:
-                df.drop('time',axis='columns',inplace=True)
-                df['time'] = df.index.to_pydatetime()
-        
-    def load_EFD(self,**kwargs):
-        """
-        Warning: The use of load_EFD is DEPRECATED! For historical reasons (compatibility) it can still be used
-        however, we recomend to use load_EFD_ELF instead.
-        """
-        self.load_EFD_ELF(**kwargs)
 
     def load_CSES(self, datakey, subset = None, get_PSD = False, \
         keep_verse_time = True,\
@@ -561,7 +546,11 @@ class CSES():
         self.find_files_to_load(datakey,unique=True)
         files = self.check_if_loaded(datakey,load_RAW=load_RAW)
         #files = self.files[dsetname] 
-
+        if files is None or len(files) == 0:
+            print(msg.ERROR('WARNING, no file found to load for datakey ')+msg.INFO(dsetname)+\
+                  msg.ERROR(' and the given research parameters (self._search_params)'))
+            return None
+        
         for ifile in files:
             infos = parse_CSES_filename(ifile)
             
@@ -685,109 +674,37 @@ class CSES():
 ################################################################################
 
 
-    def plot_EFD(self,xaxis = 'lat', xlabel=None,modulus = False, keys = ['Ex','Ey','Ez'],\
-        ax = None,fig = None,twiny = True, frequency='ELF',ion=False):
-        from .blombly import pylab as plt
-        cols = plt.rcParams['axes.prop_cycle'].by_key()['color'] #colors
-        ncol=len(cols) 
-        
-        tag = 'EFD_'+frequency
-        fig,ax = plt.get_figure(fig,ax) 
-        
-        dff = self.data[tag]
-        orbits = list(set(dff.orbitn))
-        orbits.sort()
-        
-        if modulus:
-            for iorbit in orbits:
-                mask = dff.orbitn == iorbit
-                df = dff[mask]
-                
-                ax.plot(df[xaxis],np.sqrt(df['Ex']**2+\
-                                             df['Ey']**2+\
-                                             df['Ez']**2),\
-                                             label='|E|',linewidth=1,color='black')
-        else:
-            for iorbit in orbits:
-                mask = dff.orbitn == iorbit
-                df = dff[mask]
-                [ax.plot(df[xaxis],df[i],label=i,linewidth=1,color=cols[j]) for j,i in enumerate(keys) if i in df]
-        ax.set_xlabel(xaxis) if xlabel is None else ax.set_xlabel(xlabel)
-        ax.set_ylabel('E [V/m]')
-        ylims = ax.set_ylim()
-        if twiny: 
-            ax2 = ax.twiny()
-            ax2.plot(self.data[tag].index,np.zeros(len(self.data[tag].index)),linestyle=None,linewidth = 0)
-            ax2.set_xlabel('time (UT)')
-        else:
-            ax2 = None
-        ax.legend()
-        if ion : plt.ion()
-        plt.show()
-        return fig,ax,ax2 
-
-    def plot_HPM(self,xaxis = 'time',what = 'modulus',color = None,\
-            ax = None,fig = None,twiny = True, frequency='ELF',ion=False):
-        
-        from .blombly import pylab as plt
-        fig,ax = plt.get_figure(fig,ax) 
-        
-        if ion : plt.ion()
-
-        hd = self.data['HPM_FGM1Hz']
-        if xaxis == 'time':
-            if what == 'modulus':
-                [ax.plot((hd[hd.orbitn==i].Bx**2+hd[hd.orbitn==i].By**2 + hd[hd.orbitn==i].Bz**2)**0.5) for i in set(hd.orbitn)]
-            elif type(what) is list:
-                if color is not None:
-                    for iitem,icol in zip(what,color):
-                        [ax.plot(hd[hd.orbitn==i][iitem],color=icol,label=iitem) for i in set(hd.orbitn)]
-                else:
-                    for iitem in what:
-                        [ax.plot(hd[hd.orbitn==i][iitem],label=iitem) for i in set(hd.orbitn)]
-            else:
-                [ax.plot(hd[hd.orbitn==i].Bx,color='red') for i in set(hd.orbitn)]
-                [ax.plot(hd[hd.orbitn==i].By,color='green') for i in set(hd.orbitn)]
-                [ax.plot(hd[hd.orbitn==i].Bz,color='blue') for i in set(hd.orbitn)]
-        else:
-            [ax.plot(hd[hd.orbitn==i][xaxis],hd[hd.orbitn==i].Bx,color='red') for i in set(hd.orbitn)]
-            [ax.plot(hd[hd.orbitn==i][xaxis],hd[hd.orbitn==i].By,color='green') for i in set(hd.orbitn)]
-            [ax.plot(hd[hd.orbitn==i][xaxis],hd[hd.orbitn==i].Bz,color='blue') for i in set(hd.orbitn)]
-        ax.set_xlabel(xaxis)
-
     def plot_orbit(self,datakey,y='lat',x='lon', fig = None, ax = None,profile = 'default',\
-                   overplot_continents = True,ion=True,show=True):
+                   ion=True,show=True):
         """
-        Plot the orbit of the loaded instrument_frequency on the worldmap, using CSES_aux.plot_orbit
-
+        Plot the orbit of the loaded instrument on the worldmap.
         Parameters
         ----------
 
-        instrument : str
-            id. string of the desired (data already loaded) instrument
-        frequency : str
-            id. string of the desired (data already loaded) frequency
-
-        basemap : None or Basemap object (optional)
-            if not None, then the input basemap is used.
-
-        fig : None or figure object (optional)
-            if not None, then input figure is used
-            (used if basemap and ax are None).
-
-        ax : None or list of axis objects (optional)
-            if not None, then input axes are used
-            (used if basemap is None).
-
-        profile : str or dict
-            if str, then the key with the desired CSES_aux.plot_orbit kwargs is used.
-            available kwargs are stored in CSES_aux.ORBIT_PLOT_TEMPLATES
-            if dict, then use the input dictionary as kwargs (see CSES_aux.ORBIT_PLOT_TEMPLATES 
-            and CSES_aux.plot_orbit to get an idea of what must go in the dictionary).
-
-        returns:
-
-        fig,ax,mm : figure, axis, and basemap mm objects
+        datakey : str
+            Key to access the data dictionary containing the orbit data.
+        y : str, optional
+            Column name for y-axis (latitude). Default is 'lat'.
+        x : str, optional
+            Column name for x-axis (longitude). Default is 'lon'.
+        fig : None or figure object, optional
+            If not None, then input figure is used. Default is None.
+        ax : None or Axes object, optional
+            If not None, then input axes are used. Default is None.
+        profile : str or dict, optional
+            If str, then the key with the desired plot_orbit kwargs is used.
+            Available kwargs are stored in ORBIT_PLOT_TEMPLATES.
+            If dict, then use the input dictionary as kwargs. Default is 'default'.
+        ion : bool, optional
+            If True, enable interactive mode. Default is True.
+        show : bool, optional
+            If True, display the plot. Default is True.
+        Returns
+        -------
+        fig : figure object
+            The matplotlib figure object.
+        ax : Axes object
+            The matplotlib axes object.
         """
 
         df = self.data[datakey]
@@ -1613,52 +1530,46 @@ class CSES_database():
 
         return self.sel_db
     
-    def plot_orbit(self,df=None,y='lat',x='lon',basemap = None, fig = None, ax = None,\
-        profile = 'default',overplot_continents = True,ion=True,show=True,\
-        annotate_orbitn = True, color = None):
+    def plot_orbit(self,df=None,y='lat',x='lon', fig = None, ax = None,profile = 'default',\
+                   ion=True,show=True):
         """
-        Plot the orbits present in df  in the worldmap, using CSES_aux.plot_orbit
+        Plot the orbit of the input pd.DataFrame or of the sel_db (or of the db) on the worldmap, using CSES_aux.plot_orbit
 
         Parameters
         ----------
 
-        df : None or pandas dataframe
-            if not None, then it plots the orbit contained in df, otherwise plots 
-            the orbits contained in self.sel_db (if orbits were selected using search_orbit method)
-            or plots all orbits in database.
+        Plot the orbit of the loaded instrument on the worldmap.
+        Parameters
+        ----------
 
-        basemap : None or Basemap object (optional)
-            if not None, then the input basemap is used.
-
-        fig : None or figure object (optional)
-            if not None, then input figure is used
-            (used if basemap and ax are None).
-
-        ax : None or list of axis objects (optional)
-            if not None, then input axes are used
-            (used if basemap is None).
-
-        profile : str or dict
-            if str, then the key with the desired CSES_aux.plot_orbit kwargs is used.
-            available kwargs are stored in CSES_aux.ORBIT_PLOT_TEMPLATES
-            if dict, then use the input dictionary as kwargs (see CSES_aux.ORBIT_PLOT_TEMPLATES 
-            and CSES_aux.plot_orbit to get an idea of what must go in the dictionary).
-        
-        annotate_orbitn : bool
-            if True, for each orbit, the orbitnumber is annotated at the lowermost (nightside)
-            or uppermost (dayside) orbit point.
-
-        color : str
-            either a matplotlib valid color or 
-            "night-day": color night and day with two different colors (red and blue)
-            ("night-day",'col1',col2'): color night and day with two different colors, defined by col1 (night) and col2 (day)
-
-        returns:
-
-        fig,ax,mm : figure, axis, and basemap mm objects
+        df : pd.DataFrame or None, optional
+            Dataframe containing the orbit Information. If None, then the sel_db attribute is used if present,
+            otherwise the db attribute is used. Default is None.
+        y : str, optional
+            Column name for y-axis (latitude). Default is 'lat'.
+        x : str, optional
+            Column name for x-axis (longitude). Default is 'lon'.
+        fig : None or figure object, optional
+            If not None, then input figure is used. Default is None.
+        ax : None or Axes object, optional
+            If not None, then input axes are used. Default is None.
+        profile : str or dict, optional
+            If str, then the key with the desired plot_orbit kwargs is used.
+            Available kwargs are stored in ORBIT_PLOT_TEMPLATES.
+            If dict, then use the input dictionary as kwargs. Default is 'default'.
+        ion : bool, optional
+            If True, enable interactive mode. Default is True.
+        show : bool, optional
+            If True, display the plot. Default is True.
+        Returns
+        -------
+        fig : figure object
+            The matplotlib figure object.
+        ax : Axes object
+            The matplotlib axes object.
+       
         """
-        from .blombly import pylab as plt
-        
+
         if df is None:
             if hasattr(self,'sel_db'):
                 df = self.sel_db
@@ -1667,37 +1578,10 @@ class CSES_database():
 
         pltkwargs = ORBIT_PLOT_TEMPLATES[profile] if type(profile) is str else profile
         
-        orbits = set(df.orbitn.values)
-        
-        for iorbit in orbits:
-            dff = df[df.orbitn.values == iorbit]
-            if color is not None:
-                if type(color) is str:
-                    if color == 'night-day': 
-                        col = 'red' if iorbit[-1] == '1' else 'dodgerblue'
-                if type(color) is tuple:
-                    if color[0] == 'night-day':
-                        col = color[1] if iorbit[-1] == '1' else color[2]
-                    else:
-                        col = None
-            else:
-                col = None
-            fig,ax,basemap = plot_orbit(dff[y].values,dff[x].values, \
-                basemap = basemap, fig = fig, ax = ax,ion=False,show=False,color = col, **pltkwargs)
-            if annotate_orbitn:
-                [axi.annotate(iorbit,[dff[x][0],dff[y][0]*1.1],fontsize=10) for axi in ax]
+        fig,ax = plot_orbit(df[y].values,df[x].values, fig = fig, ax = ax,ion=ion,show=show,**pltkwargs)
 
-        if overplot_continents:
-            [imm.fillcontinents() for imm in basemap]
-            #[imm.drawlsmask() for imm in basemap]
-        if ion:
-           plt.ion()
-        else:
-            plt.ioff()
-        if show:
-            plt.show()
+        return fig,ax
 
-        return fig,ax,basemap
 
     def fix_lonlat(self,df = None, return_db = False):
 
