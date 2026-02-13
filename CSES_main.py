@@ -569,7 +569,7 @@ class CSES():
             
             print('loading file: '+msg.INFO(ipath+ifile))
             if load_RAW:
-                df = load_CSES_raw(ipath+ifile, convert_names = True)
+                df = load_CSES_raw(ipath+ifile, convert_names = True,spacecraft = self.spacecraft)
                 if dsetname not in self.data_raw.keys():
                     self.data_raw[dsetname] = [df]
                 else:
@@ -1179,6 +1179,7 @@ class CSES():
        
         data = self.data[datakey]
         
+        CSX = self._P
         from .blombly.math.derivFD import derivfield as deriv #central finite differences derivative 
         t = data.index.values.astype(float)/1e9 #dt in seconds
         t-=t[0]
