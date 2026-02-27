@@ -24,6 +24,8 @@
 
 from .CSES_core import *
 from .CSES_params import SPACECRAFT
+from .CSES_fixdata import fix_data as CSES_fix_data
+
 from .blombly.io import msg
 #from attrdict import AttrDict
 from .blombly.tools.objects import AttrDict
@@ -504,7 +506,7 @@ class CSES():
 
     def load_CSES(self, datakey, subset = None, get_PSD = False, \
         keep_verse_time = True,\
-        load_RAW = False, **kwargs):
+        load_RAW = False, fix_data = True, **kwargs):
         """
         Load desired data from CSES instrument using CSES_load (see CSES_core.py)
         """
@@ -606,69 +608,28 @@ class CSES():
         if dsetname in self.data:
             if type(self.data[dsetname]) is pd.DataFrame:
                 self.data[dsetname].sort_index(inplace=True)
-            #ADD xarray for PSD sorting and reading    
-    def derotate_fields(self,datakey='EFD_ELF', overwrite=False, nskip_fixed = False, tags=['Ex','Ey','Ez']):
+            #ADD xarray for PSD sorting and reading   
+        if fix_data:
+            self.fix_data(datakey,overwrite = True)
+
+    def fix_data(self,datakey,**kwargs):
         """
-        Derotate (electric) fields according to de-rotation of the derotate_fields
-        function cotained in CSES_aux.py. This rotation is done to remove the jumps
-        introduced in EFD Level2 data by the approach used for using attitude 
-        quaternions in the  processing pipeline of CSES01.
+        Fix known issues in CSES Level 2 data.
+        So far only EFD data product are handled. 
+        Issues from other product may be found and fixed in the future
+        """
+        # CHECK IF DATA WERE ALREADY FIXED
         
-        parameters
-        ----------
-        overwrite : bool
-            True : derotated fields overwrite the original fields.
-            False : derotated fields are saved preserving the name (in tags) 
-            adding the subscript '_rot'.
-        nskip_fixed: bool
-            if not fixed, the algorithm will look whether jumps are present or not
-            in the data, at multiples of data packet size (2048 for EFD_ELF) and
-            if so, will update the rotation between two jumps.
-            This workaround is necessary because for some orbits of EFD ELF it was 
-            found that this number is be 2048*2 or 2048*3 (consistent with 
-            quaternion update rate of CSES-01)
-        instrument : str
-            desired instrument
-        frequency : str
-            desired frequency band
-        tags : len=3 list of str
-            list of str of the three components fo the field to be derotated 
-            (contained in self.data.<instrument>_<frequency>).
+        if self._ancillary_.get('fix_data_'+datakey,False):
+            print(f'{datakey} data already fixed.')
+            return
 
-        """
-        CSX = self._P
-        nskip = CSX['CSES_PACKETSIZE'][datakey] 
-        if 'derotate_'+datakey in self._ancillary_:
-            if self._ancillary_['derotate_'+datakey] :
-                E_rotated = True
-            else:
-                E_rotated = False
+        if datakey in CSES_fix_data[self.spacecraft]:
+            df = CSES_fix_data[self.spacecraft][datakey](self._P,self.data[datakey],**kwargs)
+            self._ancillary_['fix_data_'+datakey] = True
+            #self.data[datakey] = df
         else:
-            E_rotated = False
-
-        df = self.data[datakey]
-        t1,t2,t3=tags
-        if not E_rotated:
-            print('Derotating '+datakey+' '+str(tags)+'...')
-            #1-removing jumps by derotating artificially
-            if 'gaps_mask' in df:
-                EE = derotate_field(df[t1].values,df[t2].values,df[t3].values,nskip=nskip,\
-                    nskip_fixed = nskip_fixed, mask = df.gaps_mask.values)
-            else:
-                EE = derotate_field(df[t1].values,df[t2].values,df[t3].values,nskip=nskip,\
-                    nskip_fixed = nskip_fixed)
-
-            if not overwrite:
-                df[t1+'_rot'] = EE['x'] 
-                df[t2+'_rot'] = EE['y'] 
-                df[t3+'_rot'] = EE['z'] 
-            else:
-                df[t1] = EE['x'] 
-                df[t2] = EE['y'] 
-                df[t3] = EE['z'] 
-            self._ancillary_['derotate_'+datakey] = True
-        else:
-            print('field already rotated...')
+            print(f'{datakey} as no fix method set. skipping...') 
 ################################################################################
 ############################### PLOTTING TOOLS #################################
 ################################################################################
