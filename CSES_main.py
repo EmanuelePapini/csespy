@@ -24,6 +24,8 @@
 
 from .CSES_core import *
 from .CSES_params import SPACECRAFT
+from .CSES_fixdata import fix_data as CSES_fix_data
+
 from .blombly.io import msg
 #from attrdict import AttrDict
 from .blombly.tools.objects import AttrDict
@@ -91,32 +93,53 @@ class CSES():
     def select_data_to_load(self,orbitn = None, search_string = None, timespan = None,\
                             latspan = None, lonspan = None, append = True,\
                             side = None, orbit_database_ranges = None):
+        
+        
         """
-        set the data selection method for loading the data (using CSES.load_CSES or other methods)
-
-        Data selections are mutually exclusive and ordered in priority
+        Set the data selection method for loading data (using CSES.load_CSES or other methods).
+        Data selections are mutually exclusive and ordered by priority:
+        1) orbitn
+        2) search_string
+        3) timespan, latspan, lonspan
         
-        1) orbitn; 2) search_string; 3) timespan , latspan, lonspan
-
-        parameters
+        Parameters
         ----------
-        spacecraft : str
-            spacecraft name (default is 'CSES-01', allowed values are 'CSES-01', 'CSES-02')
-        orbitn : str or list of str
-            orbit number(s) of CSES to be loaded.
-        search_string : str
-            string that is contained in the filename that one wants to load
-        timespan : tuple 
-            either a tuple of datetime of len == 2 or a tuple of len ==3 with two datetime
-            and a string specifying day 'D', night 'N' side or both ''
-            
-            The two datetime specify the desired time interval to be loaded 
-        latspan : 2-elements arraylike
-            latitudinal range of the desired orbit
-        lonspan : 2-elements arraylike
-            longitudinal range of the desired orbit
         
-        WARNING: both latspan and lonspan require an orbit database to be loaded. If not so, an error will be thrown.
+        orbitn : str or list of str, optional
+            Semi-orbit number(s) of CSES to be loaded.
+        search_string : str, optional
+            String contained in the filename to load.
+        timespan : tuple, optional
+            Tuple of either:
+            - Two datetime objects specifying the desired time interval
+            - Three elements: two datetime objects and a string ('D' for day, 'N' for night, '' for both)
+        latspan : array-like, 2 elements, optional
+            Latitudinal range of the desired orbit.
+        lonspan : array-like, 2 elements, optional
+            Longitudinal range of the desired orbit.
+        append : bool, optional
+            Whether to append data to existing data. Default is True.
+            If False, clears existing data and ancillary information.
+        side : str, optional
+            Day/night side specification ('D', 'N', or 'both').
+        orbit_database_ranges : array-like, optional
+            Custom orbit database ranges for searching.
+        
+        Returns
+        -------
+        None
+            Sets internal search parameters and modifies object state.
+        
+        Raises
+        ------
+        Warning
+            If latspan or lonspan are used without an orbit database loaded.
+        
+        Notes
+        -----
+        - latspan and lonspan require an orbit database to be loaded.
+        - When using an orbit database, if no orbits satisfy the constraints, a warning is issued.
+        - When append=False, existing data, auxiliary data, and files are cleared.
         """
         spacecraft = self.spacecraft
         self.search_string = search_string
@@ -127,6 +150,17 @@ class CSES():
         self.orbit_database_ranges = orbit_database_ranges
         self.append_data = append
         self.side = side
+        self._search_params = {
+            'orbitn': orbitn,
+            'search_string': search_string,
+            'timespan': timespan,
+            'latspan': latspan,
+            'lonspan': lonspan,
+            'orbit_database_ranges': orbit_database_ranges,
+            'side': side,
+            'spacecraft': spacecraft,
+            'append_data': append
+        }
 
         if not append:
             self.files = AttrDict()
@@ -469,57 +503,10 @@ class CSES():
             self.aux[datakey]['frequency'] = frequency
             self.aux[datakey]['instrument_no'] = instrument_no
 
-    def load_HPM(self, **kwargs):
-        """
-        This method is kept for legacy reasons. Now is simply a wrapper that calls
-        
-        CSES.load_CSES('HPM_FGM1Hz')
-        load HPM data from files matching the string and put them into a pandas dataframe
-        
-        Optional arguments:
-            subset = 3-elements tuple or tuple/list of 3-elements tuples with the following structures
-                (('key', boolean_function, comparing value),)
-
-                for example: self.load_HPM(subset = [('lat',numpy.greater,44)]) will select 
-                a subset of the timeseries that fullfill the condition "latitude > 44".
-
-        """
-        
-        self.load_CSES('HPM_FGM1Hz',**kwargs)
-
-
-    def load_EFD_ELF(self, versetime_to_datetime = False, **kwargs):
-        """
-        This method is kept for legacy reasons. Now is simply a wrapper that calls
-        CSES.load_CSES(instrument='EFD',frequency='ELF')
-        
-        load EFD ELF files and put it into a pandas dataframe
-        
-
-        Optional arguments:
-            subset = 3-elements tuple or tuple/list of 3-elements tuples with the following structures
-                (('key', boolean_function, comparing value),)
-
-                for example: self.load_EFD(subset = [('lat',numpy.greater,44)]) will select a subset of the timeseries
-                that fullfill the condition "latitude > 44".
-
-        """
-        self.load_CSES('EFD_ELF',**kwargs)
-        df = self.data['EFD_ELF']
-        if versetime_to_datetime:
-                df.drop('time',axis='columns',inplace=True)
-                df['time'] = df.index.to_pydatetime()
-        
-    def load_EFD(self,**kwargs):
-        """
-        Warning: The use of load_EFD is DEPRECATED! For historical reasons (compatibility) it can still be used
-        however, we recomend to use load_EFD_ELF instead.
-        """
-        self.load_EFD_ELF(**kwargs)
 
     def load_CSES(self, datakey, subset = None, get_PSD = False, \
         keep_verse_time = True,\
-        load_RAW = False, **kwargs):
+        load_RAW = False, fix_data = True, **kwargs):
         """
         Load desired data from CSES instrument using CSES_load (see CSES_core.py)
         """
@@ -561,7 +548,11 @@ class CSES():
         self.find_files_to_load(datakey,unique=True)
         files = self.check_if_loaded(datakey,load_RAW=load_RAW)
         #files = self.files[dsetname] 
-
+        if files is None or len(files) == 0:
+            print(msg.ERROR('WARNING, no file found to load for datakey ')+msg.INFO(dsetname)+\
+                  msg.ERROR(' and the given research parameters (self._search_params)'))
+            return None
+        
         for ifile in files:
             infos = parse_CSES_filename(ifile)
             
@@ -569,7 +560,7 @@ class CSES():
             
             print('loading file: '+msg.INFO(ipath+ifile))
             if load_RAW:
-                df = load_CSES_raw(ipath+ifile, convert_names = True)
+                df = load_CSES_raw(ipath+ifile, convert_names = True,spacecraft = self.spacecraft)
                 if dsetname not in self.data_raw.keys():
                     self.data_raw[dsetname] = [df]
                 else:
@@ -617,177 +608,64 @@ class CSES():
         if dsetname in self.data:
             if type(self.data[dsetname]) is pd.DataFrame:
                 self.data[dsetname].sort_index(inplace=True)
-            #ADD xarray for PSD sorting and reading    
-    def derotate_fields(self,datakey='EFD_ELF', overwrite=False, nskip_fixed = False, tags=['Ex','Ey','Ez']):
+            #ADD xarray for PSD sorting and reading   
+        if fix_data:
+            self.fix_data(datakey,overwrite = True)
+
+    def fix_data(self,datakey,**kwargs):
         """
-        Derotate (electric) fields according to de-rotation of the derotate_fields
-        function cotained in CSES_aux.py. This rotation is done to remove the jumps
-        introduced in EFD Level2 data by the approach used for using attitude 
-        quaternions in the  processing pipeline of CSES01.
+        Fix known issues in CSES Level 2 data.
+        So far only EFD data product are handled. 
+        Issues from other product may be found and fixed in the future
+        """
+        # CHECK IF DATA WERE ALREADY FIXED
         
-        parameters
-        ----------
-        overwrite : bool
-            True : derotated fields overwrite the original fields.
-            False : derotated fields are saved preserving the name (in tags) 
-            adding the subscript '_rot'.
-        nskip_fixed: bool
-            if not fixed, the algorithm will look whether jumps are present or not
-            in the data, at multiples of data packet size (2048 for EFD_ELF) and
-            if so, will update the rotation between two jumps.
-            This workaround is necessary because for some orbits of EFD ELF it was 
-            found that this number is be 2048*2 or 2048*3 (consistent with 
-            quaternion update rate of CSES-01)
-        instrument : str
-            desired instrument
-        frequency : str
-            desired frequency band
-        tags : len=3 list of str
-            list of str of the three components fo the field to be derotated 
-            (contained in self.data.<instrument>_<frequency>).
+        if self._ancillary_.get('fix_data_'+datakey,False):
+            print(f'{datakey} data already fixed.')
+            return
 
-        """
-        CSX = self._P
-        nskip = CSX['CSES_PACKETSIZE'][datakey] 
-        if 'derotate_'+datakey in self._ancillary_:
-            if self._ancillary_['derotate_'+datakey] :
-                E_rotated = True
-            else:
-                E_rotated = False
+        if datakey in CSES_fix_data[self.spacecraft]:
+            df = CSES_fix_data[self.spacecraft][datakey](self._P,self.data[datakey],**kwargs)
+            self._ancillary_['fix_data_'+datakey] = True
+            #self.data[datakey] = df
         else:
-            E_rotated = False
-
-        df = self.data[datakey]
-        t1,t2,t3=tags
-        if not E_rotated:
-            print('Derotating '+datakey+' '+str(tags)+'...')
-            #1-removing jumps by derotating artificially
-            if 'gaps_mask' in df:
-                EE = derotate_field(df[t1].values,df[t2].values,df[t3].values,nskip=nskip,\
-                    nskip_fixed = nskip_fixed, mask = df.gaps_mask.values)
-            else:
-                EE = derotate_field(df[t1].values,df[t2].values,df[t3].values,nskip=nskip,\
-                    nskip_fixed = nskip_fixed)
-
-            if not overwrite:
-                df[t1+'_rot'] = EE['x'] 
-                df[t2+'_rot'] = EE['y'] 
-                df[t3+'_rot'] = EE['z'] 
-            else:
-                df[t1] = EE['x'] 
-                df[t2] = EE['y'] 
-                df[t3] = EE['z'] 
-            self._ancillary_['derotate_'+datakey] = True
-        else:
-            print('field already rotated...')
+            print(f'{datakey} as no fix method set. skipping...') 
 ################################################################################
 ############################### PLOTTING TOOLS #################################
 ################################################################################
 
 
-    def plot_EFD(self,xaxis = 'lat', xlabel=None,modulus = False, keys = ['Ex','Ey','Ez'],\
-        ax = None,fig = None,twiny = True, frequency='ELF',ion=False):
-        from .blombly import pylab as plt
-        cols = plt.rcParams['axes.prop_cycle'].by_key()['color'] #colors
-        ncol=len(cols) 
-        
-        tag = 'EFD_'+frequency
-        fig,ax = plt.get_figure(fig,ax) 
-        
-        dff = self.data[tag]
-        orbits = list(set(dff.orbitn))
-        orbits.sort()
-        
-        if modulus:
-            for iorbit in orbits:
-                mask = dff.orbitn == iorbit
-                df = dff[mask]
-                
-                ax.plot(df[xaxis],np.sqrt(df['Ex']**2+\
-                                             df['Ey']**2+\
-                                             df['Ez']**2),\
-                                             label='|E|',linewidth=1,color='black')
-        else:
-            for iorbit in orbits:
-                mask = dff.orbitn == iorbit
-                df = dff[mask]
-                [ax.plot(df[xaxis],df[i],label=i,linewidth=1,color=cols[j]) for j,i in enumerate(keys) if i in df]
-        ax.set_xlabel(xaxis) if xlabel is None else ax.set_xlabel(xlabel)
-        ax.set_ylabel('E [V/m]')
-        ylims = ax.set_ylim()
-        if twiny: 
-            ax2 = ax.twiny()
-            ax2.plot(self.data[tag].index,np.zeros(len(self.data[tag].index)),linestyle=None,linewidth = 0)
-            ax2.set_xlabel('time (UT)')
-        else:
-            ax2 = None
-        ax.legend()
-        if ion : plt.ion()
-        plt.show()
-        return fig,ax,ax2 
-
-    def plot_HPM(self,xaxis = 'time',what = 'modulus',color = None,\
-            ax = None,fig = None,twiny = True, frequency='ELF',ion=False):
-        
-        from .blombly import pylab as plt
-        fig,ax = plt.get_figure(fig,ax) 
-        
-        if ion : plt.ion()
-
-        hd = self.data['HPM_FGM1Hz']
-        if xaxis == 'time':
-            if what == 'modulus':
-                [ax.plot((hd[hd.orbitn==i].Bx**2+hd[hd.orbitn==i].By**2 + hd[hd.orbitn==i].Bz**2)**0.5) for i in set(hd.orbitn)]
-            elif type(what) is list:
-                if color is not None:
-                    for iitem,icol in zip(what,color):
-                        [ax.plot(hd[hd.orbitn==i][iitem],color=icol,label=iitem) for i in set(hd.orbitn)]
-                else:
-                    for iitem in what:
-                        [ax.plot(hd[hd.orbitn==i][iitem],label=iitem) for i in set(hd.orbitn)]
-            else:
-                [ax.plot(hd[hd.orbitn==i].Bx,color='red') for i in set(hd.orbitn)]
-                [ax.plot(hd[hd.orbitn==i].By,color='green') for i in set(hd.orbitn)]
-                [ax.plot(hd[hd.orbitn==i].Bz,color='blue') for i in set(hd.orbitn)]
-        else:
-            [ax.plot(hd[hd.orbitn==i][xaxis],hd[hd.orbitn==i].Bx,color='red') for i in set(hd.orbitn)]
-            [ax.plot(hd[hd.orbitn==i][xaxis],hd[hd.orbitn==i].By,color='green') for i in set(hd.orbitn)]
-            [ax.plot(hd[hd.orbitn==i][xaxis],hd[hd.orbitn==i].Bz,color='blue') for i in set(hd.orbitn)]
-        ax.set_xlabel(xaxis)
-
     def plot_orbit(self,datakey,y='lat',x='lon', fig = None, ax = None,profile = 'default',\
-                   overplot_continents = True,ion=True,show=True):
+                   ion=True,show=True):
         """
-        Plot the orbit of the loaded instrument_frequency on the worldmap, using CSES_aux.plot_orbit
-
+        Plot the orbit of the loaded instrument on the worldmap.
         Parameters
         ----------
 
-        instrument : str
-            id. string of the desired (data already loaded) instrument
-        frequency : str
-            id. string of the desired (data already loaded) frequency
-
-        basemap : None or Basemap object (optional)
-            if not None, then the input basemap is used.
-
-        fig : None or figure object (optional)
-            if not None, then input figure is used
-            (used if basemap and ax are None).
-
-        ax : None or list of axis objects (optional)
-            if not None, then input axes are used
-            (used if basemap is None).
-
-        profile : str or dict
-            if str, then the key with the desired CSES_aux.plot_orbit kwargs is used.
-            available kwargs are stored in CSES_aux.ORBIT_PLOT_TEMPLATES
-            if dict, then use the input dictionary as kwargs (see CSES_aux.ORBIT_PLOT_TEMPLATES 
-            and CSES_aux.plot_orbit to get an idea of what must go in the dictionary).
-
-        returns:
-
-        fig,ax,mm : figure, axis, and basemap mm objects
+        datakey : str
+            Key to access the data dictionary containing the orbit data.
+        y : str, optional
+            Column name for y-axis (latitude). Default is 'lat'.
+        x : str, optional
+            Column name for x-axis (longitude). Default is 'lon'.
+        fig : None or figure object, optional
+            If not None, then input figure is used. Default is None.
+        ax : None or Axes object, optional
+            If not None, then input axes are used. Default is None.
+        profile : str or dict, optional
+            If str, then the key with the desired plot_orbit kwargs is used.
+            Available kwargs are stored in ORBIT_PLOT_TEMPLATES.
+            If dict, then use the input dictionary as kwargs. Default is 'default'.
+        ion : bool, optional
+            If True, enable interactive mode. Default is True.
+        show : bool, optional
+            If True, display the plot. Default is True.
+        Returns
+        -------
+        fig : figure object
+            The matplotlib figure object.
+        ax : Axes object
+            The matplotlib axes object.
         """
 
         df = self.data[datakey]
@@ -1179,6 +1057,7 @@ class CSES():
        
         data = self.data[datakey]
         
+        CSX = self._P
         from .blombly.math.derivFD import derivfield as deriv #central finite differences derivative 
         t = data.index.values.astype(float)/1e9 #dt in seconds
         t-=t[0]
@@ -1616,61 +1495,46 @@ class CSES_database():
 
         return self.sel_db
     
-    def plot_orbit(self,df=None,y='lat',x='lon',basemap = None, fig = None, ax = None,\
-        profile = 'default',overplot_continents = True,ion=True,show=True,\
-        annotate_orbitn = True, color = None,
-        unwrap_lon=True,
-        break_on_time_gap=True,
-        time_gap_factor=10.0,
-        time_gap_min_seconds=60.0,
-        break_on_speed=True,
-        max_deg_per_sec=1.0):
+    def plot_orbit(self,df=None,y='lat',x='lon', fig = None, ax = None,profile = 'default',\
+                   ion=True,show=True):
         """
-        Plot the orbits present in df  in the worldmap, using CSES_aux.plot_orbit
+        Plot the orbit of the input pd.DataFrame or of the sel_db (or of the db) on the worldmap, using CSES_aux.plot_orbit
 
         Parameters
         ----------
 
-        df : None or pandas dataframe
-            if not None, then it plots the orbit contained in df, otherwise plots 
-            the orbits contained in self.sel_db (if orbits were selected using search_orbit method)
-            or plots all orbits in database.
+        Plot the orbit of the loaded instrument on the worldmap.
+        Parameters
+        ----------
 
-        basemap : None or Basemap object (optional)
-            if not None, then the input basemap is used.
-
-        fig : None or figure object (optional)
-            if not None, then input figure is used
-            (used if basemap and ax are None).
-
-        ax : None or list of axis objects (optional)
-            if not None, then input axes are used
-            (used if basemap is None).
-
-        profile : str or dict
-            if str, then the key with the desired CSES_aux.plot_orbit kwargs is used.
-            available kwargs are stored in CSES_aux.ORBIT_PLOT_TEMPLATES
-            if dict, then use the input dictionary as kwargs (see CSES_aux.ORBIT_PLOT_TEMPLATES 
-            and CSES_aux.plot_orbit to get an idea of what must go in the dictionary).
-        
-        annotate_orbitn : bool
-            if True, for each orbit, the orbitnumber is annotated at the lowermost (nightside)
-            or uppermost (dayside) orbit point.
-
-        color : str
-            either a matplotlib valid color or 
-            "night-day": color night and day with two different colors (red and blue)
-            ("night-day",'col1',col2'): color night and day with two different colors, defined by col1 (night) and col2 (day)
-
-        unwrap_lon : bool
-            if True, unwrap longitudes to avoid visual jumps at 0/360 during plotting
-
-        returns:
-
-        fig,ax,mm : figure, axis, and basemap mm objects
+        df : pd.DataFrame or None, optional
+            Dataframe containing the orbit Information. If None, then the sel_db attribute is used if present,
+            otherwise the db attribute is used. Default is None.
+        y : str, optional
+            Column name for y-axis (latitude). Default is 'lat'.
+        x : str, optional
+            Column name for x-axis (longitude). Default is 'lon'.
+        fig : None or figure object, optional
+            If not None, then input figure is used. Default is None.
+        ax : None or Axes object, optional
+            If not None, then input axes are used. Default is None.
+        profile : str or dict, optional
+            If str, then the key with the desired plot_orbit kwargs is used.
+            Available kwargs are stored in ORBIT_PLOT_TEMPLATES.
+            If dict, then use the input dictionary as kwargs. Default is 'default'.
+        ion : bool, optional
+            If True, enable interactive mode. Default is True.
+        show : bool, optional
+            If True, display the plot. Default is True.
+        Returns
+        -------
+        fig : figure object
+            The matplotlib figure object.
+        ax : Axes object
+            The matplotlib axes object.
+       
         """
-        from .blombly import pylab as plt
-        
+
         if df is None:
             if hasattr(self,'sel_db'):
                 df = self.sel_db
@@ -1679,112 +1543,10 @@ class CSES_database():
 
         pltkwargs = ORBIT_PLOT_TEMPLATES[profile] if type(profile) is str else profile
         
-        orbits = set(df.orbitn.values)
-        
-        def _to_seconds(delta_values: np.ndarray) -> np.ndarray:
-            """Convert a timedelta-like array to float seconds when possible."""
-            try:
-                if np.issubdtype(delta_values.dtype, np.timedelta64):
-                    return delta_values.astype('timedelta64[ns]').astype(np.float64) / 1e9
-            except Exception:
-                pass
-            try:
-                return delta_values.astype(np.float64)
-            except Exception:
-                return np.full(delta_values.shape, np.nan, dtype=float)
+        fig,ax = plot_orbit(df[y].values,df[x].values, fig = fig, ax = ax,ion=ion,show=show,**pltkwargs)
 
-        def _segment_bounds(n: int, break_after: np.ndarray):
-            """Return (start, end) segments. break_after[i]=True breaks between i and i+1."""
-            if n <= 0:
-                return []
-            if break_after.size != max(n - 1, 0):
-                return [(0, n)]
-            cut_idx = np.where(break_after)[0]
-            if cut_idx.size == 0:
-                return [(0, n)]
-            starts = np.concatenate(([0], cut_idx + 1))
-            ends = np.concatenate((cut_idx + 1, [n]))
-            return [(int(s), int(e)) for s, e in zip(starts, ends) if e - s >= 2]
+        return fig,ax
 
-        for iorbit in orbits:
-            dff = df[df.orbitn.values == iorbit]
-            # Ensure a consistent trajectory order (prevents spurious straight chords)
-            try:
-                dff = dff.sort_index()
-            except Exception:
-                pass
-            if color is not None:
-                if type(color) is str:
-                    if color == 'night-day': 
-                        col = 'red' if iorbit[-1] == '1' else 'dodgerblue'
-                if type(color) is tuple:
-                    if color[0] == 'night-day':
-                        col = color[1] if iorbit[-1] == '1' else color[2]
-                    else:
-                        col = None
-            else:
-                col = None
-            if unwrap_lon and x == 'lon':
-                lon_plot = np.rad2deg(
-                    np.unwrap(np.deg2rad(dff[x].values), discont=np.deg2rad(180))
-                )
-                if len(lon_plot) > 0:
-                    shift = 360 * np.round(np.nanmedian(lon_plot) / 360)
-                    lon_plot = lon_plot - shift
-            else:
-                lon_plot = dff[x].values
-
-            # Break the line when points are separated by large time gaps or impossible jumps.
-            lat_plot = dff[y].values
-            npts = len(lat_plot)
-            break_after = np.zeros(max(npts - 1, 0), dtype=bool)
-            if npts >= 2:
-                if break_on_time_gap:
-                    try:
-                        dt = _to_seconds(np.diff(dff.index.values))
-                        med = np.nanmedian(dt[(dt > 0) & np.isfinite(dt)])
-                        if np.isfinite(med) and med > 0:
-                            gap = (dt > max(time_gap_min_seconds, time_gap_factor * med))
-                            break_after |= np.nan_to_num(gap, nan=False)
-                    except Exception:
-                        pass
-
-                if break_on_speed:
-                    try:
-                        dt = _to_seconds(np.diff(dff.index.values))
-                        dlon = np.abs(np.diff(lon_plot.astype(float)))
-                        dlat = np.abs(np.diff(lat_plot.astype(float)))
-                        with np.errstate(divide='ignore', invalid='ignore'):
-                            rate = np.nanmax(np.vstack([dlon / dt, dlat / dt]), axis=0)
-                        spd = (rate > max_deg_per_sec) & np.isfinite(rate)
-                        break_after |= np.nan_to_num(spd, nan=False)
-                    except Exception:
-                        pass
-
-            segments = _segment_bounds(npts, break_after)
-            if not segments:
-                segments = [(0, npts)]
-            for (s, e) in segments:
-                fig,ax,basemap = plot_orbit(lat_plot[s:e], lon_plot[s:e], \
-                    basemap = basemap, fig = fig, ax = ax,ion=False,show=False,color = col, **pltkwargs)
-            if annotate_orbitn:
-                [axi.annotate(iorbit,[dff[x][0],dff[y][0]*1.1],fontsize=10) for axi in ax]
-
-        if overplot_continents and basemap is not None:
-            try:
-                for imm in basemap:
-                    imm.fillcontinents()
-            except TypeError:
-                basemap.fillcontinents()
-            #[imm.drawlsmask() for imm in basemap]
-        if ion:
-           plt.ion()
-        else:
-            plt.ioff()
-        if show:
-            plt.show()
-
-        return fig,ax,basemap
 
     def fix_lonlat(self,df = None, return_db = False):
 

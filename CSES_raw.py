@@ -21,10 +21,10 @@
 import numpy as np
 from .CSES_aux import *
 
-def load_CSES_raw(filename, convert_names = False):
+def load_CSES_raw(filename, convert_names = False,spacecraft = 'CSES01'):
     import h5py
-    datasets_keys = {'A311':'ne','A321':'Te'}
 
+    CSES_DATASETS = SPACECRAFT[spacecraft] 
     #1st - load data
     with h5py.File(filename,'r') as fil:
         a={i:fil[i][...] for i in fil}
