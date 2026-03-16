@@ -99,10 +99,12 @@ def CSES_load(filename,path='./', return_pandas = False,
         finterp=interp1d(xp,fp,fill_value='extrapolate')
         return finterp(x)
 
+
+    #1- load raw data from input L2 data file
     info = parse_CSES_filename(filename)
     fldtags = CSX['CSES_FILE_TABLE'][info['Instrument']][info['InstrumentNo']]
     
-    # check extension
+    #1a- open file
     if info['extension'] == '.h5':
         fil = h5py.File(path+filename,'r')
         orbitnum = int(fil.attrs['ORBITNUM'][0])
@@ -117,6 +119,7 @@ def CSES_load(filename,path='./', return_pandas = False,
         #fil = zarr.open(path+filename)
         orbitnum = int(fil.attrs['ORBITNUM'])
 
+    #1b- read scientific data and positions
     try:
         units = {fldtags[i]:fil[i].attrs['units'][0] for i in fldtags}
     except:
@@ -131,7 +134,7 @@ def CSES_load(filename,path='./', return_pandas = False,
                             for i in fldtags if i in fil}
             fldtags = {i:fldtags[i] for i in fldtags if i in fil}
     data =  {fldtags[i]:fil[i][...] for i in fldtags}
-    pos = {CSX['CSES_POSITION'][i]:fil[i][...] for i in CSX['CSES_POSITION']if i in fil}
+    pos = {CSX['CSES_POSITION'][i]:fil[i][...] for i in CSX['CSES_POSITION'] if i in fil}
 
     ms, ns = dshape = data[[fldtags[i] for i in fldtags][0]].shape
 
@@ -146,13 +149,16 @@ def CSES_load(filename,path='./', return_pandas = False,
         fil.close()
     else:
         pass
+
+
+    #2-process time and positions. Interpolate data if needed
     
-    #fixing bad jumps in orbital position
+    #2a-Fixing bad jumps in orbital position (errors in telemetry)
     lont,latt = fix_lonlat(pos['lon'],pos['lat'],Vtime)
     pos['lon'] = lont; pos['lat'] = latt
     del lont,latt
     
-    #convert from CSES date (VERSE_TIME) to standard date
+    #2b-convert from CSES date (VERSE_TIME) to standard date
     vt0_utc, utc = datenum(2009,1,1,utc = str(Utime[0][0]))    #CSES initial time
     Utime = np.array([j[1] for j in [datenum(2009,1,1,utc=str(i[0])) for i in Utime]])
 
@@ -171,10 +177,10 @@ def CSES_load(filename,path='./', return_pandas = False,
     time1 = time1.flatten()
     time = np.zeros(dshape)
     
-    #finding missing packages positions (time jumps)
+    #2c- finding missing packages positions (time jumps)
     jumps = np.where(np.diff(time1)>packet_size*dtrate*1.2)[0]
   
-    #filling the time array
+    #2d- filling the time array
     ij0=0
     for ij in jumps:
         time[ij0:ij+1,:] = time1[ij0] +dtrate*np.arange((ij+1-ij0)*ns).reshape((ij+1-ij0,ns))
@@ -196,9 +202,9 @@ def CSES_load(filename,path='./', return_pandas = False,
 
     msnew, ns = t_new.shape
     t_new = t_new.flatten() 
-    #because Vtime has a precision of 1ms (i.e. 1kHz) and the sampling rate is 5kHz,
+    #because Vtime has a precision of 1ms (i.e. 1kHz) and the sampling rate is not a multiple of 1ms,
     #it happens that some delta_t is negative between the packets.
-    #a quick fix is to simply shift by 5kHz the whole time array in those points
+    #a quick fix is to simply shift  the whole time array in those points
     neg_t = np.where(np.diff(t_new)<0)[0]
     if np.size(neg_t)>0:
         for it in neg_t:
@@ -208,6 +214,7 @@ def CSES_load(filename,path='./', return_pandas = False,
     t_old = t_new.reshape((msnew,ns))[mask_old,0]
     t_new = t_new.flatten()
 
+    #2d- interpolating data and positions if needed
     if do_interp:
         #interpolate altitude DOUBLE INTERPOLATION BECAUSE WE READJUSTED THE ORIGINAL TIMES
         #i.e., t_old != time1. THIS IS BECAUSE we dont know how exactly coordinates in 
@@ -260,11 +267,18 @@ def CSES_load(filename,path='./', return_pandas = False,
     data.update(pos1)
     data['time'] = t_new.flatten()
     
+
+
+
     if info['Instrument'] == 'EFD':
         for i in fldtags:
             if units[fldtags[i]] == b'mV/m': 
                 data[fldtags[i]] /=1000
                 units[fldtags[i]] = b'V/m'
+
+
+    #ADD DEDICATED FUNCTIONS FOR SPECIFIC INSTRUMENTS CORRECTION
+    #data, units = correct_CSES_data(info,data,units,CSX)
 
     res = dict_to_recarray(data)
     if return_pandas:
