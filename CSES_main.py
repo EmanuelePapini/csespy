@@ -1215,6 +1215,9 @@ class CSES_database():
         
         self.load_db(dbbuf)
 
+        # Default selection is the full database.
+        self.sel_db = self.db
+
     def check_buf(self,dbbuf):
         import pandas as pd
         if type(dbbuf) is pd.DataFrame:
