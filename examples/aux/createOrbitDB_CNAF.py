@@ -160,6 +160,14 @@ def _to_1d(x):
         x = x[:, 0]
     return x.reshape(-1)
 
+
+def decimate(arr, stride: int):
+    if arr is None:
+        return None
+    if stride is None or int(stride) <= 1:
+        return arr
+    return arr[:: int(stride)]
+
 def normalize_lon(lon):
     """Normalize longitude to [-180, 180]."""
     lon = np.asarray(lon, dtype=float)
@@ -220,7 +228,7 @@ def make_time_index(time_arr, t_start, t_end, n_fallback):
 # ----------------------------
 # Extract GEO from one file
 # ----------------------------
-def extract_geo_track(path: str, spacecraft="CSES01"):
+def extract_geo_track(path: str, spacecraft="CSES01", stride: int = 1):
     """
     Returns DataFrame with index=Time and columns: lat, lon, alt, orbitn, spacecraft
     """
@@ -256,11 +264,16 @@ def extract_geo_track(path: str, spacecraft="CSES01"):
             else:
                 alt = np.full_like(lat, np.nan, dtype=float)
 
+            lat = decimate(lat, stride)
+            lon = decimate(lon, stride)
+            alt = decimate(alt, stride)
+
             n = min(len(lat), len(lon), len(alt))
             lat, lon, alt = lat[:n], lon[:n], alt[:n]
             lon = normalize_lon(lon)
 
-            time_arr = _to_1d(time_a[:])[:n] if time_a is not None else None
+            time_arr = _to_1d(time_a[:]) if time_a is not None else None
+            time_arr = decimate(time_arr, stride)
             idx = make_time_index(time_arr, t_start, t_end, n_fallback=n)
 
         else:  # h5
@@ -285,11 +298,16 @@ def extract_geo_track(path: str, spacecraft="CSES01"):
             else:
                 alt = np.full_like(lat, np.nan, dtype=float)
 
+            lat = decimate(lat, stride)
+            lon = decimate(lon, stride)
+            alt = decimate(alt, stride)
+
             n = min(len(lat), len(lon), len(alt))
             lat, lon, alt = lat[:n], lon[:n], alt[:n]
             lon = normalize_lon(lon)
 
-            time_arr = _to_1d(time_d[:])[:n] if time_d is not None else None
+            time_arr = _to_1d(time_d[:]) if time_d is not None else None
+            time_arr = decimate(time_arr, stride)
             idx = make_time_index(time_arr, t_start, t_end, n_fallback=n)
 
         df = pd.DataFrame(
@@ -335,6 +353,7 @@ def build_orbitdb_from_folder(
     include_h5=False,
     spacecraft="CSES01",
     key="orbitdb",
+    stride: int = 1,
 ):
     files = scan_files(root_dir, include_h5=include_h5)
     print(f"[SCAN] Found {len(files)} files under: {root_dir}")
@@ -344,7 +363,7 @@ def build_orbitdb_from_folder(
 
     for i, fpath in enumerate(files, 1):
         try:
-            df = extract_geo_track(fpath, spacecraft=spacecraft)
+            df = extract_geo_track(fpath, spacecraft=spacecraft, stride=stride)
             tracks.append(df)
             ok += 1
         except Exception as e:
@@ -355,8 +374,8 @@ def build_orbitdb_from_folder(
             print(f"[PROGRESS] ok={ok} bad={bad}")
             print(fpath)
             # break
-#        if ok > 100:
-#            break
+        if ok > 200:
+            break
 
     if not tracks:
         raise RuntimeError("No tracks extracted; nothing to save.")
@@ -383,4 +402,5 @@ if __name__ == "__main__":
         include_h5=False,   # set True if you also want to scan .h5 files
         spacecraft="CSES01",
         key="orbitdb",
+        stride=10,          # take every Nth point ("prendo ogni tot")
     )
