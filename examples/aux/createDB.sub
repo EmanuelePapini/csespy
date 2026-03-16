@@ -1,0 +1,16 @@
+executable = ./createOrbitDB_CNAF.sh
+arguments = ""
+log = ./createOrbitDB.log
+output = ./createOrbitDB.out
+error = ./createOrbitDB.err
+transfer_input_files = ./createOrbitDB_CNAF.py
+transfer_output_files = 
+
+#+JobFlavour = "tomorrow"
++JobFlavour = "workday"
+on_exit_remove = (ExitBySignal == False) && (ExitCode == 0)
+max_retries = 5
+requirements = Machine =!= LastRemoteHost
+
+
+queue 1
