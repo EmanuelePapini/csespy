@@ -141,6 +141,8 @@ class CSES():
         - When using an orbit database, if no orbits satisfy the constraints, a warning is issued.
         - When append=False, existing data, auxiliary data, and files are cleared.
         """
+        orbitn = stringfy(orbitn)
+
         spacecraft = self.spacecraft
         self.search_string = search_string
         self.orbitn = orbitn
@@ -984,6 +986,7 @@ class CSES():
             from .blombly.analysis.spectra import stft as trans
             if 'window' not in kwargs : kwargs['window']='hann'
             if 'nperseg' not in kwargs : kwargs['nperseg'] = packetsize
+            kwargs['transpose'] = True
         if method == 'cwt':
             from .blombly.analysis.spectra import cwt as trans
 

@@ -16,6 +16,7 @@ from .blombly.tools.objects import AttrDict
 # we have that CSES_DATA_TABLE['EFD']['1'] == 'ULF'
 CS1 = {}
 
+CS1['NAME'] = 'CSES01'
 CS1['CSES_DATA_TABLE'] = {'EFD':{'1':'ULF','2':'ELF','3':'VLF','4':'HF'},\
                    'HPM':{'1':'FGM1','2':'FGM2','3':'CDSM','5':'FGM1Hz','6':'CDSM1Hz'},\
                    'SCM':{'1':'ULF','2':'ELF','3':'VLF'},\
@@ -183,5 +184,82 @@ CS1['CSES_CF'] = {'Bx_P':(1,1),'By_P':(1,1),'Bz_P':(1,1),\
            'Ex_P':(1,2),'Ey_P':(1,2),'Ez_P':(1,2)}
 
 
-SPACECRAFT = {'CSES01':AttrDict(CS1)}
+
+#PARAMS FOR CSES-02
+CS2 = {}
+
+CS2['NAME'] = 'CSES02'
+CS2['CSES_DATA_TABLE'] = {'EFD':{'1':'ULF','2':'ELF','3':'VLF','4':'VLFe','5':'HF'}}
+CS2['CSES_DATAKEYS'] = {'EFD_ULF':dict(instrument='EFD',InstrumentNo='1',band='ULF'),\
+                 'EFD_ELF':dict(instrument='EFD',InstrumentNo='2',band='ELF'),\
+                 'EFD_VLF':dict(instrument='EFD',InstrumentNo='3',band='VLF'),\
+                 'EFD_VLFe':dict(instrument='EFD',InstrumentNo='4',band='VLFe'),\
+                 'EFD_VLF_P':dict(instrument='EFD',InstrumentNo='3',band='VLF',type='fft'),\
+                 'EFD_VLFe_P':dict(instrument='EFD',InstrumentNo='4',band='VLFe',type='fft'),\
+                 'EFD_HF_P':dict(instrument='EFD',InstrumentNo='5',band='HF',type='fft'),}
+CS2['CSES_FILE_TABLE'] = {'EFD':{\
+                       '1':{'A111_W':'Ex',\
+                            'A112_W':'Ey',\
+                            'A113_W':'Ez'
+                           },\
+                       '2':{'A121_W':'Ex',\
+                            'A122_W':'Ey',\
+                            'A123_W':'Ez'
+                           },\
+                       '3':{'A131_W':'Ex',\
+                            'A132_W':'Ey',\
+                            'A133_W':'Ez'
+                           },\
+                       '4':{'A141_W':'Ex',\
+                            'A142_W':'Ey',\
+                            'A143_W':'Ez'
+                           },\
+                         }}
+
+CS2['CSES_POSITION'] = {'ALTITUDE':'alt',\
+                 'GEO_LAT':'lat',\
+                 'GEO_LON':'lon',\
+                 'MAG_LAT':'mag_lat',\
+                 'MAG_LON':'mag_lon'}
+CS2['CSES_DATASETS'] = {'W_Va':'Va','W_Vb':'Vb','W_Vc':'Vc','W_Vd':'Vd',\
+                 'A111_W':'Ex','A111_W_sp':'Ex_sp', 'A111_W_efd':'Ex_efd',\
+                 'A112_W':'Ey','A112_W_sp':'Ey_sp', 'A112_W_efd':'Ey_efd',\
+                 'A113_W':'Ez','A113_W_sp':'Ez_sp', 'A113_W_efd':'Ez_efd',\
+                 'A121_W':'Ex','A121_W_sp':'Ex_sp', 'A121_W_efd':'Ex_efd',\
+                 'A122_W':'Ey','A122_W_sp':'Ey_sp', 'A122_W_efd':'Ey_efd',\
+                 'A123_W':'Ez','A123_W_sp':'Ez_sp', 'A123_W_efd':'Ez_efd',\
+                 'A131_W':'Ex','A131_W_sp':'Ex_sp', 'A131_W_efd':'Ex_efd',\
+                 'A132_W':'Ey','A132_W_sp':'Ey_sp', 'A132_W_efd':'Ey_efd',\
+                 'A133_W':'Ez','A133_W_sp':'Ez_sp', 'A133_W_efd':'Ez_efd',\
+                 'A131e_W':'Ex','A131e_W_sp':'Ex_sp', 'A131e_W_efd':'Ex_efd',\
+                 'A132e_W':'Ey','A132e_W_sp':'Ey_sp', 'A132e_W_efd':'Ey_efd',\
+                 'A133e_W':'Ez','A133e_W_sp':'Ez_sp', 'A133e_W_efd':'Ez_efd',\
+                 'A131_Pm':'Ex_Pm','A131_Pd':'Ex_Pd', 'A131_Pk':'Ex_Pk',\
+                 'A132_Pm':'Ey_Pm','A132_Pd':'Ey_Pd', 'A132_Pk':'Ey_Pk',\
+                 'A133_Pm':'Ez_Pm','A133_Pd':'Ez_Pd', 'A133_Pk':'Ez_Pk',\
+                 'A131e_Pm':'Ex_Pm','A131e_Pd':'Ex_Pd', 'A131e_Pk':'Ex_Pk',\
+                 'A132e_Pm':'Ey_Pm','A132e_Pd':'Ey_Pd', 'A132e_Pk':'Ey_Pk',\
+                 'A133e_Pm':'Ez_Pm','A133e_Pd':'Ez_Pd', 'A133e_Pk':'Ez_Pk',\
+                 'A151_Pm':'Ex_Pm','A151_Pd':'Ex_Pd', 'A151_Pk':'Ex_Pk',\
+                 'A152_Pm':'Ey_Pm','A152_Pd':'Ey_Pd', 'A152_Pk':'Ey_Pk',\
+                 'A153_Pm':'Ez_Pm','A153_Pd':'Ez_Pd', 'A153_Pk':'Ez_Pk'}
+
+CS2['CSES_SAMPLINGFREQS'] = {'EFD_ULF':244.140625,'EFD_ELF':5000.,'EFD_VLF':80000.,'EFD_VLFe':200000.,'EFD_HF':8e6}
+CS2['CSES_PACKETSIZE'] = {'EFD_ULF':2048,'EFD_ELF':2048,'EFD_VLF':2048,'EFD_HF':2048,'EFD_VLFe':2048,\
+                          'EFD_VLF_P':2048,'EFD_HF_P':2048,'EFD_VLFe_P':2048}
+
+CS2['CSES_FILESYSTEM'] = {'EFD':'year/month/FREQUENCY',\
+                          'HPM':'INSTRUMENT/year/month',\
+                          'LAP':'INSTRUMENT/year/month',\
+                          'SCM':'INSTRUMENT/year/FREQUENCY/month',\
+                          'PAP':'INSTRUMENT/',\
+                          'HEP':'INSTRUMENT/year/month'}
+#conversion factors for the various quantitities that are read: 'Bx_P':(a,b) means that 
+# Bx_P out = a*(Bx_P**b)
+CS2['CSES_CF'] = {'Bx_P':(1,1),'By_P':(1,1),'Bz_P':(1,1),\
+           'Ex_P':(1,1),'Ey_P':(1,1),'Ez_P':(1,1)}
+
+
+
+SPACECRAFT = {'CSES01':AttrDict(CS1),'CSES02':AttrDict(CS2)}
 CSES_EXTENSIONS = ['.h5','.zarr.zip']

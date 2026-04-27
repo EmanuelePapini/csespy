@@ -2,7 +2,7 @@
 from .blombly.tools.objects import AttrDict
 from .CSES_aux import *
 
-fix_data = {'CSES01':AttrDict()}
+fix_data = {'CSES01':AttrDict(),'CSES02':AttrDict()}
 
 
 def derotate_fields(datakey,CSX,df, overwrite=False, nskip_fixed = False, tags=['Ex','Ey','Ez']):

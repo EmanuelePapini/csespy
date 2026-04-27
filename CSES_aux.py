@@ -200,7 +200,9 @@ def parse_CSES_filename(filename):
                             int(fl_list[8][0:2]),int(fl_list[8][2:4]),int(fl_list[8][4:6])) 
         out['t_end'] = datetime(int(fl_list[9][0:4]),int(fl_list[9][4:6]),int(fl_list[9][6:8]),\
                             int(fl_list[10][0:2]),int(fl_list[10][2:4]),int(fl_list[10][4:6]))
-        out['extension'] = fl_list[-1][3:]
+        
+        extd = fl_list[-1].split('.')
+        out['extension'] = '.'+'.'.join(extd[1]) if len(extd) == 3 else '.'+extd[-1]
        
         out['band'] = CSX['CSES_DATA_TABLE'][out['Instrument']][out['InstrumentNo']]
         out['frequency'] = CSX['CSES_DATA_TABLE'][out['Instrument']][out['InstrumentNo']]
@@ -292,7 +294,7 @@ def is_valid_CSES_filename(filname,thorough = False):
 
     if len(filname) != 66 and len(filname) != 72 : return False #first check its length
     if filname[:4] != 'CSES': return False #check if it begins correctly
-    if filname.count('_') != 11 : return False # check number of underscores
+    #if filname.count('_') != 11 : return False # check number of underscores
 
     #OTHER CHECKS CAN BE IMPLEMENTED, BUT I'LL STOP HERE FOR NOW
     if thorough:
@@ -932,3 +934,12 @@ def find_rotational_jumps(EE,keys,nskip, n_sigma = 4.,mask = None):
             kjump.append(i)
 
     return kjump
+
+def stringfy(strlist):
+    if type(strlist) is int:
+        strout = str(strlist).zfill(6)
+    elif type(strlist) is list:
+        strout = [i if type(i) is str else str(i).zfill(6) for i in strlist]
+    else:
+        return strlist
+    return strout
