@@ -44,15 +44,19 @@ It only requires the location of the folder containing all the .h5 files (named 
 Assuming csespy is in the PYTHONPATH, and that data of interest are stored in `/CSES_data/` and that they are not structured in subfolders, the following commands load the EFD ELF waveforms for the orbit 104311 (orbit 10431, night side)
 ```
 import csespy
+import pylab as plt
 
-#initialize class and tell it what orbit it will load 
+#initialize class and tell it what orbit it will load
 css=csespy.CSES(path='/CSES_data/',orbitn='104311',unstructured_path=True) 
 
 #load EFD ELF data
-css.load_CSES(instrument='EFD',frequency='ELF') #equivalent to css.load_EFD() but different functions
+css.load_CSES('EFD_ELF') 
 
 #plot the data
-css.plot_EFD(frequency='ELF')
+fig,ax = plt.subplots()
+css.plot_payload('EFD_ELF',fig=fig,ax=ax)
+plt.show()
+
 ```
 This plot should appear
 
