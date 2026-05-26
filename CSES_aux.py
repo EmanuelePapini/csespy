@@ -21,16 +21,24 @@
 #
 
 import numpy as np
-import os
 from datetime import datetime,timedelta,date
 from glob import glob
 from .CSES_params import *
+from .blombly.io import io_tools as iot
+from .blombly import pylab as plt
+#from .blombly.pylab.palette_tools import get_next_color
+#from copy import deepcopy
+import cartopy.crs as ccrs
+import cartopy.feature as cfeature
+import matplotlib.path as mpath
 
-def get_datakey(instrument,frequency):
-
-    if instrument != 'HEP': return instrument+'_'+frequency
-
-    return instrument+frequency
+#def get_datakey(instrument,frequency):
+#    """
+#    Should be deprecated and deleted in future releases
+#    """
+#    if instrument != 'HEP': return instrument+'_'+frequency
+#
+#    return instrument+frequency
 
 def versetime_to_utc(versetime,t0=(2009,1,1)):
     """
@@ -176,11 +184,12 @@ def parse_CSES_filename(filename):
     if len(filename) == 66 or len(filename) == 72:
         out['Satellite'] = fl_list[0]+fl_list[1]
         out['Instrument'] = fl_list[2]
+        CSX = SPACECRAFT[out['Satellite']]
         try:
-            out['DataProduct'] = CSES_DATA_TABLE[fl_list[2]][fl_list[3]]
+            out['DataProduct'] = CSX['CSES_DATA_TABLE'][fl_list[2]][fl_list[3]]
         except:
             out['DataProduct'] = 'Unknown' 
-        out['InstrumentNum'] = fl_list[3]
+        out['InstrumentNo'] = fl_list[3]
         out['DataLevel'] = fl_list[4]
         out['orbitn'] = fl_list[6]
         out['year'] = fl_list[7][0:4]
@@ -191,10 +200,20 @@ def parse_CSES_filename(filename):
                             int(fl_list[8][0:2]),int(fl_list[8][2:4]),int(fl_list[8][4:6])) 
         out['t_end'] = datetime(int(fl_list[9][0:4]),int(fl_list[9][4:6]),int(fl_list[9][6:8]),\
                             int(fl_list[10][0:2]),int(fl_list[10][2:4]),int(fl_list[10][4:6]))
-        out['extension'] = fl_list[-1][3:]
+        
+        extd = fl_list[-1].split('.')
+        out['extension'] = '.'+'.'.join(extd[1]) if len(extd) == 3 else '.'+extd[-1]
+       
+        out['band'] = CSX['CSES_DATA_TABLE'][out['Instrument']][out['InstrumentNo']]
+        out['frequency'] = CSX['CSES_DATA_TABLE'][out['Instrument']][out['InstrumentNo']]
+       
+        out['datakey'] = [ikey for ikey,item  in CSX['CSES_DATAKEYS'].items() \
+                if item['instrument'] == out['Instrument'] if item['InstrumentNo'] == out['InstrumentNo']][0]
+ 
     elif len(filename) == 69:
         out['Satellite'] = fl_list[0]+'_01'
         out['Instrument'] = fl_list[1]
+        out['InstrumentNo'] = fl_list[2]
         out['DataProduct'] = fl_list[2]
         out['DataLevel'] = fl_list[-2]
         out['orbitn'] = fl_list[3]
@@ -207,25 +226,75 @@ def parse_CSES_filename(filename):
         out['t_end'] = datetime(int(fl_list[6][0:4]),int(fl_list[6][4:6]),int(fl_list[6][6:8]),\
                             int(fl_list[7][0:2]),int(fl_list[7][2:4]),int(fl_list[7][4:6]))
         out['extension'] = fl_list[-1][3:]
+        out['datakey'] = [ikey for ikey,item  in CSX['CSES_DATAKEYS'] \
+                if item['instrument'] == out['Instrument'] if item['InstrumentNo'] == out['InstrumentNo']][0]
+    else:
+        out = AttrDict()
+        fl_list = filename.split('_')
+        out['Satellite'] = fl_list[0]+fl_list[1]
+        out['Instrument'] = fl_list[2]
+        out['InstrumentNo'] = fl_list[3]
+        out['DataLevel'] = fl_list[4]
+        out['unknown'] = fl_list[5]
+        out['orbitn'] = fl_list[6]
+        out['year'] = fl_list[7][0:4]
+        out['month'] = fl_list[7][4:6]
+        out['day'] = fl_list[7][6:8]
+        out['time'] = fl_list[8][0:2]+':'+fl_list[8][2:4]+':'+fl_list[8][4:6]
+        out['t_start'] = datetime(int( out['year']),int(out['month']),int(out['day']),\
+                            int(fl_list[8][0:2]),int(fl_list[8][2:4]),int(fl_list[8][4:6]))
+        out['t_end'] = datetime(int(fl_list[9][0:4]),int(fl_list[9][4:6]),int(fl_list[9][6:8]),\
+                            int(fl_list[10][0:2]),int(fl_list[10][2:4]),int(fl_list[10][4:6]))
+        if out['Instrument'] == 'EFD':
+            out['type'] = 'waveform' if fl_list[11] == '000' else 'fft'
+        else:
+            out['type'] = ''
+        out['sofware_version'] = fl_list[12]
+        out['unknown2'] = fl_list[-1][:-3]
+        out['extension'] = fl_list[-1][-3:]
+        out['band'] = CSX['CSES_DATA_TABLE'][out['Instrument']][out['InstrumentNo']]
+        out['frequency'] = CSX['CSES_DATA_TABLE'][out['Instrument']][out['InstrumentNo']]
+        out['datakey'] = out['Instrument']+'_'+out['band']
+        if out['type'] == 'fft' : out['datakey'] +='_P'
+
     return out
 
 
-def find_file(path,search_string ='',extension = CSES_EXTENSIONS):
+#def find_file(path,search_string ='',extension = CSES_EXTENSIONS, recursive = False):
+#    """
+#    find all files with a given extension whose name contains the search_string in the path and return them into a list
+#    """
+#    #print(path+'*'+search_string+'*'+extension)
+#    if type(extension) is str:
+#        return [i[len(path):] for i in  glob(path+'*'+search_string+'*'+extension) if is_valid_CSES_filename(i[len(path):])] 
+#    return list(np.concatenate([[i[len(path):] for i in  glob(path+'*'+search_string+'*'+iext) if \
+#                                 is_valid_CSES_filename(i[len(path):])] for iext in extension]))
+
+def find_file(path,search_string ='',extension = CSES_EXTENSIONS, recursive = False):
     """
     find all files with a given extension whose name contains the search_string in the path and return them into a list
     """
     #print(path+'*'+search_string+'*'+extension)
     if type(extension) is str:
-        return [i[len(path):] for i in  glob(path+'*'+search_string+'*'+extension) if is_valid_CSES_filename(i[len(path):])] 
-    return list(np.concatenate([[i[len(path):] for i in  glob(path+'*'+search_string+'*'+iext) if \
-                                 is_valid_CSES_filename(i[len(path):])] for iext in extension]))
+        fullfiles = [iot.split_path(i) for i in \
+            iot.search_file(path,search_string,extension=extension, recursive = recursive)[-1]\
+                if is_valid_CSES_filename(iot.split_path(i)[-1])]
+    else:
+        fullfiles = []
+        for iext in extension:
+            fullfiles.append([iot.split_path(i) for i in \
+            iot.search_file(path,search_string,extension=iext, recursive = recursive)[-1]\
+                if is_valid_CSES_filename(iot.split_path(i)[-1])])
+        fullfiles = [item for sublist in fullfiles for item in sublist]
+    return fullfiles 
+
 
 def is_valid_CSES_filename(filname,thorough = False):
     """Check whether a given input string is a valid CSES filename"""
 
     if len(filname) != 66 and len(filname) != 72 : return False #first check its length
     if filname[:4] != 'CSES': return False #check if it begins correctly
-    if filname.count('_') != 11 : return False # check number of underscores
+    #if filname.count('_') != 11 : return False # check number of underscores
 
     #OTHER CHECKS CAN BE IMPLEMENTED, BUT I'LL STOP HERE FOR NOW
     if thorough:
@@ -262,177 +331,264 @@ def get_dictkey_from_value(dic,value):
 #PAYLOAD_PLOT_TEMPLATES = \
 #    {'LAP_50mm':{'yscale':'log'},\
 #dictionary of several default orbital plot templates to be used
+
+ORBIT_PROJECTIONS = {'spstere':ccrs.SouthPolarStereo(true_scale_latitude=-71),\
+               'npstere':ccrs.NorthPolarStereo(true_scale_latitude=71),\
+               'platecarree':ccrs.PlateCarree()}
+
 ORBIT_PLOT_TEMPLATES = {'ns':{'axes': [[0.1,0.1,0.4,0.8],[0.55,0.1,0.4,0.8]],\
                              'projection': ['spstere','npstere'],\
                              'latrange': [[-90,0,15],[0,90,15]],\
                              'lonrange': [[-180,180,30],[-180,180,30]],\
-                             'basemap_kwargs': {'lon_0':0,'resolution':'l','round':True,'boundinglat':0},\
                              },\
                    'default':{'axes': [[0.1,0.1,0.8,0.8]],\
-                             'projection': ['cyl'],\
+                             'projection': ['platecarree'],\
                              'latrange': [[-90,90,30]],\
                              'lonrange': [[-180,180,30]],\
-                             'basemap_kwargs': {'lon_0':0,'resolution':'l','round':False},\
                              'pltkwargs':{'linestyle':'','marker':'.','markersize':0.5}},\
                    'default_lines':{'axes': [[0.1,0.1,0.8,0.8]],\
-                             'projection': ['cyl'],\
+                             'projection': ['platecarree'],\
                              'latrange': [[-90,90,30]],\
                              'lonrange': [[-180,180,30]],\
-                             'basemap_kwargs': {'lon_0':0,'resolution':'l','round':False},\
                              'pltkwargs':{'linestyle':'solid','linewidth':0.5}}\
                        }
-def plot_orbit(lat,lon, basemap = None, fig = None, ax = None,\
-             axes = [[0.1,0.1,0.4,0.8],[0.55,0.1,0.4,0.8]],\
-             projection = ['spstere','npstere'],\
-             latrange = [[-90,0,15],[0,90,15]],\
-             lonrange = [[-180,180,30],[-180,180,30]],\
-             color = None, basemap_kwargs = None,pltkwargs={},ion=True,show=True):
-   
-    """
-    PURPOSE:
-        plot desired orbit defined by lat and lon on the worldmap, using Basemap
 
-    parameters
+def plot_orbit( lat, lon, projection = ['platecarree'], ax=None, fig=None, 
+                axes = [[0.1,0.1,0.8,0.8]],\
+             latrange = [[-90,90,30]],\
+             lonrange = [[-180,180,30]],\
+             ion = True, show=True, which_coords = 'geo',pltkwargs={}):
+    """
+    Plot the orbit on a global map using three different projections:
+        1) PlateCarree
+        2) South Pole stereographic
+        3) North Pole stereographic
+    and two time series:
+        4) Altitude vs time
+        5) Latitude vs time
+    Parameters
     ----------
-
-    lat : 1D array-like of size N (float)
-        array of latitudes of the orbit.
-    
-    lon : 1D array-like of size N (float)
-        array of longitudes of the orbit.
-
-    basemap : None or Basemap object (optional)
-        if not None, then the input basemap is used.
-
-    fig : None or figure object (optional)
-        if not None, then input figure is used
-        (used if basemap and ax are None).
-
-    ax : None or list of axis objects (optional)
-        if not None, then input axes are used
-        (used if basemap is None).
-
-    axes : list of length== 4 lists 
-        list of coordinates location of the desired axes in  the figure 
-        (used if ax and basemap are None).
-
-    projection : list of str
-        list of desired projections to be used on the desired basemap
-        (used if basemap is None).
-
-    latrange : list of length == 3 lists
-        desired latitudinal range and interval over which to draw parallels.
-
-    lonrange : list of length == 3 lists
-        desired longitudinal range and interval over which to draw meridians.
-    
-    Personal notes for  plotting/contouring continents and/or oceans
-    using the output basemap object
-   
-    source : https://jakevdp.github.io/PythonDataScienceHandbook/04.13-geographic-data-with-basemap.html
-
-    drawlsmask() : draw continents in gray and leave oceans
-    
-    bluemarble(): Project NASA's blue marble image onto the map
-    shadedrelief(): Project a shaded relief image onto the map
-    etopo(): Draw an etopo relief image onto the map
-    warpimage(): Project a user-provided image onto the map
-
-    Other features
-      Physical boundaries and bodies of water
-
-        drawcoastlines(): Draw continental coast lines
-        drawlsmask(): Draw a mask between the land and sea, for use with projecting images on one or the other
-        drawmapboundary(): Draw the map boundary, including the fill color for oceans.
-        drawrivers(): Draw rivers on the map
-        fillcontinents(): Fill the continents with a given color; optionally fill lakes with another color
-        
-      Political boundaries
-        
-        drawcountries(): Draw country boundaries
-        drawstates(): Draw US state boundaries
-        drawcounties(): Draw US county boundaries
-        
-      Map features
-        
-        drawgreatcircle(): Draw a great circle between two points
-        drawparallels(): Draw lines of constant latitude
-        drawmeridians(): Draw lines of constant longitude
-        drawmapscale(): Draw a linear scale on the map
-
-    """
-    from mpl_toolkits.basemap import Basemap
-    from .blombly import pylab as plt
-    from .blombly.pylab.palette_tools import get_next_color
-    from copy import deepcopy
-    pltkwargs = deepcopy(pltkwargs)
-    if color is not None : pltkwargs['color'] = color
-    #axtitle = ('GEO. SOUTHERN HEMISPHERE','GEO. NORTHERN HEMISPHERE') if not aacgm else \
-    #          ('MAG. SOUTHERN HEMISPHERE','MAG. NORTHERN HEMISPHERE')
-    
-    def Basemap_kwargs(proj,kwargs,i):
-        if kwargs is None:
-            bkwargs={'lon_0':0,'resolution':'l','round':False}
-
-        #if any([proj == ii for ii in ['npstere','spstere','nplaea','splaea','npaeqd','spaeqd'])]):
-        #    bkwargs['boundinglat'] = 
+    df : pandas.DataFrame
+        DataFrame containing the orbit data with columns 'lat', 'lon', and 'alt'.
+    ax : list of matplotlib.axes._subplots.AxesSubplot, optional
+        List of 5 axes to plot on. If None, new axes will be created.
+    fig : matplotlib.figure.Figure, optional
+        Figure to plot on. If None, a new figure will be created.
+    ion : bool, optional
+        If True, enable interactive mode. Default is True.
+    tight_layout : bool, optional
+        If True, apply tight layout to the figure. Default is True.
+    which_coords : str, optional
+        Coordinate system of the input data. Options are 'geo' for geographic (default) or 'mag' for magnetic,
+        or 'both' to plot both.
+    Returns
+    -------
+    fig : matplotlib.figure.Figure
+        The figure containing the plots.
+    ax : list of matplotlib.axes._subplots.AxesSubplot
+        List of 5 axes containing the subplots.
+    """ 
+    #from matplotlib.gridspec import GridSpec
+    kwargs = pltkwargs.copy() 
+    plt.ion() if ion else plt.ioff()
+    _PROJ = ORBIT_PROJECTIONS
+    lons = lon
+    if np.abs(np.max(np.diff(lons))) > 180:
+        if np.max(np.abs(lons)) > 181:
+            lons[lons>180]-=360
         else:
-            bkwargs = kwargs
-        return bkwargs
-    if basemap is None:
-        if ax is None:
-            if fig is None:
-                fig = plt.figure(figsize=(10,5))
-            ax = [fig.add_axes(iax) for iax in axes]   
-        
-        mm=[]
-        for i,axi in enumerate(ax):
-            latra = latrange[i]
-            lonra = lonrange[i]
-            bkwargs = Basemap_kwargs(projection[i],basemap_kwargs,i)
-            mm.append(Basemap(ax = axi, projection =projection[i],**bkwargs))
-            mm[-1].drawparallels(np.arange(latra[0],latra[1],latra[2]))#,labels=[1,0,0,0])
-            mm[-1].drawmeridians(np.arange(lonra[0],lonra[1],lonra[2]))#,labels=[0,0,0,1])
+            lons[lons<0]+=360
+    if ax is not None:
+        fig = ax[0].get_figure()
+    if fig is None:
+        # Create the figure and define a 2-row layout
+        fig = plt.figure(figsize=(10,5))
+        ax = [fig.add_axes(iax,projection=_PROJ[iproj]) for iax,iproj in zip(axes,projection)]   
 
-        #ms.shadedrelief() 
-            for i,ipar in enumerate(np.arange(latra[0],latra[1]+latra[2],latra[2])):
-                xx=lonra[0] - (lonra[1]-lonra[0])/0.9*0.04
-                axi.annotate(str(ipar),xy=mm[-1](xx,ipar),xycoords='data',annotation_clip = False,va='center',ha='left')
-            for i,ipar in enumerate(np.arange(lonra[0],lonra[1]+lonra[2],lonra[2])):
-                yy=latra[0] - (latra[1]-latra[0])/0.9*0.02
-                axi.annotate(str(ipar),xy=mm[-1](ipar,yy),xycoords='data',annotation_clip = False,va='top',ha='center')
-    else: mm = basemap
+        [axi.set_extent([lonrange[i][0],lonrange[i][1],latrange[i][0],latrange[i][1]], crs=ccrs.PlateCarree())\
+          for i,axi in enumerate(ax)]
+        # Top: PlateCarree orbit plot
+        if which_coords !='mag': [axi.add_feature(cfeature.LAND, facecolor='lightgray') for axi in ax]
+        #ax1.add_feature(cfeature.COASTLINE)
 
-    #PLOTTING
-    if ion:
-        plt.ion() 
-    else:
-        plt.ioff()
+        #
+        for i,iproj in enumerate(projection):
+            if iproj in ['spstere','npstere']:
+                # Create a circular boundary
+                theta = np.linspace(0, 2*np.pi, 100)
+                center = [0.5, 0.5]  # center of the axes
+                radius = 0.5         # radius of the circle
+                verts = np.vstack([np.sin(theta), np.cos(theta)]).T * radius + center
+                circle = mpath.Path(verts)
+
+                # Apply the circular boundary
+                ax[i].set_boundary(circle, transform=ax[i].transAxes)
+
+
+        #ax2.gridlines(draw_labels=True,ylocs=[-85,-75,-65])
+        #ax3.gridlines(draw_labels=True,ylocs=[65,75,85])
+        [axi.gridlines(draw_labels=True) for axi in ax]
     
-    def where_split_lon(xxx):
-        idx = np.where(np.abs(np.diff(xxx))> 90)[0]
-        if len(idx):
-            outs = np.zeros((np.size(idx)+1,2),dtype=int)
-            outs[:-1,1] = idx+1 
-            outs[-1,1] = np.size(xxx)
-            outs[1:,0] = idx+1 
-            return outs
-        else:
-            return [[0,np.size(xxx)]]
-
-    #this is done to deal with a bug in Basemap
-    latlon = False if mm[0].projection == 'cyl' else True
-    nextcolor = get_next_color(ax[0])
-    plkaw = pltkwargs.copy()
-    if 'color' not in plkaw: plkaw['color'] = nextcolor
-    idx = where_split_lon(lon)
-    [[imm.plot(lon[i[0]:i[1]],lat[i[0]:i[1]],latlon=latlon,**plkaw) for i in idx] for imm in mm]
-    #else:
-    #    [imm.plot(lon,lat,latlon=latlon,**pltkwargs) for imm in mm]
-
+    
+        
+    [axi.plot(lons,lat,transform=ccrs.PlateCarree(),**kwargs) for axi in ax]
     if show:
         plt.show()
-    return fig,ax,tuple(mm)
+    return fig, ax
+
+
+#def plot_orbit(lat,lon, basemap = None, fig = None, ax = None,\
+#             axes = [[0.1,0.1,0.4,0.8],[0.55,0.1,0.4,0.8]],\
+#             projection = ['spstere','npstere'],\
+#             latrange = [[-90,0,15],[0,90,15]],\
+#             lonrange = [[-180,180,30],[-180,180,30]],\
+#             color = None, basemap_kwargs = None,pltkwargs={},ion=True,show=True):
+#   
+#    """
+#    PURPOSE:
+#        plot desired orbit defined by lat and lon on the worldmap, using Basemap
+#
+#    parameters
+#    ----------
+#
+#    lat : 1D array-like of size N (float)
+#        array of latitudes of the orbit.
+#    
+#    lon : 1D array-like of size N (float)
+#        array of longitudes of the orbit.
+#
+#    basemap : None or Basemap object (optional)
+#        if not None, then the input basemap is used.
+#
+#    fig : None or figure object (optional)
+#        if not None, then input figure is used
+#        (used if basemap and ax are None).
+#
+#    ax : None or list of axis objects (optional)
+#        if not None, then input axes are used
+#        (used if basemap is None).
+#
+#    axes : list of length== 4 lists 
+#        list of coordinates location of the desired axes in  the figure 
+#        (used if ax and basemap are None).
+#
+#    projection : list of str
+#        list of desired projections to be used on the desired basemap
+#        (used if basemap is None).
+#
+#    latrange : list of length == 3 lists
+#        desired latitudinal range and interval over which to draw parallels.
+#
+#    lonrange : list of length == 3 lists
+#        desired longitudinal range and interval over which to draw meridians.
+#    
+#    Personal notes for  plotting/contouring continents and/or oceans
+#    using the output basemap object
+#   
+#    source : https://jakevdp.github.io/PythonDataScienceHandbook/04.13-geographic-data-with-basemap.html
+#
+#    drawlsmask() : draw continents in gray and leave oceans
+#    
+#    bluemarble(): Project NASA's blue marble image onto the map
+#    shadedrelief(): Project a shaded relief image onto the map
+#    etopo(): Draw an etopo relief image onto the map
+#    warpimage(): Project a user-provided image onto the map
+#
+#    Other features
+#      Physical boundaries and bodies of water
+#
+#        drawcoastlines(): Draw continental coast lines
+#        drawlsmask(): Draw a mask between the land and sea, for use with projecting images on one or the other
+#        drawmapboundary(): Draw the map boundary, including the fill color for oceans.
+#        drawrivers(): Draw rivers on the map
+#        fillcontinents(): Fill the continents with a given color; optionally fill lakes with another color
+#        
+#      Political boundaries
+#        
+#        drawcountries(): Draw country boundaries
+#        drawstates(): Draw US state boundaries
+#        drawcounties(): Draw US county boundaries
+#        
+#      Map features
+#        
+#        drawgreatcircle(): Draw a great circle between two points
+#        drawparallels(): Draw lines of constant latitude
+#        drawmeridians(): Draw lines of constant longitude
+#        drawmapscale(): Draw a linear scale on the map
+#
+#    """
+#    from mpl_toolkits.basemap import Basemap
+#    from .blombly import pylab as plt
+#    from .blombly.pylab.palette_tools import get_next_color
+#    from copy import deepcopy
+#    pltkwargs = deepcopy(pltkwargs)
+#    if color is not None : pltkwargs['color'] = color
+#    #axtitle = ('GEO. SOUTHERN HEMISPHERE','GEO. NORTHERN HEMISPHERE') if not aacgm else \
+#    #          ('MAG. SOUTHERN HEMISPHERE','MAG. NORTHERN HEMISPHERE')
+#    
+#    def Basemap_kwargs(proj,kwargs,i):
+#        if kwargs is None:
+#            bkwargs={'lon_0':0,'resolution':'l','round':False}
+#
+#        #if any([proj == ii for ii in ['npstere','spstere','nplaea','splaea','npaeqd','spaeqd'])]):
+#        #    bkwargs['boundinglat'] = 
+#        else:
+#            bkwargs = kwargs
+#        return bkwargs
+#    if basemap is None:
+#        if ax is None:
+#            if fig is None:
+#                fig = plt.figure(figsize=(10,5))
+#            ax = [fig.add_axes(iax) for iax in axes]   
+#        
+#        mm=[]
+#        for i,axi in enumerate(ax):
+#            latra = latrange[i]
+#            lonra = lonrange[i]
+#            bkwargs = Basemap_kwargs(projection[i],basemap_kwargs,i)
+#            mm.append(Basemap(ax = axi, projection =projection[i],**bkwargs))
+#            mm[-1].drawparallels(np.arange(latra[0],latra[1],latra[2]))#,labels=[1,0,0,0])
+#            mm[-1].drawmeridians(np.arange(lonra[0],lonra[1],lonra[2]))#,labels=[0,0,0,1])
+#
+#        #ms.shadedrelief() 
+#            for i,ipar in enumerate(np.arange(latra[0],latra[1]+latra[2],latra[2])):
+#                xx=lonra[0] - (lonra[1]-lonra[0])/0.9*0.04
+#                axi.annotate(str(ipar),xy=mm[-1](xx,ipar),xycoords='data',annotation_clip = False,va='center',ha='left')
+#            for i,ipar in enumerate(np.arange(lonra[0],lonra[1]+lonra[2],lonra[2])):
+#                yy=latra[0] - (latra[1]-latra[0])/0.9*0.02
+#                axi.annotate(str(ipar),xy=mm[-1](ipar,yy),xycoords='data',annotation_clip = False,va='top',ha='center')
+#    else: mm = basemap
+#
+#    #PLOTTING
+#    if ion:
+#        plt.ion() 
+#    else:
+#        plt.ioff()
+#    
+#    def where_split_lon(xxx):
+#        idx = np.where(np.abs(np.diff(xxx))> 90)[0]
+#        if len(idx):
+#            outs = np.zeros((np.size(idx)+1,2),dtype=int)
+#            outs[:-1,1] = idx+1 
+#            outs[-1,1] = np.size(xxx)
+#            outs[1:,0] = idx+1 
+#            return outs
+#        else:
+#            return [[0,np.size(xxx)]]
+#
+#    #this is done to deal with a bug in Basemap
+#    latlon = False if mm[0].projection == 'cyl' else True
+#    nextcolor = get_next_color(ax[0])
+#    plkaw = pltkwargs.copy()
+#    if 'color' not in plkaw: plkaw['color'] = nextcolor
+#    idx = where_split_lon(lon)
+#    [[imm.plot(lon[i[0]:i[1]],lat[i[0]:i[1]],latlon=latlon,**plkaw) for i in idx] for imm in mm]
+#    #else:
+#    #    [imm.plot(lon,lat,latlon=latlon,**pltkwargs) for imm in mm]
+#
+#    if show:
+#        plt.show()
+#    return fig,ax,tuple(mm)
    
 def fif_lowfilter(flds,MM,returnIMCs=False):
     """
@@ -778,3 +934,12 @@ def find_rotational_jumps(EE,keys,nskip, n_sigma = 4.,mask = None):
             kjump.append(i)
 
     return kjump
+
+def stringfy(strlist):
+    if type(strlist) is int:
+        strout = str(strlist).zfill(6)
+    elif type(strlist) is list:
+        strout = [i if type(i) is str else str(i).zfill(6) for i in strlist]
+    else:
+        return strlist
+    return strout

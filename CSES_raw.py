@@ -21,10 +21,10 @@
 import numpy as np
 from .CSES_aux import *
 
-def load_CSES_raw(filename, convert_names = False):
+def load_CSES_raw(filename, convert_names = False,spacecraft = 'CSES01'):
     import h5py
-    datasets_keys = {'A311':'ne','A321':'Te'}
 
+    CSES_DATASETS = SPACECRAFT[spacecraft] 
     #1st - load data
     with h5py.File(filename,'r') as fil:
         a={i:fil[i][...] for i in fil}
@@ -75,6 +75,9 @@ def load_CSES_burst_raw(filename, instrument='EFD', frequency = 'VLF'):
                 #out[0::25] = iaux
                 idx = np.where(mask)[0]
                 for i,j in enumerate(idx):
-                    out[i*25:(i+1)*25] = np.interp(np.arange(25),[0,25],iaux[j:j+2])
+                    if j+1 < len(iaux):
+                        out[i*25:(i+1)*25] = np.interp(np.arange(25),[0,25],iaux[j:j+2])
+                    else:
+                        out[i*25:(i+1)*25] = np.interp(np.arange(25),[0,25],[iaux[j],2*iaux[j]-iaux[j-1]])
                 a[ikey+'_W'] = out
     return a

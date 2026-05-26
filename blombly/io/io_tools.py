@@ -3,6 +3,7 @@
 import os
 
 
+<<<<<<< HEAD
 def create_folder(folder):
     try:
         if os.path.exists(folder):
@@ -15,6 +16,27 @@ def create_folder(folder):
             print ("Creating the directory %s " % folder)
     except OSError:
         print ("Creation of the directory %s failed" % folder)
+=======
+def create_folder(infolder, rename_if_file_exists = True):
+    folder = infolder
+    try:
+        if os.path.exists(folder):
+            if not os.path.isdir(folder):
+                #os.rename(folder,folder+'_file') 
+                if rename_if_file_exists:
+                    new_folder = folder+'_new'
+                    print ("file %s with desired name already exists. Renaming to %s" % (folder,new_folder))
+                    return create_folder(new_folder)
+                else:
+                    print("file %s with desired name already exists. folder not created" % (folder))
+                    return None
+        else:
+            os.makedirs(folder)
+            print ("Creating the directory %s " % folder)
+    except OSError:
+        print ("Creation of the directory %s failed" % folder)
+    return folder
+>>>>>>> csespy_dev/main
 
 def run_fast_scandir_ext(dir, ext,recursive = False):    # dir: str, ext: list
     subfolders, files = [], []
@@ -28,12 +50,20 @@ def run_fast_scandir_ext(dir, ext,recursive = False):    # dir: str, ext: list
 
     if recursive :
         for dir in list(subfolders):
+<<<<<<< HEAD
             sf, f = run_fast_scandir(dir, ext)
+=======
+            sf, f = run_fast_scandir_ext(dir, ext,recursive)
+>>>>>>> csespy_dev/main
             subfolders.extend(sf)
             files.extend(f)
     return subfolders, files
 
+<<<<<<< HEAD
 def search_file(spath,string, recursive = False, abs_path = False):    # dir: str, ext: list
+=======
+def search_file(spath,string, recursive = False, abs_path = False, extension= None):    # dir: str, ext: list
+>>>>>>> csespy_dev/main
     
     subfolders, files = [], []
     if abs_path:
@@ -47,7 +77,11 @@ def search_file(spath,string, recursive = False, abs_path = False):    # dir: st
         if f.is_dir():
             subfolders.append(get_path(f.path))
         if f.is_file():
+<<<<<<< HEAD
             if f.name in string:
+=======
+            if any([istr in f.name for istr in string]):
+>>>>>>> csespy_dev/main
                 files.append(get_path(f.path))
 
     if recursive:
@@ -55,5 +89,19 @@ def search_file(spath,string, recursive = False, abs_path = False):    # dir: st
             sf, f = search_file(spath, string, recursive = recursive,abs_path = abs_path)
             subfolders.extend(sf)
             files.extend(f)
+<<<<<<< HEAD
     
     return subfolders, files
+=======
+    if extension is not None:
+        files = [ifile for ifile in files if ifile[-len(extension):] == extension] 
+    return subfolders, files
+
+def split_path(pathstr):
+    """
+    split path string in in folder string and file string
+    WARNING: It requires that the special character '\' is not present in any file/folder names
+    """
+    filename = pathstr.split('/')[-1].split('\\')[-1].split('/')[-1].split('\\')[-1]    
+    return pathstr[:-len(filename)], filename
+>>>>>>> csespy_dev/main

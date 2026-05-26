@@ -23,10 +23,13 @@
 #
 
 from .CSES_core import *
+from .CSES_params import SPACECRAFT
+from .CSES_fixdata import fix_data as CSES_fix_data
+
 from .blombly.io import msg
 #from attrdict import AttrDict
 from .blombly.tools.objects import AttrDict
-
+from copy import deepcopy
 
 #CSES MAIN CLASS
 
@@ -50,11 +53,20 @@ class CSES():
         I am now rewriting the class to add reading HPM and SCM data as well
     """
 
-    def __init__(self, path='./',search_string = None,orbitn=None,timespan=None,unstructured_path=False,\
-                 orbit_database_buf = None, database_source = 'pandas-hdf5'):
+    def __init__(self, path='./',search_string = None,orbitn=None,timespan=None,unstructured_path=False, ignore_structure = False,\
+                 spacecraft = 'CSES01', orbit_database_buf = None, database_source = 'pandas-hdf5'):
 
-
+        from pathlib import Path
+        self.spacecraft = spacecraft
+        self._P = deepcopy(SPACECRAFT[spacecraft])
         self.path = path
+        self._path = Path(path)
+        if self._path.exists() is False:
+            msg.error('Provided path does not exist: '+path)
+            raise FileNotFoundError('Provided path does not exist: '+path)
+        elif self._path.is_dir() is False:
+            msg.error('Provided path is not a directory: '+path)
+            raise FileNotFoundError('Provided path is not a directory: '+path)
         self.files = AttrDict()
         #self.files['input'] = None #THIS IS DEPRECATED AND HAS TO BE REMOVED
         self.search_string = search_string
@@ -63,7 +75,8 @@ class CSES():
         self.timespan = None
         self._ancillary_={}
         self._unstructured_path_ = unstructured_path
-        if not unstructured_path: self.check_path()
+        self._ignore_structure_ = ignore_structure
+        if not unstructured_path and not ignore_structure: self.check_path()
 
         if orbit_database_buf is not None:
             self.load_orbitdb(orbit_database_buf,database_source)
@@ -80,31 +93,57 @@ class CSES():
     def select_data_to_load(self,orbitn = None, search_string = None, timespan = None,\
                             latspan = None, lonspan = None, append = True,\
                             side = None, orbit_database_ranges = None):
-        """
-        set the data selection method for loading the data (using CSES.load_CSES or other methods)
-
-        Data selections are mutually exclusive and ordered in priority
         
-        1) orbitn; 2) search_string; 3) timespan , latspan, lonspan
-
-        parameters
+        
+        """
+        Set the data selection method for loading data (using CSES.load_CSES or other methods).
+        Data selections are mutually exclusive and ordered by priority:
+        1) orbitn
+        2) search_string
+        3) timespan, latspan, lonspan
+        
+        Parameters
         ----------
-        orbitn : str or list of str
-            orbit number(s) of CSES to be loaded.
-        search_string : str
-            string that is contained in the filename that one wants to load
-        timespan : tuple 
-            either a tuple of datetime of len == 2 or a tuple of len ==3 with two datetime
-            and a string specifying day 'D', night 'N' side or both ''
-            
-            The two datetime specify the desired time interval to be loaded 
-        latspan : 2-elements arraylike
-            latitudinal range of the desired orbit
-        lonspan : 2-elements arraylike
-            longitudinal range of the desired orbit
         
-        WARNING: both latspan and lonspan require an orbit database to be loaded. If not so, an error will be thrown.
+        orbitn : str or list of str, optional
+            Semi-orbit number(s) of CSES to be loaded.
+        search_string : str, optional
+            String contained in the filename to load.
+        timespan : tuple, optional
+            Tuple of either:
+            - Two datetime objects specifying the desired time interval
+            - Three elements: two datetime objects and a string ('D' for day, 'N' for night, '' for both)
+        latspan : array-like, 2 elements, optional
+            Latitudinal range of the desired orbit.
+        lonspan : array-like, 2 elements, optional
+            Longitudinal range of the desired orbit.
+        append : bool, optional
+            Whether to append data to existing data. Default is True.
+            If False, clears existing data and ancillary information.
+        side : str, optional
+            Day/night side specification ('D', 'N', or 'both').
+        orbit_database_ranges : array-like, optional
+            Custom orbit database ranges for searching.
+        
+        Returns
+        -------
+        None
+            Sets internal search parameters and modifies object state.
+        
+        Raises
+        ------
+        Warning
+            If latspan or lonspan are used without an orbit database loaded.
+        
+        Notes
+        -----
+        - latspan and lonspan require an orbit database to be loaded.
+        - When using an orbit database, if no orbits satisfy the constraints, a warning is issued.
+        - When append=False, existing data, auxiliary data, and files are cleared.
         """
+        orbitn = stringfy(orbitn)
+
+        spacecraft = self.spacecraft
         self.search_string = search_string
         self.orbitn = orbitn
         self.timespan = timespan
@@ -113,6 +152,17 @@ class CSES():
         self.orbit_database_ranges = orbit_database_ranges
         self.append_data = append
         self.side = side
+        self._search_params = {
+            'orbitn': orbitn,
+            'search_string': search_string,
+            'timespan': timespan,
+            'latspan': latspan,
+            'lonspan': lonspan,
+            'orbit_database_ranges': orbit_database_ranges,
+            'side': side,
+            'spacecraft': spacecraft,
+            'append_data': append
+        }
 
         if not append:
             self.files = AttrDict()
@@ -136,19 +186,24 @@ class CSES():
            
             use_sel_db = False
             if timespan is not None:
-                orbits = csdb.search_orbit_timespan(timespan, return_orbitn = True, use_selected_db = use_sel_db)
+                orbits = csdb.search_orbit_timespan(timespan, return_orbitn = True, \
+                                                    use_selected_db = use_sel_db, spacecraft = spacecraft)
                 use_sel_db = True
             if latspan is not None:
-                orbits = csdb.search_orbit_lat(latspan, return_orbitn = True, use_selected_db = use_sel_db)
+                orbits = csdb.search_orbit_lat(latspan, return_orbitn = True, \
+                                                    use_selected_db = use_sel_db, spacecraft = spacecraft)
                 use_sel_db = True
             if lonspan is not None:
-                orbits = csdb.search_orbit_lon(lonspan, return_orbitn = True, use_selected_db = use_sel_db)
+                orbits = csdb.search_orbit_lon(lonspan, return_orbitn = True, \
+                                                use_selected_db = use_sel_db, spacecraft = spacecraft)
                 use_sel_db = True
             if orbit_database_ranges is not None:
-                orbits = csdb.search_orbit(orbit_database_ranges, return_orbitn = True, use_selected_db = use_sel_db)
+                orbits = csdb.search_orbit(orbit_database_ranges, return_orbitn = True, \
+                                                use_selected_db = use_sel_db, spacecraft = spacecraft)
                 use_sel_db = True
             if side != 'both' and side is not None:
-                orbits = csdb.search_orbit_side(side, return_orbitn = True, use_selected_db = use_sel_db)
+                orbits = csdb.search_orbit_side(side, return_orbitn = True, \
+                                                use_selected_db = use_sel_db, spacecraft = spacecraft)
                 use_sel_db = True
                 
             self.orbitn = orbits.tolist()
@@ -159,20 +214,22 @@ class CSES():
     def find_available_files(self,search_string ='',orbitn=None,timespan=None,**kwargs):
         outs = {}
 
-        for instr in CSES_DATA_TABLE:
-            outs[instr]={}
-            for ino in CSES_DATA_TABLE[instr]:
-                ifreq = CSES_DATA_TABLE[instr][ino]
-                outs[instr][ifreq] = self.search_file(search_string = search_string, orbitn= orbitn, \
-                    instrument=instr, frequency = ifreq, timespan = timespan,**kwargs)
+        CSES_DATA_TABLE = self._P['CSES_DATAKEYS']
+        spacecraft = self.spacecraft
+        #if spacecraft is None: spacecraft = ['CSES-01','CSES-02']
+        for datakey in CSES_DATA_TABLE:
+            #outs[instr]={}
+            #for ino in CSES_DATA_TABLE[instr]:
+            #    ifreq = CSES_DATA_TABLE[instr][ino]
+            outs[datakey] = self.search_file(datakey,search_string = search_string, orbitn= orbitn, \
+                    timespan = timespan,**kwargs)
         return outs
 
-    def find_files_to_load(self,instrument,frequency,instrument_no,unique=True,verbose=False):
+    def find_files_to_load(self,datakey,unique=True,verbose=False):
         print('searching for files to load...')
         if self.orbitn is not None:
             if type(self.orbitn) is str:
-                files = self.search_file(orbitn=self.orbitn,instrument=instrument,\
-                    frequency = frequency, instrument_no = instrument_no)
+                files = self.search_file(datakey,orbitn=self.orbitn)
                 #sometimes there are two files for the same orbit.
                 #In that case, the file with the larger timespan is selected.
                 files = uniquefy(files)
@@ -180,8 +237,7 @@ class CSES():
                 try:
                     files = []
                     for iorbitn in self.orbitn:
-                        ifiles = self.search_file(orbitn=iorbitn,instrument=instrument,\
-                            frequency = frequency, instrument_no = instrument_no)
+                        ifiles = self.search_file(datakey,orbitn=iorbitn)
                         #sometimes there are two files for the same orbit.
                         #In that case, the file with the larger timespan is selected.
                         ifiles = uniquefy(ifiles)
@@ -189,8 +245,7 @@ class CSES():
                 except:
                     raise ValueError('Not all values inside self.orbitn are strings') 
         elif type(self.search_string) is str:
-            files = self.search_file(self.search_string,instrument=instrument,\
-                frequency = frequency, instrument_no = instrument_no)
+            files = self.search_file(datakey, search_string=self.search_string)
             if unique: 
                 orbits = [parse_CSES_filename(ifile)['orbitn'] for ifile in files]
                 fdum = []
@@ -202,8 +257,7 @@ class CSES():
             
             timespan = self.timespan+('',) if len(self.timespan) == 2 else self.timespan
             try:
-                files = self.search_file(instrument=instrument, frequency = frequency,\
-                    instrument_no = instrument_no, timespan = timespan[:-1])
+                files = self.search_file(datakey, timespan = timespan[:-1])
                 if unique: 
                     orbits = [parse_CSES_filename(ifile)['orbitn'] for ifile in files]
                     fdum = []
@@ -223,32 +277,31 @@ class CSES():
             print('the following files have been found:'+msg.INFO(files))
         
         if self.append_data:
-            if instrument+'_'+frequency not in self.files:
-                self.files[instrument+'_'+frequency] = files
+            if datakey not in self.files:
+                self.files[datakey] = files
             else:
-                [self.files[instrument+'_'+frequency].append(iff) for iff in files]
+                [self.files[datakey].append(iff) for iff in files]
         else:
-            self.files[instrument+'_'+frequency] = files
+            self.files[datakey] = files
 
-        self.files[instrument+'_'+frequency] = uniquefy(self.files[instrument+'_'+frequency])
+        self.files[datakey] = uniquefy(self.files[datakey])
     
-    def check_if_loaded(self,instrument,frequency,load_RAW=False):
+    def check_if_loaded(self,datakey,load_RAW=False):
        
         datastr = 'data_raw' if load_RAW else 'data'
 
-        dsetname = instrument+'_'+frequency
-        if not hasattr(self,datastr): return self.files[dsetname] 
+        if not hasattr(self,datastr): return self.files[datakey] 
             
-        if dsetname not in getattr(self,datastr) : return self.files[dsetname]
+        if datakey not in getattr(self,datastr) : return self.files[datakey]
 
-        if dsetname not in self.files : 
+        if datakey not in self.files : 
             msg.error('self.find_files_to_load must be run before self.check_if_loaded')
             return
 
         orbits_to_load = set([int(parse_CSES_filename(i)['orbitn']) \
-            for i in self.files[dsetname]]) -  set(self.data[dsetname].orbitn)
+            for i in self.files[datakey]]) -  set(self.data[datakey].orbitn)
 
-        return [i for i in self.files[dsetname] if int(parse_CSES_filename(i)['orbitn']) in orbits_to_load]
+        return [i for i in self.files[datakey] if int(parse_CSES_filename(i)['orbitn']) in orbits_to_load]
         
 ################################################################################
 ############################# FILESYSTEM TOOLS #################################
@@ -264,12 +317,14 @@ class CSES():
         """
         from glob import glob
         try:
-            self.instruments = [i[len(self.path):] for i in glob(self.path+'*')] 
+            self.instruments = [i.name for i in self._path.iterdir() if i.is_dir()] 
+            #self.instruments = [i[len(self.path):] for i in glob(self.path+'*')] 
         except:
             print('WARNING: the provided folder is not a CSES folder. Reading data will likely fail!')
 
+        CSX = self._P
         instr = []
-        for i in CSES_DATA_TABLE:
+        for i in CSX['CSES_DATA_TABLE']:
             if i in self.instruments:
                 instr.append(i)
             else:
@@ -278,15 +333,13 @@ class CSES():
         del self.instruments
         self.instruments = tuple(instr)
 
-    def get_dataset_path(self, instrument='EFD', instrument_no=None, frequency = 'ELF'):
+    def get_dataset_path(self, datakey):
 
         #if self.files.input is None:
         if type(self.orbitn) is str:
-            files = self.search_file(orbitn=self.orbitn,instrument=instrument,\
-                instrument_no=instrument_no, frequency = frequency,return_path = True)
+            files = self.search_file(datakey, orbitn=self.orbitn,return_path = True)
         elif type(self.search_string) is str:
-            files = self.search_file(search_string=self.search_string,instrument=instrument,\
-                instrument_no=instrument_no, frequency = frequency,return_path = True)
+            files = self.search_file(datakey, search_string=self.search_string,return_path = True)
         else:
             msg.error('file for the desired dataset not found!')
             return None
@@ -299,57 +352,55 @@ class CSES():
         the convention for the folder changes)
         """ 
         info = parse_CSES_filename(filename)
-        return self.search_file(orbitn=info['orbitn'], instrument=info['Instrument'],\
-            frequency = info['DataProduct'], get_file_path = True)[0]
+        return self.search_file(info['datakey'],orbitn=info['orbitn'], get_file_path = True)[0]
         
     
 
-    def search_file(self,search_string ='',orbitn=None, instrument='EFD', instrument_no=None,\
-        frequency = 'ELF',return_path = False, timespan = None, get_file_path = False):
+    def search_file(self,datakey, search_string ='',orbitn=None\
+        ,return_path = False, timespan = None, get_file_path = False):
         """
-        Search for a file matching the desired string for the desired instrument and frequency
+        Search for a file matching the desired string for the desired datakey
         
-        WARNING: Instrument_no and frequency are redundant, since they give the same information
-        if instrument_no is not None, then this key overrides the frequency key.
         """
         from glob import glob
-       
+
+        file_identifiers = self._P['CSES_DATAKEYS'][datakey]
+
         files = None
         unstruct_path = self._unstructured_path_
+        CSES_FILESYSTEM = self._P['CSES_FILESYSTEM'] 
+        instrument_no = file_identifiers['InstrumentNo']
+        instrument = file_identifiers['instrument']
+        band = file_identifiers['band']
         
-        if instrument_no is not None : 
-            frequency = CSES_DATA_TABLE[instrument][instrument_no]
-        else:
-           instrument_no = get_dictkey_from_value(CSES_DATA_TABLE[instrument],frequency)[0]
-
-        if unstruct_path:
-            ppath = self.path
-        else:
+        ignore_structure = self._ignore_structure_
+        
+        ppath = str(self._path)+'/'
+        if not unstruct_path and not ignore_structure:
             fs_struct = CSES_FILESYSTEM[instrument]
 
-            ppath = self.path+instrument+'/'
+            ppath = ppath+instrument+'/'
 
             for ipath in fs_struct.split('/'):
-                if ipath == 'frequency':
-                    ppath += frequency.lower()+'/'
-                elif ipath == 'FREQUENCY':
-                    ppath += frequency.upper()+'/'
+                if ipath == 'band' or ipath == 'frequency':
+                    ppath += band.lower()+'/'
+                elif ipath == 'BAND' or ipath == 'FREQUENCY':
+                    ppath += band.upper()+'/'
                 else:
                     ppath += '*/'
         
         filespaths = glob(ppath)
 
         if orbitn is None:
-            files = [(i,ipath) for ipath in filespaths for i in find_file(ipath,search_string)]
-            files = [(i,ipath) for i,ipath in files if \
-                parse_CSES_filename(i)['Instrument'] == instrument and\
-                parse_CSES_filename(i)['InstrumentNum'] == instrument_no]
+            files = [(i,ipath) for srcpath in filespaths for ipath,i in find_file(srcpath,search_string, recursive = ignore_structure)]
+            #files = [(i,ipath) for ipath in filespaths for i in find_file(ipath,search_string)]
+            files = [(i,ipath) for i,ipath in files if parse_CSES_filename(i)['datakey'] == datakey]
         else:
-            files = [(i,ipath) for ipath in filespaths for i in find_file(ipath,orbitn)]
+            files = [(i,ipath) for srcpath in filespaths for ipath,i in find_file(srcpath,orbitn, recursive = ignore_structure)]
+            #files = [(i,ipath) for i,ipath in find_file(ipath,orbitn, recursive = ignore_structure)]
             files = [(i,ipath) for i,ipath in files if \
                 parse_CSES_filename(i)['orbitn'] == orbitn and\
-                parse_CSES_filename(i)['Instrument'] == instrument and\
-                parse_CSES_filename(i)['InstrumentNum'] == instrument_no]
+                parse_CSES_filename(i)['datakey'] == datakey]
         
         if timespan is not None:
             #Lazy way to find orbit in timespan
@@ -402,9 +453,10 @@ class CSES():
         from glob import glob
         from .blombly.tools.objects import AttrDict
 
-        datakey = 'HEP'+CSES_DATA_TABLE['HEP'][instrument_no]
+        CSX = self._P        
+        datakey = 'HEP'+CSX['CSES_DATA_TABLE']['HEP'][instrument_no]
         instrument = 'HEP'
-        frequency=CSES_DATA_TABLE['HEP'][instrument_no]
+        frequency=CSX['CSES_DATA_TABLE']['HEP'][instrument_no]
 
         if not hasattr(self,'data'): 
             self.data=AttrDict()
@@ -413,9 +465,9 @@ class CSES():
         if not hasattr(self.aux,datakey): 
             self.aux[datakey]={}
 
-        self.find_files_to_load(instrument,frequency,instrument_no,unique=True)
+        self.find_files_to_load(datakey,unique=True)
         
-        files = self.check_if_loaded(instrument,frequency)
+        files = self.check_if_loaded(datakey)
 
         for ifiles in files:
             
@@ -424,7 +476,7 @@ class CSES():
             if infos['Instrument'] == 'HEP':
                 ifile = ifiles
             else:
-                ifile = self.search_file(orbitn=infos['orbitn'],instrument='HEP',instrument_no=instrument_no)[0]
+                ifile = self.search_file(datakey,orbitn=infos['orbitn'])[0]
             
             ipath = self.get_file_path(ifile)
             
@@ -453,90 +505,33 @@ class CSES():
             self.aux[datakey]['frequency'] = frequency
             self.aux[datakey]['instrument_no'] = instrument_no
 
-    def load_HPM(self, subset = None,instrument_no='5',unique = True, keep_verse_time = True,**kwargs):
-        """
-        This method is kept for legacy reasons. Now is simply a wrapper that calls
-        
-        CSES.load_CSES(instrument='HPM',frequency='FGM1Hz')
-        load HPM data from files matching the string and put them into a pandas dataframe
-        
-        Optional arguments:
-            subset = 3-elements tuple or tuple/list of 3-elements tuples with the following structures
-                (('key', boolean_function, comparing value),)
 
-                for example: self.load_HPM(subset = [('lat',numpy.greater,44)]) will select 
-                a subset of the timeseries that fullfill the condition "latitude > 44".
-
-        """
-        
-        self.load_CSES(instrument='HPM',frequency='FGM1Hz',subset=subset,keep_verse_time = keep_verse_time,**kwargs)
-
-
-    def load_EFD_ELF(self, subset = None, get_PSD = False, keep_verse_time = True,\
-        versetime_to_datetime = False, **kwargs):
-        """
-        This method is kept for legacy reasons. Now is simply a wrapper that calls
-        CSES.load_CSES(instrument='EFD',frequency='ELF')
-        
-        load EFD ELF files and put it into a pandas dataframe
-        
-
-        Optional arguments:
-            subset = 3-elements tuple or tuple/list of 3-elements tuples with the following structures
-                (('key', boolean_function, comparing value),)
-
-                for example: self.load_EFD(subset = [('lat',numpy.greater,44)]) will select a subset of the timeseries
-                that fullfill the condition "latitude > 44".
-
-        """
-        self.load_CSES(instrument='EFD',frequency='ELF',subset=subset, get_PSD = False\
-            ,keep_verse_time = keep_verse_time,**kwargs)
-        df = self.data['EFD_ELF']
-        if versetime_to_datetime:
-                df.drop('time',axis='columns',inplace=True)
-                df['time'] = df.index.to_pydatetime()
-        
-    def load_EFD(self,**kwargs):
-        """
-        Warning: The use of load_EFD is DEPRECATED! For historical reasons (compatibility) it can still be used
-        however, we recomend to use load_EFD_ELF instead.
-        """
-        self.load_EFD_ELF(**kwargs)
-
-    def load_CSES(self, subset = None, get_PSD = False, \
-        instrument = 'EFD', frequency = 'ULF',keep_verse_time = True,instrument_no=None,\
-        load_RAW = False, **kwargs):
+    def load_CSES(self, datakey, subset = None, get_PSD = False, \
+        keep_verse_time = True,\
+        load_RAW = False, fix_data = True, **kwargs):
         """
         Load desired data from CSES instrument using CSES_load (see CSES_core.py)
         """
         import pandas as pd
         from glob import glob
 
-        print('loading '+instrument+'-'+frequency+' data...')
+        CSX = self._P
+        print('loading '+datakey+' data...')
 
-        if instrument == 'LAP':
-            frequency='50mm'
-            instrument_no='1'
-        if instrument == 'HPM':
-            frequency='FGM1Hz'
-            instrument_no='5'
+        instrument = CSX['CSES_DATAKEYS'][datakey]['instrument']
+        instrument_no = CSX['CSES_DATAKEYS'][datakey]['InstrumentNo']
         if instrument == 'HEP':
-            if instrument_no is None:
-                instrument_no = [i[0] for i  in CSES_DATA_TABLE[instrument].items() if i[1] == frequency][0]
             self.load_HEP(instrument_no = instrument_no, subset = subset,\
                 keep_verse_time = keep_verse_time, **kwargs)
             return
 
-        if frequency is None and instrument_no is None:
-            msg.error('either frequency or instrument_no must be provided')
+        if datakey is None or datakey not in CSX['CSES_DATAKEYS']:
+            msg.error('correct datakey must be provided. use self.available_datakeys() for a list of implemented datakeys')
             return
-        if frequency is None:
-            frequency = CSES_DATA_TABLE[instrument][instrument_no]
 
-        instrument_no = [i[0] for i  in CSES_DATA_TABLE[instrument].items() if i[1] == frequency][0]
-        print('selected instrument-frequency: ' + msg.INFO(instrument+'-'+frequency))
+        print('selected datakey: ' + msg.INFO(datakey))
 
-        dsetname=instrument+'_'+frequency
+        dsetname=datakey
         if not hasattr(self,'data'): 
             self.data=AttrDict()
         if not hasattr(self,'aux'): 
@@ -552,10 +547,14 @@ class CSES():
             if not hasattr(self,'data_raw'):
                 self.data_raw = AttrDict()
         
-        self.find_files_to_load(instrument,frequency,instrument_no,unique=True)
-        files = self.check_if_loaded(instrument,frequency,load_RAW=load_RAW)
+        self.find_files_to_load(datakey,unique=True)
+        files = self.check_if_loaded(datakey,load_RAW=load_RAW)
         #files = self.files[dsetname] 
-
+        if files is None or len(files) == 0:
+            print(msg.ERROR('WARNING, no file found to load for datakey ')+msg.INFO(dsetname)+\
+                  msg.ERROR(' and the given research parameters (self._search_params)'))
+            return None
+        
         for ifile in files:
             infos = parse_CSES_filename(ifile)
             
@@ -563,24 +562,24 @@ class CSES():
             
             print('loading file: '+msg.INFO(ipath+ifile))
             if load_RAW:
-                df = load_CSES_raw(ipath+ifile, convert_names = True)
+                df = load_CSES_raw(ipath+ifile, convert_names = True,spacecraft = self.spacecraft)
                 if dsetname not in self.data_raw.keys():
                     self.data_raw[dsetname] = [df]
                 else:
                     self.data_raw[dsetname].append(df)
             else:
                 if get_PSD:
-                    res, aux = CSES_load_PSD(ifile,ipath,**kwargs)
+                    res, aux = CSES_load_PSD(ifile,ipath,CSX = CSX,**kwargs)
                 else:
                     df, aux = CSES_load(ifile, path = ipath,\
                         return_pandas = True,\
-                        keep_verse_time = keep_verse_time, **kwargs)
+                        keep_verse_time = keep_verse_time, CSX = CSX, **kwargs)
             
                 if subset is not None:
                     subset = sorted(subset, key=len, reverse=True) #sort by length to avoid problems with subset conditions
                     for Cond in subset:
                         if len(Cond) == 4:
-                            psize = CSES_PACKETSIZE[dsetname]
+                            psize = CSX['CSES_PACKETSIZE'][dsetname]
                             maskd = Cond[1](df[Cond[0]].values[::psize],Cond[2]) 
                             mask = np.zeros(df.shape[0],dtype=bool).reshape(df.shape[0]//psize,psize)
                             mask[maskd,:] = True
@@ -605,193 +604,79 @@ class CSES():
                         self.data[dsetname] = pd.concat([self.data[dsetname],df])
                     self.aux[dsetname][infos['orbitn']]= aux
                 
-                self.aux[dsetname]['instrument'] = instrument
-                self.aux[dsetname]['frequency'] = frequency
-                self.aux[dsetname]['instrument_no'] = instrument_no
+                self.aux[dsetname].update(CSX['CSES_DATAKEYS'][datakey])
 
         #resorting dataframe
         if dsetname in self.data:
             if type(self.data[dsetname]) is pd.DataFrame:
                 self.data[dsetname].sort_index(inplace=True)
-    
-    def derotate_fields(self,overwrite=False, instrument='EFD', frequency='ELF',\
-        nskip_fixed = False,tags=['Ex','Ey','Ez']):
+            #ADD xarray for PSD sorting and reading   
+        if fix_data:
+            self.fix_data(datakey,overwrite = True)
+
+    def fix_data(self,datakey,**kwargs):
         """
-        Derotate (electric) fields according to de-rotation of the derotate_fields
-        function cotained in CSES_aux.py. This rotation is done to remove the jumps
-        introduced in EFD Level2 data by the approach used for using attitude 
-        quaternions in the  processing pipeline of CSES01.
+        Fix known issues in CSES Level 2 data.
+        So far only EFD data product are handled. 
+        Issues from other product may be found and fixed in the future
+        """
+        # CHECK IF DATA WERE ALREADY FIXED
         
-        parameters
-        ----------
-        overwrite : bool
-            True : derotated fields overwrite the original fields.
-            False : derotated fields are saved preserving the name (in tags) 
-            adding the subscript '_rot'.
-        nskip_fixed: bool
-            if not fixed, the algorithm will look whether jumps are present or not
-            in the data, at multiples of data packet size (2048 for EFD_ELF) and
-            if so, will update the rotation between two jumps.
-            This workaround is necessary because for some orbits of EFD ELF it was 
-            found that this number is be 2048*2 or 2048*3 (consistent with 
-            quaternion update rate of CSES-01)
-        instrument : str
-            desired instrument
-        frequency : str
-            desired frequency band
-        tags : len=3 list of str
-            list of str of the three components fo the field to be derotated 
-            (contained in self.data.<instrument>_<frequency>).
+        if self._ancillary_.get('fix_data_'+datakey,False):
+            print(f'{datakey} data already fixed.')
+            return
 
-        """
-
-        datakey = instrument+'_'+frequency
-        nskip = CSES_PACKETSIZE[datakey] 
-        if 'derotate_'+datakey in self._ancillary_:
-            if self._ancillary_['derotate_'+datakey] :
-                E_rotated = True
-            else:
-                E_rotated = False
+        if datakey in CSES_fix_data[self.spacecraft]:
+            df = CSES_fix_data[self.spacecraft][datakey](self._P,self.data[datakey],**kwargs)
+            self._ancillary_['fix_data_'+datakey] = True
+            #self.data[datakey] = df
         else:
-            E_rotated = False
-
-        df = self.data[datakey]
-        t1,t2,t3=tags
-        if not E_rotated:
-            print('Derotating '+datakey+' '+str(tags)+'...')
-            #1-removing jumps by derotating artificially
-            if 'gaps_mask' in df:
-                EE = derotate_field(df[t1].values,df[t2].values,df[t3].values,nskip=nskip,\
-                    nskip_fixed = nskip_fixed, mask = df.gaps_mask.values)
-            else:
-                EE = derotate_field(df[t1].values,df[t2].values,df[t3].values,nskip=nskip,\
-                    nskip_fixed = nskip_fixed)
-
-            if not overwrite:
-                df[t1+'_rot'] = EE['x'] 
-                df[t2+'_rot'] = EE['y'] 
-                df[t3+'_rot'] = EE['z'] 
-            else:
-                df[t1] = EE['x'] 
-                df[t2] = EE['y'] 
-                df[t3] = EE['z'] 
-            self._ancillary_['derotate_'+datakey] = True
-        else:
-            print('field already rotated...')
+            print(f'{datakey} as no fix method set. skipping...') 
 ################################################################################
 ############################### PLOTTING TOOLS #################################
 ################################################################################
 
 
-    def plot_EFD(self,xaxis = 'lat', xlabel=None,modulus = False, keys = ['Ex','Ey','Ez'],\
-        ax = None,fig = None,twiny = True, frequency='ELF',ion=False):
-        from .blombly import pylab as plt
-        cols = plt.rcParams['axes.prop_cycle'].by_key()['color'] #colors
-        ncol=len(cols) 
-        
-        tag = 'EFD_'+frequency
-        fig,ax = plt.get_figure(fig,ax) 
-        
-        dff = self.data[tag]
-        orbits = list(set(dff.orbitn))
-        orbits.sort()
-        
-        if modulus:
-            for iorbit in orbits:
-                mask = dff.orbitn == iorbit
-                df = dff[mask]
-                
-                ax.plot(df[xaxis],np.sqrt(df['Ex']**2+\
-                                             df['Ey']**2+\
-                                             df['Ez']**2),\
-                                             label='|E|',linewidth=1,color='black')
-        else:
-            for iorbit in orbits:
-                mask = dff.orbitn == iorbit
-                df = dff[mask]
-                [ax.plot(df[xaxis],df[i],label=i,linewidth=1,color=cols[j]) for j,i in enumerate(keys) if i in df]
-        ax.set_xlabel(xaxis) if xlabel is None else ax.set_xlabel(xlabel)
-        ax.set_ylabel('E [V/m]')
-        ylims = ax.set_ylim()
-        if twiny: 
-            ax2 = ax.twiny()
-            ax2.plot(self.data[tag].index,np.zeros(len(self.data[tag].index)),linestyle=None,linewidth = 0)
-            ax2.set_xlabel('time (UT)')
-        else:
-            ax2 = None
-        ax.legend()
-        if ion : plt.ion()
-        plt.show()
-        return fig,ax,ax2 
-
-    def plot_HPM(self,xaxis = 'time',what = 'modulus',color = None):
-        from .blombly import pylab as plt
-        plt.ion()
-        hd = self.data['hpm']
-        if xaxis == 'time':
-            if what == 'modulus':
-                [plt.plot((hd[hd.orbitn==i].Bx**2+hd[hd.orbitn==i].By**2 + hd[hd.orbitn==i].Bz**2)**0.5) for i in set(hd.orbitn)]
-            elif type(what) is list:
-                if color is not None:
-                    for iitem,icol in zip(what,color):
-                        [plt.plot(hd[hd.orbitn==i][iitem],color=icol,label=iitem) for i in set(hd.orbitn)]
-                else:
-                    for iitem in what:
-                        [plt.plot(hd[hd.orbitn==i][iitem],label=iitem) for i in set(hd.orbitn)]
-            else:
-                [plt.plot(hd[hd.orbitn==i].Bx,color='red') for i in set(hd.orbitn)]
-                [plt.plot(hd[hd.orbitn==i].By,color='green') for i in set(hd.orbitn)]
-                [plt.plot(hd[hd.orbitn==i].Bz,color='blue') for i in set(hd.orbitn)]
-        else:
-            [plt.plot(hd[hd.orbitn==i][xaxis],hd[hd.orbitn==i].Bx,color='red') for i in set(hd.orbitn)]
-            [plt.plot(hd[hd.orbitn==i][xaxis],hd[hd.orbitn==i].By,color='green') for i in set(hd.orbitn)]
-            [plt.plot(hd[hd.orbitn==i][xaxis],hd[hd.orbitn==i].Bz,color='blue') for i in set(hd.orbitn)]
-
-
-    def plot_orbit(self,instrument,frequency,y='lat',x='lon',basemap = None, fig = None, ax = None,profile = 'default',overplot_continents = True,ion=True,show=True):
+    def plot_orbit(self,datakey,y='lat',x='lon', fig = None, ax = None,profile = 'default',\
+                   ion=True,show=True):
         """
-        Plot the orbit of the loaded instrument_frequency on the worldmap, using CSES_aux.plot_orbit
-
+        Plot the orbit of the loaded instrument on the worldmap.
         Parameters
         ----------
 
-        instrument : str
-            id. string of the desired (data already loaded) instrument
-        frequency : str
-            id. string of the desired (data already loaded) frequency
-
-        basemap : None or Basemap object (optional)
-            if not None, then the input basemap is used.
-
-        fig : None or figure object (optional)
-            if not None, then input figure is used
-            (used if basemap and ax are None).
-
-        ax : None or list of axis objects (optional)
-            if not None, then input axes are used
-            (used if basemap is None).
-
-        profile : str or dict
-            if str, then the key with the desired CSES_aux.plot_orbit kwargs is used.
-            available kwargs are stored in CSES_aux.ORBIT_PLOT_TEMPLATES
-            if dict, then use the input dictionary as kwargs (see CSES_aux.ORBIT_PLOT_TEMPLATES 
-            and CSES_aux.plot_orbit to get an idea of what must go in the dictionary).
-
-        returns:
-
-        fig,ax,mm : figure, axis, and basemap mm objects
+        datakey : str
+            Key to access the data dictionary containing the orbit data.
+        y : str, optional
+            Column name for y-axis (latitude). Default is 'lat'.
+        x : str, optional
+            Column name for x-axis (longitude). Default is 'lon'.
+        fig : None or figure object, optional
+            If not None, then input figure is used. Default is None.
+        ax : None or Axes object, optional
+            If not None, then input axes are used. Default is None.
+        profile : str or dict, optional
+            If str, then the key with the desired plot_orbit kwargs is used.
+            Available kwargs are stored in ORBIT_PLOT_TEMPLATES.
+            If dict, then use the input dictionary as kwargs. Default is 'default'.
+        ion : bool, optional
+            If True, enable interactive mode. Default is True.
+        show : bool, optional
+            If True, display the plot. Default is True.
+        Returns
+        -------
+        fig : figure object
+            The matplotlib figure object.
+        ax : Axes object
+            The matplotlib axes object.
         """
-        
-        df = self.data[get_datakey(instrument,frequency)]
+
+        df = self.data[datakey]
 
         pltkwargs = ORBIT_PLOT_TEMPLATES[profile] if type(profile) is str else profile
         
-        fig,ax,mm = plot_orbit(df[y].values,df[x].values, basemap = basemap, fig = fig, ax = ax,ion=ion,show=show,**pltkwargs)
+        fig,ax = plot_orbit(df[y].values,df[x].values, fig = fig, ax = ax,ion=ion,show=show,**pltkwargs)
 
-        if overplot_continents:
-            [imm.fillcontinents() for imm in mm]
-            #[imm.drawlsmask() for imm in mm]
-        return fig,ax,mm
+        return fig,ax
 
 
     def plot_payloads(self,datakeys,xaxis = 'time', xlabel=None,\
@@ -856,9 +741,10 @@ class CSES():
             ax[-1].tick_params(axis='x',rotation=45)
         return fig,ax
 
-    def plot_payload(self,datakeyvars,xaxis='time',secondary_xaxis=None,fig=None,ax=None,xlabel=None):
+    def plot_payload(self,datakeyvars,xaxis='time',secondary_xaxis=None,fig=None,ax=None,xlabel=None, unwrap_xrange = None):
         
 
+        CSX = self._P
         if type(datakeyvars) is str: 
             datakey = datakeyvars
             keytoplot = None
@@ -878,6 +764,8 @@ class CSES():
             mask = dff.orbitn == iorbit
             df = dff[mask]
             xx = xxx[mask]
+            if unwrap_xrange is not None:
+                xx = arrays.remove_jumps(xx,unwrap_xrange)
             if datakey == 'LAP_50mm':
                 ax.semilogy(xx,df['ne'],label=r'$n_e$',color=cols[0])
                 ax.set_ylabel(r'$\mathrm{n_e \quad [m^{-3}]}$')
@@ -900,7 +788,7 @@ class CSES():
                 instrument = self.aux[datakey]['instrument']
                 instr_no = self.aux[datakey]['instrument_no']
                 
-                toplot = [[i[1] for i in CSES_FILE_TABLE[instrument][instr_no].items()][0]] if keytoplot is None else keytoplot
+                toplot = [[i[1] for i in CSX['CSES_FILE_TABLE'][instrument][instr_no].items()][0]] if keytoplot is None else keytoplot
                 for j,i in enumerate(toplot):
                     #if 'Electron' in i:
                     #    continue
@@ -910,7 +798,7 @@ class CSES():
             elif datakey == 'HEPP_L':
                 instrument = self.aux[datakey]['instrument']
                 instr_no = self.aux[datakey]['instrument_no']
-                toplot = [i[1] for i in CSES_FILE_TABLE[instrument][instr_no].items()] if keytoplot is None else keytoplot
+                toplot = [i[1] for i in CSX['CSES_FILE_TABLE'][instrument][instr_no].items()] if keytoplot is None else keytoplot
                 for j,i in enumerate(toplot):                
                     ax.semilogy(xx,df[i].values,label=i,linewidth=1,color=cols[j%ncol])
                 ax.set_ylabel(toplot[0].split('_')[0])
@@ -918,7 +806,7 @@ class CSES():
             elif datakey == 'HEPP_H':
                 instrument = self.aux[datakey]['instrument']
                 instr_no = self.aux[datakey]['instrument_no']
-                toplot = [i[1] for i in CSES_FILE_TABLE[instrument][instr_no].items()] if keytoplot is None else keytoplot
+                toplot = [i[1] for i in CSX['CSES_FILE_TABLE'][instrument][instr_no].items()] if keytoplot is None else keytoplot
                 for j,i in enumerate(toplot):
                     #if 'Electron' in i:
                     #    continue
@@ -928,7 +816,7 @@ class CSES():
             elif datakey == 'HEPP_X':
                 instrument = self.aux[datakey]['instrument']
                 instr_no = self.aux[datakey]['instrument_no']
-                toplot = [i[1] for i in CSES_FILE_TABLE[instrument][instr_no].items()] if keytoplot is None else keytoplot
+                toplot = [i[1] for i in CSX['CSES_FILE_TABLE'][instrument][instr_no].items()] if keytoplot is None else keytoplot
                 for j,i in enumerate(toplot):
                     #if 'Electron' in i:
                     #    continue
@@ -967,16 +855,17 @@ class CSES():
 
         fig,ax = plt.get_figure(fig,ax,axes=[0.1,0.1,0.7,0.7])
         df = self.data[datakey+'_P']
+        orbitn = str(df['position'].orbitn.values[0]).zfill(6)
         xx = df['position'].index.values if xaxis == 'time' else df['position'][xaxis].values
 
         if datakey+'_P' in self.aux: #in this case, spectra were loaded directly from the files
-            field_unit = self.aux[datakey+'_P'][self.orbitn]['units'][fieldkey+'_P']
+            field_unit = self.aux[datakey+'_P'][orbitn]['units'][fieldkey+'_P']
             units = r'$\mathrm{' + (field_unit.decode('utf-8') if isinstance(field_unit, bytes) else field_unit) + r'}$'
-        elif fieldkey in self.aux[datakey][self.orbitn]['units'].keys():
-            field_unit = self.aux[datakey][self.orbitn]['units'][fieldkey]
+        elif fieldkey in self.aux[datakey][orbitn]['units'].keys():
+            field_unit = self.aux[datakey][orbitn]['units'][fieldkey]
             units = r'$[\mathrm{' + (field_unit.decode('utf-8') if isinstance(field_unit, bytes) else field_unit) + r'}]^2/\mathrm{Hz}$'
-        elif fieldkey.split('_')[0] in self.aux[datakey][self.orbitn]['units'].keys():
-            base_field_unit = self.aux[datakey][self.orbitn]['units'][fieldkey.split('_')[0]]
+        elif fieldkey.split('_')[0] in self.aux[datakey][orbitn]['units'].keys():
+            base_field_unit = self.aux[datakey][orbitn]['units'][fieldkey.split('_')[0]]
             units = '[' + (base_field_unit.decode('utf-8') if isinstance(base_field_unit, bytes) else base_field_unit) + r'$]^2/\mathrm{Hz}$'
         else:
             units = r'[?$]^2/\mathrm{Hz}$' 
@@ -1004,7 +893,28 @@ class CSES():
 #################### MANIPULATION AND DATA ANALYSIS TOOLS ######################
 ################################################################################
     
-    def interpolate_inst1_to_inst2(self,inst1 = 'HPM',inst2 = 'EFD',tags = ['Bx','By','Bz'], track_origin = False):
+    def interpolate_inst1_to_inst2(self, inst1, inst2, tags, track_origin=False):
+        """
+        Interpolates data from one instrument (inst1) to another (inst2) for specified tags.
+        Parameters
+        ----------
+        inst1 : str
+            The datakey of the source instrument whose data will be interpolated (stored in self.data).
+        inst2 : str
+            The datakey of the target instrument to which data will be interpolated (stored in self.data).
+        tags : list
+            List of column names (tags) to interpolate from inst1 to inst2.
+        track_origin : bool, optional
+            If True, appends the source instrument name to the interpolated column name in inst2.
+            If False, overwrites or creates columns in inst2 with the same tag names.
+        Notes
+        -----
+        - The method assumes that `self.data` is a dictionary-like object containing pandas DataFrames for each instrument.
+        - The index of each DataFrame is expected to be time-based and convertible to integer nanoseconds.
+        - Interpolated columns are added to the target instrument's DataFrame.
+        - The interpolation operation is recorded in `self._ancillary_['interpolate']`.
+        """
+    
         t_1 = self.data[inst1].index.values.astype(np.int64)
         t_2 = self.data[inst2].index.values.astype(np.int64)
         t0 = t_1[0]
@@ -1051,19 +961,20 @@ class CSES():
             optional keyword arguments passed to stft or wavelet transform function
             (see blombly.analysis.spectra)
         """
+        CSX = self._P
         if datakey not in self.data:
             msg.error('datakey '+datakey+' not found in self.data! Please load the desired data first.')
             return
 
         df = self.data[datakey]
         nx = df.shape[0]
-        fs = CSES_SAMPLINGFREQS[datakey]
+        fs = CSX['CSES_SAMPLINGFREQS'][datakey]
         if not all([i in df.keys() for i in fieldkeys]):
             msg.error('Some of the fieldkeys '+str(fieldkeys) +'not found in self.data.'+datakey+'. Returning')
             return
 
         if packetsize is None:
-            packetsize = CSES_PACKETSIZE[datakey]
+            packetsize = CSX['CSES_PACKETSIZE'][datakey]
         if nx// packetsize != nx/ packetsize:
             if allow_shrinking:
                 nx = nx - (nx % packetsize)
@@ -1075,6 +986,7 @@ class CSES():
             from .blombly.analysis.spectra import stft as trans
             if 'window' not in kwargs : kwargs['window']='hann'
             if 'nperseg' not in kwargs : kwargs['nperseg'] = packetsize
+            kwargs['transpose'] = True
         if method == 'cwt':
             from .blombly.analysis.spectra import cwt as trans
 
@@ -1148,12 +1060,13 @@ class CSES():
        
         data = self.data[datakey]
         
+        CSX = self._P
         from .blombly.math.derivFD import derivfield as deriv #central finite differences derivative 
         t = data.index.values.astype(float)/1e9 #dt in seconds
         t-=t[0]
         if regularize_speed:
             from scipy.interpolate import splrep,splev
-            nskip = CSES_PACKETSIZE[datakey]
+            nskip = CSX['CSES_PACKETSIZE'][datakey]
             MM = int(dt_lowfilt//np.diff(t[::nskip]).mean())
             if MM == 1:
                 print('WARNING: dt_lowfilt < temporal resolution! Skipping lowfiltering!')
@@ -1208,7 +1121,7 @@ class CSES():
         dat['VsxB_y'] = (vsz*Bx - vsx*Bz)*1e-9 
         dat['VsxB_z'] = (vsx*By - vsy*Bx)*1e-9
     
-    def remove_vsxb_drift(self,instrument='EFD',frequency='ELF',overwrite=False):
+    def remove_vsxb_drift(self,datakey='EFD_ELF',overwrite=False):
         """
         remove E=vs X B drift from the EFD electric field contained 
         in self.data[instrument+'_'+frequency], so to allow removal from interpolated
@@ -1218,7 +1131,6 @@ class CSES():
 
         WARNING: the two vector fields must be in the same right-handed orthogonal ref.frame.
         """
-        datakey = instrument+'_'+frequency
         efd = self.data[datakey]
         if any([not hasattr(efd,'VsxB_'+i) for i in ['x','y','z']]):
             raise ValueError('VsB not found. use self.get_vsxb_drift!')
@@ -1238,11 +1150,12 @@ class CSES():
 
     def get_aacgm_coord(self, datakey='EFD_ELF', minify = False, nskip = None, **kwargs):
 
+        CSX = self._P
         #datakey=instrument+'_'+frequency
         inst = self.data[datakey]
         
         if nskip is None:
-            nskip = CSES_PACKETSIZE[datakey]
+            nskip = CSX['CSES_PACKETSIZE'][datakey]
 
         #if instrument.lower() == 'efd' and minify == False:
         #    minify = 1
@@ -1265,8 +1178,9 @@ class CSES():
             xnew = inst.index.values.astype(float) - xx[0]
             xx-=xx[0]
             fld['mag_lat'] = interp1(xx,mlat,bounds_error=False,fill_value='extrapolate')(xnew)
-            fld['mag_lon'] = interp1(xx,mlon,bounds_error=False,fill_value='extrapolate')(xnew)
-            fld['mlt'] = interp1(xx,mlt,bounds_error=False,fill_value='extrapolate')(xnew)
+            fld['mag_lon'] = arrays.interp1_jumps(xnew,xx,mlon,[-180,180])
+            fld['mlt'] = arrays.interp1_jumps(xnew,xx,mlt,[0,24])
+            #fld['mlt'] = interp1(xx,mlt,bounds_error=False,fill_value='extrapolate')(xnew)
             #fld['mag_lon'] = interp1(fld['lat'],lat,mlon) 
             #fld['mlt'] = interp1(fld['lat'],lat,mlt) 
 
@@ -1304,6 +1218,9 @@ class CSES_database():
         
         self.load_db(dbbuf)
 
+        # Default selection is the full database.
+        self.sel_db = self.db
+
     def check_buf(self,dbbuf):
         import pandas as pd
         if type(dbbuf) is pd.DataFrame:
@@ -1329,7 +1246,7 @@ class CSES_database():
         self.db = dbbuf
     def search_orbit(self,orbit_database_ranges = None, orbitn = None, timespan = None,\
                      latspan = None, lonspan = None, side = None,\
-                     return_orbitn = True, use_selected_db = False): 
+                     return_orbitn = True, use_selected_db = False,**kwargs): 
         """
         
         This is a generic method to select a subset of orbits fulfilling the conditions set in ranges (see below).
@@ -1352,6 +1269,14 @@ class CSES_database():
         ranges = orbit_database_ranges
 
         df = self.db if not use_selected_db else self.sel_db
+        
+        if 'spacecraft' in kwargs:
+            if 'spacecraft' in df.keys():
+                sc = kwargs['spacecraft']
+                mask = [i==sc for i in df.spacecraft.values]
+                df = df[mask]
+            else:
+                msg.warning('spacecraft key not found in database! skipping spacecraft selection!')
         
         seldb = False
         if ranges is not None:
@@ -1408,7 +1333,7 @@ class CSES_database():
         return self.search_orbit([('lat',np.greater,np.min(lat)),('lat',np.less,np.max(lat)),\
                                   ('lon',np.greater,np.min(lon)),('lon',np.less,np.max(lon))],**kwargs)
 
-    def search_orbit_timespan(self,timespan, return_orbitn = True, use_selected_db = False):
+    def search_orbit_timespan(self,timespan, return_orbitn = True, use_selected_db = False,**kwargs):
         """
         find all available orbits in given temporal range
         """
@@ -1417,7 +1342,17 @@ class CSES_database():
 
         mask = (df.index > timespan[0]) * (df.index < timespan[1])
 
-        self.sel_db = df[mask]
+        df = df[mask]
+
+        if 'spacecraft' in kwargs:
+            if 'spacecraft' in df.keys():
+                sc = kwargs['spacecraft']
+                mask = [i==sc for i in df.spacecraft.values]
+                df = df[mask]
+            else:
+                msg.warning('spacecraft key not found in database! skipping spacecraft selection!')
+        
+        self.sel_db = df
         
         if self.sel_db.size == 0 : return self.sel_db
 
@@ -1462,7 +1397,7 @@ class CSES_database():
     #    return np.unique(self.sel_db.orbitn)
 
 
-    def search_orbit_latlontimespan(self,lat,lon,timespan, return_orbitn = True, use_selected_db = False):
+    def search_orbit_latlontimespan(self,lat,lon,timespan, return_orbitn = True, use_selected_db = False,**kwargs):
         """
         self explaining
         """
@@ -1470,7 +1405,15 @@ class CSES_database():
         df = self.db if not use_selected_db else self.sel_db
 
         df = self.search_orbit_latlon(lat,lon,return_orbitn = False)
-
+        
+        if 'spacecraft' in kwargs:
+            if 'spacecraft' in df.keys():
+                sc = kwargs['spacecraft']
+                mask = [i==sc for i in df.spacecraft.values]
+                df = df[mask]
+            else:
+                msg.warning('spacecraft key not found in database! skipping spacecraft selection!')
+        
         if df.size == 0: return df
 
         df = self.search_orbit_timespan(timespan,use_selected_db = True)
@@ -1480,7 +1423,7 @@ class CSES_database():
 
         return self.sel_db
     
-    def search_orbit_orbitn(self,orbitn, return_orbitn = True, use_selected_db = False):
+    def search_orbit_orbitn(self,orbitn, return_orbitn = True, use_selected_db = False,**kwargs):
         """
         self explaining
         """
@@ -1496,14 +1439,24 @@ class CSES_database():
             if mask.ndim == 2: mask = np.sum(mask,axis=0,dtype=bool) 
         else:
             mask = df.orbitn.values == orbs 
-        self.sel_db = df[mask]
+        
+        df = df[mask]
+        if 'spacecraft' in kwargs:
+            if 'spacecraft' in df.keys():
+                sc = kwargs['spacecraft']
+                mask = [i==sc for i in df.spacecraft.values]
+                df = df[mask]
+            else:
+                msg.warning('spacecraft key not found in database! skipping spacecraft selection!')
+        
+        self.sel_db = df
 
         if return_orbitn: 
             return np.unique(self.sel_db.orbitn)
 
         return self.sel_db
 
-    def search_orbit_side(self,whichside, return_db = False, return_orbitn = True, use_selected_db = False):
+    def search_orbit_side(self,whichside, return_db = False, return_orbitn = True, use_selected_db = False,**kwargs):
         """
         self explaining
         
@@ -1526,63 +1479,65 @@ class CSES_database():
                 return 
         side = '1' if whichside == 'night' else '0'
         mask = [i[-1]==side for i in df.orbitn.values]
-        
+
+        df = df[mask]
+        if 'spacecraft' in kwargs:
+            if 'spacecraft' in df.keys():
+                sc = kwargs['spacecraft']
+                mask = [i==sc for i in df.spacecraft.values]
+                df = df[mask]
+            else:
+                msg.warning('spacecraft key not found in database! skipping spacecraft selection!')
         if return_db:
-            return df[mask]
+            return df
         
-        self.sel_db = df[mask]
+        self.sel_db = df
 
         if return_orbitn: 
             return np.unique(self.sel_db.orbitn)
 
         return self.sel_db
     
-    def plot_orbit(self,df=None,y='lat',x='lon',basemap = None, fig = None, ax = None,\
-        profile = 'default',overplot_continents = True,ion=True,show=True,\
-        annotate_orbitn = True, color = None):
+    def plot_orbit(self,df=None,y='lat',x='lon', fig = None, ax = None,profile = 'default',\
+                   ion=True,show=True):
         """
-        Plot the orbits present in df  in the worldmap, using CSES_aux.plot_orbit
+        Plot the orbit of the input pd.DataFrame or of the sel_db (or of the db) on the worldmap, using CSES_aux.plot_orbit
 
         Parameters
         ----------
 
-        df : None or pandas dataframe
-            if not None, then it plots the orbit contained in df, otherwise plots 
-            the orbits contained in self.sel_db (if orbits were selected using search_orbit method)
-            or plots all orbits in database.
+        Plot the orbit of the loaded instrument on the worldmap.
+        Parameters
+        ----------
 
-        basemap : None or Basemap object (optional)
-            if not None, then the input basemap is used.
-
-        fig : None or figure object (optional)
-            if not None, then input figure is used
-            (used if basemap and ax are None).
-
-        ax : None or list of axis objects (optional)
-            if not None, then input axes are used
-            (used if basemap is None).
-
-        profile : str or dict
-            if str, then the key with the desired CSES_aux.plot_orbit kwargs is used.
-            available kwargs are stored in CSES_aux.ORBIT_PLOT_TEMPLATES
-            if dict, then use the input dictionary as kwargs (see CSES_aux.ORBIT_PLOT_TEMPLATES 
-            and CSES_aux.plot_orbit to get an idea of what must go in the dictionary).
-        
-        annotate_orbitn : bool
-            if True, for each orbit, the orbitnumber is annotated at the lowermost (nightside)
-            or uppermost (dayside) orbit point.
-
-        color : str
-            either a matplotlib valid color or 
-            "night-day": color night and day with two different colors (red and blue)
-            ("night-day",'col1',col2'): color night and day with two different colors, defined by col1 (night) and col2 (day)
-
-        returns:
-
-        fig,ax,mm : figure, axis, and basemap mm objects
+        df : pd.DataFrame or None, optional
+            Dataframe containing the orbit Information. If None, then the sel_db attribute is used if present,
+            otherwise the db attribute is used. Default is None.
+        y : str, optional
+            Column name for y-axis (latitude). Default is 'lat'.
+        x : str, optional
+            Column name for x-axis (longitude). Default is 'lon'.
+        fig : None or figure object, optional
+            If not None, then input figure is used. Default is None.
+        ax : None or Axes object, optional
+            If not None, then input axes are used. Default is None.
+        profile : str or dict, optional
+            If str, then the key with the desired plot_orbit kwargs is used.
+            Available kwargs are stored in ORBIT_PLOT_TEMPLATES.
+            If dict, then use the input dictionary as kwargs. Default is 'default'.
+        ion : bool, optional
+            If True, enable interactive mode. Default is True.
+        show : bool, optional
+            If True, display the plot. Default is True.
+        Returns
+        -------
+        fig : figure object
+            The matplotlib figure object.
+        ax : Axes object
+            The matplotlib axes object.
+       
         """
-        from .blombly import pylab as plt
-        
+
         if df is None:
             if hasattr(self,'sel_db'):
                 df = self.sel_db
@@ -1591,37 +1546,10 @@ class CSES_database():
 
         pltkwargs = ORBIT_PLOT_TEMPLATES[profile] if type(profile) is str else profile
         
-        orbits = set(df.orbitn.values)
-        
-        for iorbit in orbits:
-            dff = df[df.orbitn.values == iorbit]
-            if color is not None:
-                if type(color) is str:
-                    if color == 'night-day': 
-                        col = 'red' if iorbit[-1] == '1' else 'dodgerblue'
-                if type(color) is tuple:
-                    if color[0] == 'night-day':
-                        col = color[1] if iorbit[-1] == '1' else color[2]
-                    else:
-                        col = None
-            else:
-                col = None
-            fig,ax,basemap = plot_orbit(dff[y].values,dff[x].values, \
-                basemap = basemap, fig = fig, ax = ax,ion=False,show=False,color = col, **pltkwargs)
-            if annotate_orbitn:
-                [axi.annotate(iorbit,[dff[x][0],dff[y][0]*1.1],fontsize=10) for axi in ax]
+        fig,ax = plot_orbit(df[y].values,df[x].values, fig = fig, ax = ax,ion=ion,show=show,**pltkwargs)
 
-        if overplot_continents:
-            [imm.fillcontinents() for imm in basemap]
-            #[imm.drawlsmask() for imm in basemap]
-        if ion:
-           plt.ion()
-        else:
-            plt.ioff()
-        if show:
-            plt.show()
+        return fig,ax
 
-        return fig,ax,basemap
 
     def fix_lonlat(self,df = None, return_db = False):
 
