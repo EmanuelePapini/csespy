@@ -399,7 +399,7 @@ def plot_orbit( lat, lon, projection = ['platecarree'], ax=None, fig=None,
         else:
             lons[lons<0]+=360
     if ax is not None:
-        fig = ax.get_figure()
+        fig = ax[0].get_figure()
     if fig is None:
         # Create the figure and define a 2-row layout
         fig = plt.figure(figsize=(10,5))

@@ -366,7 +366,7 @@ if hasattr(plt,'register_cmap'):
     plt.register_cmap(cmap=nio_colormap()) 
 else:
     import matplotlib as mpl
-    mpl.colormaps.register(cmap=nio_colormap())
+    mpl.colormaps.register(cmap=nio_colormap(),force = True)
 
 
 if __name__ == '__main__':
