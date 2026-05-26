@@ -71,6 +71,8 @@ def CSES_load(filename,path='./', return_pandas = False,
           'raised stats': TO IMPLEMENT: (DELIRIUM PAPINIENSIS)
                   Filling done with a half cosine between the two points filled with 
                   fluctuations reproducing the same statistics of nearby data
+    CSX : dict
+        One item of CSES_params.SPACECRAFT dictionary containing specific spacecraft informations.
 
     Output: (res, aux) (tuple)
     ------
@@ -424,6 +426,43 @@ def CSES_load_PSD(filename,path='./', return_xarray = False,
     return data, {'ORBITNUM':orbitnum,'units':units ,'UTC':utc, 'verse_zero_utc':vt0_utc, 'verse_time':utc-vt0_utc}
 
 def HEP_load(filename,path='./', instrument_no = '1', channel = 'all', energy_selection_list = None, energy_bin = None, pitch_bin = None, with_mag_coords=False, time_from_samplerate = True, fill_missing = None):
+    """
+    Load HEP data from a CSES HEP file in HDF5 or Zarr format.
+
+    Parameters
+    ----------
+    filename : str
+        File name to load. Accepted suffixes are '.h5' and '.zarr.zip'.
+    path : str, optional
+        Directory containing the file. Default is current directory.
+    instrument_no : {'1','2','3','4'}, optional
+        Instrument identifier. Instruments 1 and 2 use A411/A412 data,
+        instrument 3 uses Counts_0..Counts_8, instrument 4 uses XrayRate.
+    channel : {'all', int, list}, optional
+        Channel selection. 'all' sums over available channels. An integer
+        selects a single channel, while a list sums the given channels.
+    energy_selection_list : list of lists, optional
+        Energy selection conditions for electrons and protons.
+    energy_bin : int, optional
+        Select a specific energy bin to average over.
+    pitch_bin : int, optional
+        Select a specific pitch bin to average over.
+    with_mag_coords : bool, optional
+        If True, also load magnetic latitude and longitude.
+    time_from_samplerate : bool, optional
+        Present for compatibility; not used in current HEP loader.
+    fill_missing : None
+        Present for compatibility; not used in current HEP loader.
+
+    Returns
+    -------
+    res : dict
+        Dictionary containing time, coordinates, and instrument-specific
+        flux or count arrays.
+    aux : dict
+        Ancillary metadata including 'ORBITNUM', 'units', 'UTC',
+        'verse_zero_utc', and 'verse_time'.
+    """
     import h5py
 
     if filename[-3:] == '.h5':

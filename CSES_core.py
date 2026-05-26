@@ -36,17 +36,10 @@ cscore = {'CSES01':CSES01_core,'CSES02':CSES02_core}
 def CSES_load(filename,path='./', return_pandas = False,
             with_mag_coords = False,keep_verse_time = True, fill_missing=None,CSX=None):
     """
-    Generic method to read any CSES DataProduct, info to read properly the hdf5 file are 
-    saved in CSES_DATASETS in CSES_aux
-    Filename conventions should be according to the following example:
-        
-        'CSES_01_EFD_2_L02_A1_031190_20180826_095004_20180826_102510_000.h5'
-
-    data are loaded into a pandas dataframe. Time is taken by the VERSE_TIME variable
-    present in the h5 file, but sampling rate is used to calculate dt, due to truncation
-    error introduced in the data (it is an integer number in milliseconds,
-    but dt sampling may not be a multiple integer of 1ms)
-
+    Generic interface to load any CSES DataProduct
+    It uses CSES01_core.CSES_load or CSES02_core.CSES_load depending on the CSX parameter, 
+    which should be a dict containing the spacecraft informations (e.g. CSX = SPACECRAFT['CSES01'])
+    
     Parameters
     ----------
     filename : str
@@ -78,7 +71,9 @@ def CSES_load(filename,path='./', return_pandas = False,
           'raised stats': TO IMPLEMENT: (DELIRIUM PAPINIENSIS)
                   Filling done with a half cosine between the two points filled with 
                   fluctuations reproducing the same statistics of nearby data
-
+    CSX : dict
+        One item of CSES_params.SPACECRAFT dictionary containing specific spacecraft informations.
+    
     Output: (res, aux) (tuple)
     ------
         res : numpy.recarray or pandas.dataframe 
@@ -101,15 +96,10 @@ def CSES_load(filename,path='./', return_pandas = False,
 def CSES_load_PSD(filename,path='./', return_xarray = False,
             with_mag_coords = False,keep_verse_time = True, fill_missing=None,CSX=None):
     """
-    Generic method to read any CSES DataProduct PSD, info to read properly the 
-    hdf5 file are  saved in CSES_DATASETS in CSES_aux
-    Filename conventions should be according to the following example:
-        
-        'CSES_01_EFD_2_L02_A1_031190_20180826_095004_20180826_102510_000.h5'
-    Time is taken by the VERSE_TIME variable
-    present in the h5 file. Be aware, however, that there is a truncation
-    error introduced in the data timing, since it is an integer number in milliseconds,
-    but dt sampling is not a multiple integer of 1ms.
+    Generic interface to load any CSES DataProduct PSD
+    It uses CSES01_core.CSES_load_PSD or CSES02_core.CSES_load_PSD depending on the CSX parameter, 
+    which should be a dict containing the spacecraft informations (e.g. CSX = SPACECRAFT['CSES01'])
+    
 
     Parameters
     ----------
@@ -135,6 +125,9 @@ def CSES_load_PSD(filename,path='./', return_xarray = False,
           'nan' or np.nan : fills gaps with NaNs
           
           float : fills gaps with the desired floating value
+    
+    CSX : dict
+        One item of CSES_params.SPACECRAFT dictionary containing specific spacecraft informations.
 
     Output: (res, aux) (tuple)
     ------
@@ -158,7 +151,11 @@ def CSES_load_PSD(filename,path='./', return_xarray = False,
     
 
 def HEP_load(*args,**kwargs):
-    
+    """
+    Interface to load data from Particle detectors onboard CSES-01 or CSES-02.
+    It uses CSES01_core.HEP_load or CSES02_core.HEP_load depending on the CSX parameter, 
+    which should be a dict containing the spacecraft informations (e.g. CSX = SPACECRAFT['CSES01'])
+    """ 
     if 'CSX' not in kwargs:
         raise ValueError("CSX parameter not specified. Please provide a valid spacecraft key (e.g. CSX = SPACECRAFT['CSES01'])")
     elif kwargs['CSX'] is None:
@@ -169,42 +166,9 @@ def HEP_load(*args,**kwargs):
 def HPM_load(*args,**kwargs):
     #filename,path='./', time_from_samplerate = True, fill_missing = None):
     """
-    Load HPM data from h5 file specfied by the path.
-    Filename conventions should be according to the following example:
-        
-        'CSES_01_HPM_5_L02_A2_027321_20180731_233357_20180801_001152_000.h5'
-
-    This is a python implementation of the matlab code 'HPM_carica_dati_v1.m'
-    Parameters
-    ----------
-    filename : str
-            string containing the name of the file
-    path : str (optional)
-        string contatining the filepath. default is current working directory
-    time_from_samplerate : bool
-        if true, uses sampling time to calculate the array of times
-    fill_missing : str or None or np.nan or float
-        Determines filling method for Electric Field
-        if set to float, fill gaps with desired value
-        None: it does not fill any temporal gap/missing packets
-        'zero'or 0 : fills gaps with zeroes.
-        'nan' or np.nan : fills gaps with NaNs
-        'linear': TO IMPLEMENT fits the gaps with a linear function between the two points
-        'raised stats': TO IMPLEMENT:
-                filling done with a half cosine between the two points filled with 
-                fluctuations reproducing the same statistics of nearby data
-
-    Output: (res, aux) (tuple)
-    ------
-        res : numpy.recarray 
-            contains magnetic field data and coordinates data
-        aux : dict
-            contains ancillary data with the following keywords:
-            {'ORBITNUM':int,
-             'units':'V/m',
-             'UTC':utc time of first datapoint, 
-             'verse_time': VERSE time of first datapoint,
-             'verse_zero_utc': utc time of the zero VERSE time (i.e, 2009/1/1) }
+    Interface to load data from HPM onboard CSES-01 or CSES-02.
+    It uses CSES01_core.HPM_load or CSES02_core.HPM_load depending on the CSX parameter, 
+    which should be a dict containing the spacecraft informations (e.g. CSX = SPACECRAFT['CSES01'])
     """
     if 'CSX' not in kwargs:
         raise ValueError("CSX parameter not specified. Please provide a valid spacecraft key (e.g. CSX = SPACECRAFT['CSES01'])")
