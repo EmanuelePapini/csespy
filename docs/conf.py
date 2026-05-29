@@ -15,8 +15,19 @@ author = 'E. Papini, F. M. Follega'
 
 from pathlib import Path
 import sys
+import types
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+REPO_ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(REPO_ROOT))
+
+# RTD checks out the repository under a generic folder name (not necessarily
+# ``csespy``). The project source is a flat package at repository root, so we
+# register a lightweight package shim named ``csespy`` for autodoc imports.
+if 'csespy' not in sys.modules:
+    csespy_pkg = types.ModuleType('csespy')
+    csespy_pkg.__file__ = str(REPO_ROOT / '__init__.py')
+    csespy_pkg.__path__ = [str(REPO_ROOT)]
+    sys.modules['csespy'] = csespy_pkg
 
 extensions = [
     "sphinx.ext.autodoc",
@@ -30,7 +41,18 @@ exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store']
 
 # Mock imports that are optional or not available in the docs environment
 # (prevents autodoc import errors for heavy third-party packages)
-autodoc_mock_imports = ['hdf5storage']
+autodoc_mock_imports = [
+    'hdf5storage',
+    'flammkuchen',
+    'numpy',
+    'scipy',
+    'pandas',
+    'h5py',
+    'matplotlib',
+    'cartopy',
+    'aacgmv2',
+    'skimage',
+]
 
 # Napoleon settings: prefer numpy-style docstrings which this project uses
 napoleon_google_docstring = False
