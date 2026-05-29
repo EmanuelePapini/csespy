@@ -35,10 +35,15 @@ napoleon_include_init_with_doc = True
 # Generate autosummary pages where requested
 autosummary_generate = True
 
-# Enable matplotlib Sphinx extension (provides ``plot`` directive)
-extensions += [
-    "matplotlib.sphinxext.plot_directive",
-]
+# Enable matplotlib's plot directive only when matplotlib is available.
+try:
+    import matplotlib  # noqa: F401
+except ModuleNotFoundError:
+    pass
+else:
+    extensions += [
+        "matplotlib.sphinxext.plot_directive",
+    ]
 
 # Register lightweight dummy roles for matplotlib-specific interpreted text
 from docutils import nodes
