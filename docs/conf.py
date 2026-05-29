@@ -49,12 +49,13 @@ autodoc_mock_imports = [
     'pandas',
     'h5py',
     'matplotlib',
-    'pylab',
     'cartopy',
     'aacgmv2',
     'skimage',
     'termcolor',
     'numba',
+    'csespy.blombly.pylab',
+    'blombly.pylab',
 ]
 
 # Napoleon settings: prefer numpy-style docstrings which this project uses
