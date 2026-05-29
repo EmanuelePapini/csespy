@@ -15,12 +15,40 @@ author = 'E. Papini, F. M. Follega'
 
 extensions = [
     "sphinx.ext.autodoc",
+    "sphinx.ext.autosummary",
     "sphinx.ext.napoleon",
     "sphinx_autodoc_typehints",
 ]
 
 templates_path = ['_templates']
 exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store']
+
+# Mock imports that are optional or not available in the docs environment
+# (prevents autodoc import errors for heavy third-party packages)
+autodoc_mock_imports = ['hdf5storage']
+
+# Napoleon settings: prefer numpy-style docstrings which this project uses
+napoleon_google_docstring = False
+napoleon_numpy_docstring = True
+napoleon_include_init_with_doc = True
+
+# Generate autosummary pages where requested
+autosummary_generate = True
+
+# Enable matplotlib Sphinx extension (provides ``plot`` directive)
+extensions += [
+    "matplotlib.sphinxext.plot_directive",
+]
+
+# Register lightweight dummy roles for matplotlib-specific interpreted text
+from docutils import nodes
+from docutils.parsers.rst.roles import register_local_role
+
+def _dummy_role(name, rawtext, text, lineno, inliner, options={}, content=[]):
+    return [nodes.inline(text, text)], []
+
+register_local_role('mpltype', _dummy_role)
+register_local_role('rc', _dummy_role)
 
 
 

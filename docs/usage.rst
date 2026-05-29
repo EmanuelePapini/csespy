@@ -49,5 +49,5 @@ results to HDF5 or Zarr.
 Further reading
 ---------------
 
-- API reference: :ref:`api`
+- API reference: :doc:`api`
 - Examples: the `examples/` folder in the repository
