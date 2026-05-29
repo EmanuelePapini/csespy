@@ -13,6 +13,11 @@ author = 'E. Papini, F. M. Follega'
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
 
+from pathlib import Path
+import sys
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+
 extensions = [
     "sphinx.ext.autodoc",
     "sphinx.ext.autosummary",
