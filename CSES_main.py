@@ -638,7 +638,7 @@ class CSES():
 
 
     def plot_orbit(self,datakey,y='lat',x='lon', fig = None, ax = None,profile = 'default',\
-                   ion=True,show=True):
+                   ion=True,show=True,nskip = 256):
         """
         Plot the orbit of the loaded instrument on the worldmap.
         Parameters
@@ -674,7 +674,7 @@ class CSES():
 
         pltkwargs = ORBIT_PLOT_TEMPLATES[profile] if type(profile) is str else profile
         
-        fig,ax = plot_orbit(df[y].values,df[x].values, fig = fig, ax = ax,ion=ion,show=show,**pltkwargs)
+        fig,ax = plot_orbit(df[y].values[::nskip],df[x].values[::nskip], fig = fig, ax = ax,ion=ion,show=show,**pltkwargs)
 
         return fig,ax
 

@@ -1,0 +1,5 @@
+- 2.0.0
+
+1) switched to datakeys
+2) switched from Basemap to cartopy for plotting orbits
+3) updated convert_GPS_to_ECEF to be compatible with pyproj version 3.7.2

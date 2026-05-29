@@ -104,12 +104,26 @@ def convert_GPS_to_ECEF(lat,lon,alt):
         alt : (float)
             Altitude above the surface of the earth in km
     """
-    from pyproj import Proj, transform
-    ecef = Proj(proj='geocent', ellps='WGS84', datum='WGS84')
+    #from pyproj import Proj, transform
+    #ecef = Proj(proj='geocent', ellps='WGS84', datum='WGS84')
     
-    lla = Proj(proj='latlong', ellps='WGS84', datum='WGS84')
+    #lla = Proj(proj='latlong', ellps='WGS84', datum='WGS84')
     
-    return transform(lla, ecef, lon, lat, alt*1000, radians=False)
+    #return transform(lla, ecef, lon, lat, alt*1000, radians=False)
+
+    from pyproj import CRS, Transformer
+
+    # Define coordinate reference systems
+    lla = CRS.from_proj4("+proj=latlong +ellps=WGS84 +datum=WGS84")
+    ecef = CRS.from_proj4("+proj=geocent +ellps=WGS84 +datum=WGS84")
+
+    # Create a transformer object
+    transformer = Transformer.from_crs(lla, ecef, always_xy=True)
+    return transformer.transform(lon, lat, alt*1000, radians=False)
+
+
+
+
 
 def dataframe_aacgm_convert(df, method="ALLOWTRACE"):
     """
