@@ -68,3 +68,5 @@ This plot should appear
 Emanuele Papini - INAF, Istituto di Astrofisica e Planetologia Spaziali (emanuele.papini@inaf.it).
 
 Francesco Maria Follega - TIFPA, Università di Trento (francesco.follega@unitn.it).
+
+Davide Giordano - Università di Trento (davide.giordano@unitn.it).
