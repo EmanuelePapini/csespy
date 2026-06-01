@@ -1,0 +1,76 @@
+[build-system]
+requires = ["setuptools>=61.0", "setuptools-scm"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "csespy"
+description = "Python package to read and process data from the CSES-01 and CSES-02 spacecraft"
+readme = "README.md"
+license = {text = "MIT"}
+authors = [
+    {name = "Emanuele Papini", email = "emanuele.papini@inaf.it"},
+    {name = "Francesco Maria Follega", email = "francesco.follega@unitn.it"},
+    {name = "Davide Giordano", email = "davide.giordano@unitn.it"}
+]
+requires-python = ">=3.12"
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Scientific/Engineering :: Physics",
+]
+dependencies = [
+    "aacgmv2",
+    "cartopy",
+    "flammkuchen",
+    "h5py",
+    "hdf5storage",
+    "lxml",
+    "matplotlib",
+    "numba",
+    "numpy",
+    "pandas",
+    "pyproj",
+    "pyWavelets",
+    "requests",
+    "scipy",
+    "scikit-image",
+    "termcolor",
+    "xarray",
+    "zarr",
+]
+dynamic = ["version"]
+
+[project.urls]
+Homepage = "https://github.com/anomalyco/csespy"
+Documentation = "https://csespy.readthedocs.io"
+Repository = "https://github.com/anomalyco/csespy.git"
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]
+include = ["csespy*"]
+
+[tool.setuptools.dynamic]
+version = {attr = "csespy.__version__"}
+
+[tool.setuptools.package-data]
+csespy = ["CHAOS-8.5.mat"]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=6.0",
+    "pytest-cov",
+    "black",
+    "flake8",
+    "mypy",
+]
+docs = [
+    "sphinx",
+    "sphinx-rtd-theme",
+]

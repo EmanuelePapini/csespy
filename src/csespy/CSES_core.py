@@ -286,7 +286,7 @@ def get_CHAOSmag(df,as_output = True,ref_frame='ecef',chaosfile=None,memory_frie
 
     if chaosfile is None:
         import os
-        chaosfile = os.path.dirname(__file__)+'/CHAOS-8.2.mat'
+        chaosfile = os.path.dirname(__file__)+'/CHAOS-8.5.mat'
         
 
     time = chaos.data_utils.mjd2000(df.index.to_pydatetime()) #28 seconds
