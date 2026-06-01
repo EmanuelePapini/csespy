@@ -189,15 +189,21 @@ CS1['CSES_CF'] = {'Bx_P':(1,1),'By_P':(1,1),'Bz_P':(1,1),\
 CS2 = {}
 
 CS2['NAME'] = 'CSES02'
-CS2['CSES_DATA_TABLE'] = {'EFD':{'1':'ULF','2':'ELF','3':'VLF','4':'VLFe','5':'HF'}}
+CS2['CSES_DATA_TABLE'] = {'EFD':{'1':'ULF','2':'ELF','3':'VLF','4':'VLFe','5':'HF'},
+                          'HPM':{'1':'FGM1','2':'FGM2','3':'CDSM','5':'FGM1Hz','6':'CDSM1Hz'},\
+                          
+                          }
 CS2['CSES_DATAKEYS'] = {'EFD_ULF':dict(instrument='EFD',InstrumentNo='1',band='ULF'),\
                  'EFD_ELF':dict(instrument='EFD',InstrumentNo='2',band='ELF'),\
                  'EFD_VLF':dict(instrument='EFD',InstrumentNo='3',band='VLF'),\
                  'EFD_VLFe':dict(instrument='EFD',InstrumentNo='4',band='VLFe'),\
                  'EFD_VLF_P':dict(instrument='EFD',InstrumentNo='3',band='VLF',type='fft'),\
                  'EFD_VLFe_P':dict(instrument='EFD',InstrumentNo='4',band='VLFe',type='fft'),\
-                 'EFD_HF_P':dict(instrument='EFD',InstrumentNo='5',band='HF',type='fft'),}
-CS2['CSES_FILE_TABLE'] = {'EFD':{\
+                 'EFD_HF_P':dict(instrument='EFD',InstrumentNo='5',band='HF',type='fft'),
+                 'HPM_FGM1Hz':dict(instrument='HPM',InstrumentNo='5',band=None),\
+                 }
+CS2['CSES_FILE_TABLE'] = {\
+                    'EFD':{\
                        '1':{'A111_W':'Ex',\
                             'A112_W':'Ey',\
                             'A113_W':'Ez'
@@ -214,7 +220,15 @@ CS2['CSES_FILE_TABLE'] = {'EFD':{\
                             'A142_W':'Ey',\
                             'A143_W':'Ez'
                            },\
-                         }}
+                          },\
+                    'HPM':{\
+                        '5':{'A221':'Bx',\
+                             'A222':'By',\
+                             'A223':'Bz'\
+                            },\
+                        '6':{'A211':'B'},\
+                          }\
+                         }
 
 CS2['CSES_POSITION'] = {'ALTITUDE':'alt',\
                  'GEO_LAT':'lat',\
@@ -242,13 +256,17 @@ CS2['CSES_DATASETS'] = {'W_Va':'Va','W_Vb':'Vb','W_Vc':'Vc','W_Vd':'Vd',\
                  'A133e_Pm':'Ez_Pm','A133e_Pd':'Ez_Pd', 'A133e_Pk':'Ez_Pk',\
                  'A151_Pm':'Ex_Pm','A151_Pd':'Ex_Pd', 'A151_Pk':'Ex_Pk',\
                  'A152_Pm':'Ey_Pm','A152_Pd':'Ey_Pd', 'A152_Pk':'Ey_Pk',\
-                 'A153_Pm':'Ez_Pm','A153_Pd':'Ez_Pd', 'A153_Pk':'Ez_Pk'}
+                 'A153_Pm':'Ez_Pm','A153_Pd':'Ez_Pd', 'A153_Pk':'Ez_Pk',\
+                 'A221':'Bx','A222':'By','A223':'Bz'}
 
-CS2['CSES_SAMPLINGFREQS'] = {'EFD_ULF':244.140625,'EFD_ELF':5000.,'EFD_VLF':80000.,'EFD_VLFe':200000.,'EFD_HF':8e6}
+CS2['CSES_SAMPLINGFREQS'] = {'EFD_ULF':244.140625,'EFD_ELF':5000.,'EFD_VLF':80000.,'EFD_VLFe':200000.,'EFD_HF':8e6,\
+                             'HPM_FGM1Hz':1.}
+
 CS2['CSES_PACKETSIZE'] = {'EFD_ULF':2048,'EFD_ELF':2048,'EFD_VLF':2048,'EFD_HF':2048,'EFD_VLFe':2048,\
-                          'EFD_VLF_P':2048,'EFD_HF_P':2048,'EFD_VLFe_P':2048}
+                          'EFD_VLF_P':2048,'EFD_HF_P':2048,'EFD_VLFe_P':2048,\
+                          'HPM_FGM1Hz':1}
 
-CS2['CSES_FILESYSTEM'] = {'EFD':'year/month/FREQUENCY',\
+CS2['CSES_FILESYSTEM'] = {'EFD':'INSTRUMENT/year/month/FREQUENCY',\
                           'HPM':'INSTRUMENT/year/month',\
                           'LAP':'INSTRUMENT/year/month',\
                           'SCM':'INSTRUMENT/year/FREQUENCY/month',\

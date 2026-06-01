@@ -379,10 +379,14 @@ class CSES():
         if not unstruct_path and not ignore_structure:
             fs_struct = CSES_FILESYSTEM[instrument]
 
-            ppath = ppath+instrument+'/'
+            #ppath = ppath+instrument+'/'
 
             for ipath in fs_struct.split('/'):
-                if ipath == 'band' or ipath == 'frequency':
+                if ipath == 'instrument':
+                    ppath += instrument.lower()+'/'
+                elif ipath == 'INSTRUMENT':
+                    ppath += instrument.upper()+'/'
+                elif ipath == 'band' or ipath == 'frequency':
                     ppath += band.lower()+'/'
                 elif ipath == 'BAND' or ipath == 'FREQUENCY':
                     ppath += band.upper()+'/'
@@ -1031,15 +1035,17 @@ class CSES():
 #########################      AUXILIARY TOOLS         #########################
 ################################################################################
 
-    def get_CHAOS(self,datakey,as_output = False,ref_frame='ecef'):
+    def get_CHAOS(self,datakey,as_output = False,ref_frame='ecef',**kwargs):
         
         if all([i in self.data[datakey] for i in ['Bx_chaos','By_chaos','Bz_chaos']]):
             print('Mag. field from CHAOS already calculated for '+datakey+'.')
             return
+        if 'nskip' not in kwargs:
+            kwargs['nskip'] = np.max([int(self._P['CSES_PACKETSIZE'][datakey]//8),1])
         if as_output:
-            return get_CHAOSmag(self.data[datakey],as_output = True,ref_frame=ref_frame)
-        get_CHAOSmag(self.data[datakey],as_output=False,ref_frame = ref_frame)
-    
+            return get_CHAOSmag(self.data[datakey],as_output = True,ref_frame=ref_frame,**kwargs)
+        get_CHAOSmag(self.data[datakey],as_output=False,ref_frame = ref_frame,**kwargs)
+
     def get_spacecraft_speed(self,datakey='EFD_ELF',ref_frame='ecef',\
         regularize_speed = False,dt_lowfilt=20):
         """

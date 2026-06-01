@@ -122,35 +122,43 @@ def CSES_load(filename,path='./', return_pandas = False,
         orbitnum = int(fil.attrs['ORBITNUM'])
 
     #1b- read scientific data and positions
-    try:
-        units = {fldtags[i]:fil[i].attrs['units'][0] for i in fldtags}
-    except:
-        try:
-            units = {fldtags[i]:[fil[i].attrs[j][0] for j in fil[i].attrs.keys()][0] for i in fldtags}
-        except:
-            fldtags = CSX['CSES_DATASETS']
-            try:
-                units = {fldtags[i]:fil[i].attrs['units'][0] for i in fldtags if i in fil}
-            except:
-                units = {fldtags[i]:[fil[i].attrs[j][0] for j in fil[i].attrs.keys()][0] \
-                            for i in fldtags if i in fil}
-            fldtags = {i:fldtags[i] for i in fldtags if i in fil}
+    units = {fldtags[i]:get_unit(fil[i].attrs) for i in fldtags}
+    #try:
+        #units = {fldtags[i]:(fil[i].attrs['units'][0] 
+        #                     if 'units' in fil[i].attrs
+        #                     else fil[i].attrs['UNIT'][0])
+        #                     for i in fldtags if units in fil[i].attrs}
+    #except:
+    #    try:
+    #        units = {fldtags[i]:[fil[i].attrs[j][0] for j in fil[i].attrs.keys()][0] for i in fldtags}
+    #    except:
+    #        fldtags = CSX['CSES_DATASETS']
+    #        try:
+    #            units = {fldtags[i]:(fil[i].attrs['units'][0] 
+    #                         if 'units' in fil[i].attrs
+    #                         else fil[i].attrs['UNIT'][0]) for i in fldtags if i in fil}
+    #        except:
+    #            units = {fldtags[i]:[fil[i].attrs[j][0] for j in fil[i].attrs.keys()][0] \
+    #                        for i in fldtags if i in fil}
+    #        fldtags = {i:fldtags[i] for i in fldtags if i in fil}
     data =  {fldtags[i]:fil[i][...] for i in fldtags}
     pos = {CSX['CSES_POSITION'][i]:fil[i][...] for i in CSX['CSES_POSITION'] if i in fil}
 
-    try:
-        vtime_units = fil['VERSE_TIME'].attrs['units'][0]
-    except:
-        vtime_units = [i[1][0] for i in fil['VERSE_TIME'].attrs.items()][0]
-    ms, ns = dshape = data[[fldtags[i] for i in fldtags][0]].shape
-
+    vtime_units = get_unit(fil['VERSE_TIME'].attrs)
+    #try:
+    #    vtime_units = fil['VERSE_TIME'].attrs['units'] if 'units' in fil['VERSE_TIME'].attrs else fil['VERSE_TIME'].attrs['UNIT']
+    #except:
+    #    vtime_units = [i[1][0] for i in fil['VERSE_TIME'].attrs.items()][0]
+    dshape = data[[fldtags[i] for i in fldtags][0]].shape
+    ms, ns = dshape if len(dshape) == 2 else (dshape[0],1)
+    dshape = (ms,ns)
 
     if not with_mag_coords:
         if 'mag_lat' in pos : del pos['mag_lat']
         if 'mag_lon' in pos : del pos['mag_lon']
     
-    Vtime = fil['VERSE_TIME'][...]
-    Utime = fil['UTC_TIME'][...]
+    Vtime = fil['VERSE_TIME'][...].reshape((ms,1))
+    Utime = fil['UTC_TIME'][...].reshape((ms,1))
     if filename[-3:] == '.h5':
         fil.close()
     else:

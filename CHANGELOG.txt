@@ -4,3 +4,7 @@
 2) switched from Basemap to cartopy for plotting orbits
 3) updated convert_GPS_to_ECEF to be compatible with pyproj version 3.7.2
 4) created a pyproject.toml file and reorganized the repository tree for a typical python setup
+5) added machinery to read HPM-02 L2 files
+6) fixed bug in reading units from hdf5 files in CSES02_core.py
+7) improved get_CHAOSmag to increase calculation speed.
+8) added spline interpolation method in blombly.interpolate

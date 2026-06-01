@@ -275,7 +275,8 @@ def get_spacecraft_speed(df,ref_frame='ecef',as_output = True,\
 ################################################################################
 ####################         AUXILIARY FUNCTIONS             ###################
 ################################################################################
-def get_CHAOSmag(df,as_output = True,ref_frame='ecef',chaosfile=None,memory_friendly = True,chunk_size=65536):
+def get_CHAOSmag(dfin,as_output = True,ref_frame='ecef',chaosfile=None,memory_friendly = True,chunk_size=65536,\
+                 nskip=1,interpolate = True, verbose = False):
     """
     Compute magnetic field from CHAOS model on the desired orbit
     
@@ -284,10 +285,15 @@ def get_CHAOSmag(df,as_output = True,ref_frame='ecef',chaosfile=None,memory_frie
     """
     from . import chaosmagpy as chaos
 
+    if interpolate:
+        from .blombly.interpolate import spline_interpolate
     if chaosfile is None:
         import os
         chaosfile = os.path.dirname(__file__)+'/CHAOS-8.5.mat'
-        
+
+
+
+    df = dfin[::nskip] if nskip > 1 else dfin
 
     time = chaos.data_utils.mjd2000(df.index.to_pydatetime()) #28 seconds
     radius = np.sqrt(np.sum(np.array(\
@@ -297,6 +303,12 @@ def get_CHAOSmag(df,as_output = True,ref_frame='ecef',chaosfile=None,memory_frie
     colat = 90-df.lat.values
     lat= df.lat.values
     model = chaos.load_CHAOS_matfile(chaosfile)
+
+    if verbose:
+        print('chunking %s points using a chunk_size of %s' %(df.shape[0], chunk_size))
+    if memory_friendly and df.shape[0] < 2*chunk_size:
+        print('%s < %s . Overriding memory_friendly to False'%(df.shape[0], 2*chunk_size))
+        memory_friendly = False
 
 
     if memory_friendly:
@@ -338,6 +350,21 @@ def get_CHAOSmag(df,as_output = True,ref_frame='ecef',chaosfile=None,memory_frie
     else:
         print('unknown input reference frame, returning None')
         return None
+    if nskip > 1:
+        bkeys = ['Bx_chaos','By_chaos','Bz_chaos']
+        for ikey in bkeys:
+            #if ikey in dfin.keys(): dfin = dfin.drop(columns=ikey)
+            dfin.loc[df.index,ikey] = df[ikey]
+            if interpolate : dfin[ikey] = spline_interpolate(df.index.values,df[ikey].values,dfin.index.values)
+    else:
+        bkeys = ['Bx_chaos','By_chaos','Bz_chaos']
+        dfin.loc[df.index,bkeys] = df[bkeys]
+    if as_output:
+        return dfin.Bx_chaos.values,dfin.By_chaos.values,dfin.Bz_chaos.values
+
+
+
+
 
 
 def get_pwd():

@@ -957,3 +957,63 @@ def stringfy(strlist):
     else:
         return strlist
     return strout
+
+
+def get_unit(attrs):
+    """
+    Extract the unit string from h5py attributes, handling:
+      - attribute name case-insensitivity ('units', 'UNIT', 'Unit', 'unit', ...)
+      - value can be a string, bytes, or a length-1 array/object containing a string
+
+    Parameters
+    ----------
+    attrs : h5py.AttributeManager
+        The .attrs object of a dataset or group.
+
+    Returns
+    -------
+    str
+        The unit string.
+
+    Raises
+    ------
+    KeyError
+        If no matching 'units' attribute is found.
+    """
+    # Find attribute name that matches 'units' case-insensitively
+    unit_key = None
+    for k in attrs.keys():
+        if k.lower() == 'units':
+            unit_key = k
+            break
+        elif k.lower() == 'unit':
+            unit_key = k
+            break
+
+    if unit_key is None:
+        raise KeyError(f"No 'units' attribute (case-insensitive) found in attrs. "
+                       f"Available keys: {list(attrs.keys())}")
+
+    val = attrs[unit_key]
+
+    # Helper to convert to Python str
+    def to_str(x):
+        if isinstance(x, str):
+            return x
+        if isinstance(x, bytes):
+            return x.decode('utf-8')
+        # For numpy/h5py arrays or similar
+        try:
+            if len(x) == 1:
+                x = x[0]
+            else:
+                raise ValueError("units attribute does not have length 1")
+        except TypeError:
+            # Not indexable; treat as scalar
+            pass
+
+        if isinstance(x, bytes):
+            x = x.decode('utf-8')
+        return str(x)
+
+    return to_str(val)
