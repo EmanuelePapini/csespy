@@ -171,12 +171,12 @@ CS1['CSES_PACKETSIZE'] = {'EFD_ULF':256,'EFD_ELF':2048,'EFD_VLF':2048,'EFD_HF':2
                    'SCM_ULF':4096,'SCM_ELF':4096,'SCM_VLF':4096,'LAP_50mm':1,'PAP_':1,\
                    'HPM_FGM1Hz':1,'HPM_CDSM1Hz':1,'HEP':1}
 
-CS1['CSES_FILESYSTEM'] = {'EFD':'year/FREQUENCY/month',\
-                   'HPM':'year/month',\
-                   'LAP':'year/month',\
-                   'SCM':'year/FREQUENCY/month',\
-                   'PAP':'',\
-                   'HEP':'year/month'}
+CS1['CSES_FILESYSTEM'] = {'EFD':'INSTRUMENT/year/FREQUENCY/month',\
+                   'HPM':'INSTRUMENT/year/month',\
+                   'LAP':'INSTRUMENT/year/month',\
+                   'SCM':'INSTRUMENT/year/FREQUENCY/month',\
+                   'PAP':'INSTRUMENT/year/month',\
+                   'HEP':'INSTRUMENT/year/month'}
 
 #conversion factors for the various quantitities that are read: 'Bx_P':(a,b) means that 
 # Bx_P out = a*(Bx_P**b)
