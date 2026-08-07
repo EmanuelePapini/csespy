@@ -8,7 +8,7 @@ on:
 
 jobs:
   build:
-    name: Build wheel
+    name: Build wheel and publish to PyPI
     runs-on: ubuntu-latest
 
     steps:
@@ -25,6 +25,12 @@ jobs:
 
       - name: Build wheel
         run: python -m build --wheel
+
+      - name: Publish to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          user: __token__
+          password: ${{ secrets.PYPI_TOKEN }}        
 
       - name: Upload wheel artifact
         uses: actions/upload-artifact@v4
