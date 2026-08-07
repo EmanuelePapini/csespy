@@ -140,6 +140,14 @@ class CSES():
         - latspan and lonspan require an orbit database to be loaded.
         - When using an orbit database, if no orbits satisfy the constraints, a warning is issued.
         - When append=False, existing data, auxiliary data, and files are cleared.
+        
+        Important Remarks
+        -----------------
+        - Search parameters are only used to identify the relevant semiorbits. All data from a semiorbit are
+          still loaded, meaning that selection criteria such as (timespan,latspan,lonspan) wont select only data 
+          in the desired range, but instead the whole semiorbit(s) containing the desired range.
+          For selecting the desired range, use the "subset" keyword in CSES.load_CSES()
+
         """
         orbitn = stringfy(orbitn)
 
@@ -553,12 +561,18 @@ class CSES():
         
         self.find_files_to_load(datakey,unique=True)
         files = self.check_if_loaded(datakey,load_RAW=load_RAW)
+        
+        nfiles = len(self.files[datakey])
         #files = self.files[dsetname] 
-        if files is None or len(files) == 0:
+        if files is None or len(files) == 0 and nfiles == 0:
             print(msg.ERROR('WARNING, no file found to load for datakey ')+msg.INFO(dsetname)+\
                   msg.ERROR(' and the given research parameters (self._search_params)'))
             return None
-        
+        elif files is None or len(files) == 0 and nfiles > 0:
+            sraw = msg.INFO('RAW') if load_RAW else ''
+            print('Selected '+sraw+' data for datakey '+msg.INFO(dsetname)+ ' already loaded.' ) 
+            return None
+
         for ifile in files:
             infos = parse_CSES_filename(ifile)
             

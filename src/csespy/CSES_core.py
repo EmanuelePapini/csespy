@@ -34,7 +34,7 @@ cscore = {'CSES01':CSES01_core,'CSES02':CSES02_core}
 
 
 def CSES_load(filename,path='./', return_pandas = False,
-            with_mag_coords = False,keep_verse_time = True, fill_missing=None,CSX=None):
+            with_mag_coords = True,keep_verse_time = True, fill_missing=None,CSX=None):
     """
     Generic interface to load any CSES DataProduct
     It uses CSES01_core.CSES_load or CSES02_core.CSES_load depending on the CSX parameter, 
