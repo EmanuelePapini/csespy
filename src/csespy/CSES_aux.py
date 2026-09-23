@@ -371,7 +371,7 @@ def plot_orbit( lat, lon, projection = ['platecarree'], ax=None, fig=None,
                 axes = [[0.1,0.1,0.8,0.8]],\
              latrange = [[-90,90,30]],\
              lonrange = [[-180,180,30]],\
-             ion = True, show=True, which_coords = 'geo',pltkwargs={}):
+             ion = True, show=True, which_coords = 'geo',pltkwargs = {}):
     """
     Plot the orbit on a global map using three different projections:
         1) PlateCarree

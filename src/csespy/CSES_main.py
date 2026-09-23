@@ -29,7 +29,7 @@ from .CSES_fixdata import fix_data as CSES_fix_data
 from .blombly.io import msg
 #from attrdict import AttrDict
 from .blombly.tools.objects import AttrDict
-from copy import deepcopy
+from copy import copy, deepcopy
 
 #CSES MAIN CLASS
 
@@ -1497,7 +1497,7 @@ class CSES_database():
             else:
                 self.sel_db = df
                 return 
-        side = '1' if whichside == 'night' else '0'
+        side = '1' if whichside.lower == 'night' or whichside.lower()[0] == 'n' else '0'
         mask = [i[-1]==side for i in df.orbitn.values]
 
         df = df[mask]
@@ -1519,7 +1519,7 @@ class CSES_database():
         return self.sel_db
     
     def plot_orbit(self,df=None,y='lat',x='lon', fig = None, ax = None,profile = 'default',\
-                   ion=True,show=True):
+                   ion=True,show=True,color = None, separate_orbits = False):
         """
         Plot the orbit of the input pd.DataFrame or of the sel_db (or of the db) on the worldmap, using CSES_aux.plot_orbit
 
@@ -1549,6 +1549,11 @@ class CSES_database():
             If True, enable interactive mode. Default is True.
         show : bool, optional
             If True, display the plot. Default is True.
+        color : str or None, optional
+            Color of the orbit plot. If None, a default color is used. Default is None.
+        separate_orbits : bool, optional
+            If True, plot each orbit separately. Default is False.
+            If True, the color keyword will be the same color to all orbits, otherwise each orbit will be plotted with a different color.
         Returns
         -------
         fig : figure object
@@ -1557,16 +1562,26 @@ class CSES_database():
             The matplotlib axes object.
        
         """
-
+        from copy import deepcopy
         if df is None:
             if hasattr(self,'sel_db'):
                 df = self.sel_db
             else:
                 df = self.db
+    
+        pltkwargs = deepcopy(ORBIT_PLOT_TEMPLATES[profile]) if type(profile) is str else profile
 
-        pltkwargs = ORBIT_PLOT_TEMPLATES[profile] if type(profile) is str else profile
-        
-        fig,ax = plot_orbit(df[y].values,df[x].values, fig = fig, ax = ax,ion=ion,show=show,**pltkwargs)
+        if color is not None:
+            pltkwargs['pltkwargs']['color'] = color
+
+        if separate_orbits:
+            orbits = set(df.orbitn.values)
+            for iorbit in orbits:
+                dmask = df.orbitn.values == iorbit
+                dff = df[df.orbitn.values == iorbit]
+                fig,ax = plot_orbit(dff[y].values,dff[x].values, fig = fig, ax = ax,ion=ion,show=show, **pltkwargs)
+        else: 
+            fig,ax = plot_orbit(df[y].values,df[x].values, fig = fig, ax = ax,ion=ion,show=show,**pltkwargs)
 
         return fig,ax
 
